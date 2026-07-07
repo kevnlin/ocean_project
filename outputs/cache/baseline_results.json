@@ -1,0 +1,95 @@
+{
+  "results": [
+    {
+      "method": "climatology",
+      "config": "woa_only",
+      "RMSE_TEMP": 1.5647785663604736,
+      "RMSE_SALT": 0.6314191818237305
+    },
+    {
+      "method": "nearest",
+      "config": "profiles_only",
+      "RMSE_TEMP": 0.9958676695823669,
+      "RMSE_SALT": 0.383396714925766
+    },
+    {
+      "method": "nearest",
+      "config": "profiles_woa",
+      "RMSE_TEMP": 0.937802255153656,
+      "RMSE_SALT": 0.30485519766807556
+    },
+    {
+      "method": "mlp",
+      "config": "profiles_only",
+      "RMSE_TEMP": 0.9146410226821899,
+      "RMSE_SALT": 0.27356040477752686
+    },
+    {
+      "method": "mlp",
+      "config": "woa_only",
+      "RMSE_TEMP": 0.8976789116859436,
+      "RMSE_SALT": 0.2581748962402344
+    },
+    {
+      "method": "mlp",
+      "config": "profiles_woa",
+      "RMSE_TEMP": 0.8745709657669067,
+      "RMSE_SALT": 0.38813140988349915
+    },
+    {
+      "method": "mlp",
+      "config": "profiles_woa_surf",
+      "RMSE_TEMP": 0.6787163019180298,
+      "RMSE_SALT": 0.13549411296844482
+    },
+    {
+      "method": "unet",
+      "config": "profiles_only",
+      "RMSE_TEMP": 0.5872746706008911,
+      "RMSE_SALT": 0.1342691332101822
+    },
+    {
+      "method": "unet",
+      "config": "woa_only",
+      "RMSE_TEMP": 0.6470935344696045,
+      "RMSE_SALT": 0.14702586829662323
+    },
+    {
+      "method": "unet",
+      "config": "profiles_woa",
+      "RMSE_TEMP": 0.5330873131752014,
+      "RMSE_SALT": 0.11868348717689514
+    },
+    {
+      "method": "unet",
+      "config": "profiles_woa_surf",
+      "RMSE_TEMP": 0.47227180004119873,
+      "RMSE_SALT": 0.10013457387685776
+    }
+  ],
+  "depths": [
+    5.0,
+    15.0,
+    25.0,
+    35.0,
+    45.0,
+    55.0,
+    65.0,
+    85.0,
+    105.0,
+    125.0,
+    145.0,
+    165.09840393066406,
+    186.29127502441406,
+    222.57827758789062,
+    267.6542053222656,
+    326.86798095703125,
+    408.7846374511719,
+    527.72802734375,
+    707.5632934570312,
+    984.7058715820312
+  ],
+  "n_train": 48,
+  "n_test": 12,
+  "n_profiles": 1500
+}

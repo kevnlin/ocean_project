@@ -1,0 +1,3 @@
+method,variable,surface_~5m,0-50m,50-200m,200m+
+OSnet MLP (15x ens),TEMP,0.111070,0.354880,0.944912,0.570048
+OSnet MLP (15x ens),SALT,0.022742,0.119020,0.179117,0.118509

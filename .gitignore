@@ -1,0 +1,27 @@
+# --- Large data (regenerate; not tracked in git) ---
+# raw CESM2-LE / WOA23 NetCDF (~4.7 GB)
+/data/
+# standardized Zarr stores (~42 GB) — regenerate via experiments/standardize.py
+/processed/
+
+# --- Large per-cell prediction arrays exceed GitHub's 100 MB file limit ---
+# Their RMSE summaries (predictions/*_rmse.csv, reports/) and the checkpoints that
+# produce them ARE tracked; regenerate the arrays with src/baselines/*.py.
+/predictions/*.npz
+
+# --- Runtime artifacts ---
+/outputs/*.log
+/outputs/*.pid
+/outputs/cache/synthetic_argo_example.npz
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- OS / editor ---
+.DS_Store
+*.swp

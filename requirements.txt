@@ -1,0 +1,7 @@
+numpy
+scipy
+scikit-learn
+xarray
+zarr
+netCDF4
+torch
