@@ -48,13 +48,15 @@ class Norm:
                 sd = float(np.nanstd(s))
                 self.sstd[v] = sd if sd > 1e-6 else 1.0
 
-    def z3d(self, v, arr):    # arr (D,H,W) or (...,D,H,W)
+    # `month` is accepted for interface parity with anomaly.AnomNorm (which is
+    # month-dependent); the absolute normaliser ignores it.
+    def z3d(self, v, arr, month=None):    # arr (D,H,W) or (...,D,H,W)
         return (arr - self.mean[v][:, None, None]) / self.std[v][:, None, None]
 
-    def unz3d(self, v, arr):
+    def unz3d(self, v, arr, month=None):
         return arr * self.std[v][:, None, None] + self.mean[v][:, None, None]
 
-    def zsurf(self, v, arr):
+    def zsurf(self, v, arr, month=None):
         return (arr - self.smean[v]) / self.sstd[v]
 
 
@@ -92,6 +94,13 @@ def prepare_month(fields, surf, woa, grid, t, rng, n_profiles):
     s["ocean_ij"] = (oi, oj)
     s["nn"] = nn
     s["nn_dist"] = dist
+    # observed-column mask: True where an ocean cell is *unobserved* (no profile
+    # column there).  Broadcast across depth this excludes whole observed columns
+    # from the loss and the metric (Week-1 unobserved-only fix).
+    obs_col = np.zeros((grid.nlat, grid.nlon), dtype=bool)
+    pi, pj = prof["ij"][:, 0], prof["ij"][:, 1]
+    obs_col[pi, pj] = True
+    s["unobs_mask"] = grid.ocean & (~obs_col)      # (H,W) bool
     # nearest-filled fields
     near = {}
     for v in VARS:
@@ -107,6 +116,23 @@ def prepare_month(fields, surf, woa, grid, t, rng, n_profiles):
 # ==========================================================================
 def predict_climatology(sample):
     return {v: sample["woa"][v].copy() for v in VARS}
+
+
+# ==========================================================================
+# Method: climatology floor  (pred = train-only CESM2 monthly climatology)
+# ==========================================================================
+def predict_clim_floor(sample, clim, grid):
+    """Predict the train-only CESM2 monthly climatology (= zero anomaly).
+
+    This is the principled RMSE floor: any skill must beat *its own* held-out
+    climatology, not the bias-dominated WOA prior.
+    """
+    mo = sample["month"]
+    out = {}
+    for v in VARS:
+        arr = clim.clim3d(v, mo).astype("float32")
+        out[v] = np.where(grid.ocean[None], arr, np.nan)
+    return out
 
 
 # ==========================================================================
@@ -170,11 +196,11 @@ def _point_features(sample, grid, norm, cfg, idx_i, idx_j, depth_idx):
     ]
     if "woa" in cfg:
         for v in VARS:
-            z = norm.z3d(v, sample["woa"][v])[depth_idx, idx_i, idx_j]
+            z = norm.z3d(v, sample["woa"][v], mo)[depth_idx, idx_i, idx_j]
             cols.append(np.nan_to_num(z, nan=0.0))
     if "profiles" in cfg:
         for v in VARS:
-            z = norm.z3d(v, sample["near"][v])[depth_idx, idx_i, idx_j]
+            z = norm.z3d(v, sample["near"][v], mo)[depth_idx, idx_i, idx_j]
             cols.append(np.nan_to_num(z, nan=0.0))
         # distance-to-nearest feature (per (i,j)); map ocean cells
         dmap = np.full((grid.nlat, grid.nlon), 1.0, "float32")
@@ -187,7 +213,7 @@ def _point_features(sample, grid, norm, cfg, idx_i, idx_j, depth_idx):
             if arr is None:
                 cols.append(np.zeros_like(lat))
             else:
-                z = norm.zsurf(sv, arr)[idx_i, idx_j]
+                z = norm.zsurf(sv, arr, mo)[idx_i, idx_j]
                 cols.append(np.nan_to_num(z, nan=0.0))
     return np.stack(cols, axis=1).astype("float32")
 
@@ -204,7 +230,8 @@ def train_predict_mlp(train_samples, test_samples, grid, norm, cfg, rng, device)
             ci = rng.integers(0, n, size=take)
             ii, jj = oi[ci], oj[ci]
             X = _point_features(s, grid, norm, cfg, ii, jj, di)
-            y = np.stack([norm.z3d(v, s["gt"][v])[di, ii, jj] for v in VARS], 1)
+            y = np.stack([norm.z3d(v, s["gt"][v], s["month"])[di, ii, jj]
+                          for v in VARS], 1)
             m = np.isfinite(y).all(1)
             Xtr.append(X[m]); Ytr.append(y[m].astype("float32"))
     Xtr = np.concatenate(Xtr); Ytr = np.concatenate(Ytr)
@@ -237,7 +264,7 @@ def train_predict_mlp(train_samples, test_samples, grid, norm, cfg, rng, device)
                 for k, v in enumerate(VARS):
                     pv[v][d, oi, oj] = yz[:, k]
             for v in VARS:
-                pv[v] = norm.unz3d(v, pv[v])
+                pv[v] = norm.unz3d(v, pv[v], s["month"])
             preds.append(pv)
     return preds
 
@@ -249,10 +276,11 @@ def _unet_channels(sample, grid, norm, cfg):
     """Return input tensor (D, C_in, H, W) and the channel list for a sample."""
     D, H, W = grid.ndepth, grid.nlat, grid.nlon
     ocean = grid.ocean[None].astype("float32")        # (1,H,W)
+    mo = sample["month"]
     chans = []
 
     def z_or_zero(arr3d, v):
-        z = norm.z3d(v, arr3d)
+        z = norm.z3d(v, arr3d, mo)
         return np.nan_to_num(z, nan=0.0).astype("float32")
 
     if "profiles" in cfg:
@@ -272,7 +300,7 @@ def _unet_channels(sample, grid, norm, cfg):
             if arr is None:
                 chans.append(np.zeros((D, H, W), "float32"))
             else:
-                z = np.nan_to_num(norm.zsurf(sv, arr), nan=0.0).astype("float32")
+                z = np.nan_to_num(norm.zsurf(sv, arr, mo), nan=0.0).astype("float32")
                 chans.append(np.broadcast_to(z[None], (D, H, W)))
     # ocean mask channel
     chans.append(np.broadcast_to(ocean, (D, H, W)).astype("float32"))
@@ -280,13 +308,20 @@ def _unet_channels(sample, grid, norm, cfg):
     return X
 
 
-def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device):
+def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device,
+                       unobs_loss=False):
+    """Depthwise 2D U-Net: one shared 2D net applied per depth slice.
+
+    ``unobs_loss``: if True the training loss is restricted to *unobserved*
+    ocean cells (profile columns excluded) so the model is scored on its
+    interpolation skill rather than on copying the obs it is fed.
+    """
     D, H, W = grid.ndepth, grid.nlat, grid.nlon
     ocean_t = torch.from_numpy(grid.ocean.astype("float32")).to(device)
 
     # precompute tensors
     def targets(s):
-        return np.stack([np.nan_to_num(norm.z3d(v, s["gt"][v]), nan=0.0)
+        return np.stack([np.nan_to_num(norm.z3d(v, s["gt"][v], s["month"]), nan=0.0)
                          for v in VARS], axis=1)        # (D,2,H,W)
 
     Xtr = [(_unet_channels(s, grid, norm, cfg), targets(s)) for s in train_samples]
@@ -299,6 +334,13 @@ def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device):
     Yall = np.concatenate([y for _, y in Xtr], axis=0)       # (N*D, 2, H, W)
     Xall_t = torch.from_numpy(Xall).to(device)
     Yall_t = torch.from_numpy(Yall).to(device)
+    # per-slice spatial loss weight (unobserved ocean, or all ocean)
+    if unobs_loss:
+        wm = np.stack([np.repeat(s["unobs_mask"].astype("float32")[None], D, axis=0)
+                       for s in train_samples], axis=0).reshape(-1, H, W)  # (N*D,H,W)
+        Wall_t = torch.from_numpy(wm).to(device)
+    else:
+        Wall_t = ocean_t[None].expand(Xall_t.shape[0], H, W)
     N = Xall_t.shape[0]
     nb = int(np.ceil(N / C.UNET_BATCH))
     for ep in range(C.UNET_EPOCHS):
@@ -307,7 +349,8 @@ def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device):
             sl = perm[b * C.UNET_BATCH:(b + 1) * C.UNET_BATCH]
             opt.zero_grad()
             out = model(Xall_t[sl])
-            loss = (((out - Yall_t[sl]) ** 2) * ocean_t[None, None]).mean()
+            w = Wall_t[sl][:, None]                          # (b,1,H,W)
+            loss = (((out - Yall_t[sl]) ** 2) * w).sum() / (w.sum() * len(VARS) + 1e-8)
             loss.backward(); opt.step()
 
     preds = []
@@ -318,8 +361,98 @@ def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device):
             out = model(X).cpu().numpy()                # (D,2,H,W) z-scored
             pv = {}
             for k, v in enumerate(VARS):
-                arr = norm.unz3d(v, out[:, k])
+                arr = norm.unz3d(v, out[:, k], s["month"])
                 arr = np.where(grid.ocean[None], arr, np.nan)
                 pv[v] = arr.astype("float32")
+            preds.append(pv)
+    return preds
+
+
+# ==========================================================================
+# Joint-depth 2D U-Net  (the Week-1 strong baseline)
+# ==========================================================================
+# The depthwise U-Net above reconstructs each depth level independently (a
+# shared 2D net applied per slice), so it cannot exploit vertical correlation.
+# The joint-depth U-Net stacks *all depths as input/output channels* and
+# predicts the whole water column at once (2 vars x D levels = 40 output
+# channels at D=20), letting the convolutions model the full T/S structure
+# jointly.  This is the stronger control the shared-latent method must beat.
+def _unet_channels_joint(sample, grid, norm, cfg):
+    """Whole-column input tensor (C_in, H, W); depth encoded by channel identity."""
+    D, H, W = grid.ndepth, grid.nlat, grid.nlon
+    mo = sample["month"]
+    chans = []                                          # each (H,W) or stacked
+
+    def zc(arr3d, v):                                   # (D,H,W) -> D channels
+        z = np.nan_to_num(norm.z3d(v, arr3d, mo), nan=0.0).astype("float32")
+        return list(z)                                  # D x (H,W)
+
+    if "profiles" in cfg:
+        for v in VARS:
+            obs = sample["obs"][v]                       # (D,H,W) sparse
+            chans += zc(obs, v)                          # value, D channels
+            chans += list(np.isfinite(obs).astype("float32"))  # mask, D channels
+    if "woa" in cfg:
+        for v in VARS:
+            chans += zc(sample["woa"][v], v)
+    if "surf" in cfg:
+        for sv in C.VARS_SURF:
+            arr = sample["surf"].get(sv)
+            if arr is None:
+                chans.append(np.zeros((H, W), "float32"))
+            else:
+                chans.append(np.nan_to_num(norm.zsurf(sv, arr, mo),
+                                           nan=0.0).astype("float32"))
+    chans.append(grid.ocean.astype("float32"))          # ocean mask, 1 channel
+    return np.stack(chans, axis=0)                       # (C_in, H, W)
+
+
+def train_predict_unet_joint(train_samples, test_samples, grid, norm, cfg, device,
+                             unobs_loss=True):
+    """Joint-depth U-Net: predicts (2*D) channels per month in one forward pass."""
+    D, H, W = grid.ndepth, grid.nlat, grid.nlon
+    Cout = len(VARS) * D
+
+    def targets(s):                                      # (2*D, H, W)
+        t = np.stack([np.nan_to_num(norm.z3d(v, s["gt"][v], s["month"]), nan=0.0)
+                      for v in VARS], axis=0)            # (2, D, H, W)
+        return t.reshape(Cout, H, W)
+
+    Xtr = np.stack([_unet_channels_joint(s, grid, norm, cfg) for s in train_samples], 0)
+    Ytr = np.stack([targets(s) for s in train_samples], 0)      # (N, 2D, H, W)
+    c_in = Xtr.shape[1]
+    model = UNet2D(c_in, Cout, base=C.UNET_JOINT_BASE).to(device)
+    opt = torch.optim.Adam(model.parameters(), lr=C.UNET_JOINT_LR)
+
+    Xt = torch.from_numpy(Xtr).to(device)
+    Yt = torch.from_numpy(Ytr).to(device)
+    if unobs_loss:
+        wm = np.stack([s["unobs_mask"].astype("float32") for s in train_samples], 0)
+    else:
+        wm = np.broadcast_to(grid.ocean.astype("float32"),
+                             (len(train_samples), H, W)).copy()
+    Wt = torch.from_numpy(wm).to(device)                # (N,H,W)
+    N = Xt.shape[0]
+    nb = int(np.ceil(N / C.UNET_JOINT_BATCH))
+    for ep in range(C.UNET_JOINT_EPOCHS):
+        perm = torch.randperm(N, device=device)
+        for b in range(nb):
+            sl = perm[b * C.UNET_JOINT_BATCH:(b + 1) * C.UNET_JOINT_BATCH]
+            opt.zero_grad()
+            out = model(Xt[sl])                          # (b, 2D, H, W)
+            w = Wt[sl][:, None]                          # (b,1,H,W)
+            loss = (((out - Yt[sl]) ** 2) * w).sum() / (w.sum() * Cout + 1e-8)
+            loss.backward(); opt.step()
+
+    preds = []
+    model.eval()
+    with torch.no_grad():
+        for s in test_samples:
+            X = torch.from_numpy(_unet_channels_joint(s, grid, norm, cfg)[None]).to(device)
+            out = model(X).cpu().numpy()[0].reshape(len(VARS), D, H, W)
+            pv = {}
+            for k, v in enumerate(VARS):
+                arr = norm.unz3d(v, out[k], s["month"])
+                pv[v] = np.where(grid.ocean[None], arr, np.nan).astype("float32")
             preds.append(pv)
     return preds

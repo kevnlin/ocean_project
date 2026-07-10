@@ -30,3 +30,26 @@ def evaluate(pred: dict, true: dict, depths) -> dict:
         res["overall"][v] = rmse_overall(pred[v], true[v])
         res["by_depth"][v] = rmse_by_depth(pred[v], true[v])
     return res
+
+
+def evaluate_masked(pred: dict, true: dict, masks, depths) -> dict:
+    """Unobserved-only evaluation.
+
+    ``masks``: (N, H, W) boolean array, True where a cell should be *scored*
+    (typically ocean cells that are NOT profile columns).  The mask is
+    broadcast across depth so an entire observed column is excluded.
+
+    Excluding observed profile columns removes the leakage of scoring a model on
+    cells where it was fed the noise-free truth — the Week-1 metric fix.
+    """
+    masks = np.asarray(masks).astype(bool)                     # (N,H,W)
+    res = {"overall": {}, "by_depth": {}, "depths": np.asarray(depths)}
+    for v in pred:
+        p = np.asarray(pred[v]); t = np.asarray(true[v])       # (N,D,H,W)
+        m = masks[:, None, :, :]                               # (N,1,H,W) -> broadcast
+        keep = np.broadcast_to(m, p.shape)
+        pv = np.where(keep, p, np.nan)
+        tv = np.where(keep, t, np.nan)
+        res["overall"][v] = rmse_overall(pv, tv)
+        res["by_depth"][v] = rmse_by_depth(pv, tv)
+    return res

@@ -74,6 +74,13 @@ UNET_EPOCHS = 40
 UNET_LR = 2e-3
 UNET_BATCH = 16                   # depth-slices per batch
 
+# Joint-depth U-Net (Week-1 strong baseline): whole column as channels, one
+# forward pass per month, so batching is over months not depth-slices.
+UNET_JOINT_BASE = 48
+UNET_JOINT_EPOCHS = 200
+UNET_JOINT_LR = 2e-3
+UNET_JOINT_BATCH = 8              # months per batch
+
 DEVICE = "cuda"
 
 os.makedirs(CACHE, exist_ok=True)
