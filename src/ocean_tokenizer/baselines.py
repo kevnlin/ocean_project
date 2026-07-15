@@ -88,9 +88,16 @@ def prepare_month(fields, surf, woa, grid, t, rng, n_profiles):
     # nearest-profile assignment for every ocean grid cell (shared across depth)
     oi, oj = np.where(grid.ocean)
     cell_xyz = _xyz(grid.lat[oi], grid.lon[oj])
-    prof_xyz = _xyz(prof["lat"], prof["lon"])
-    tree = cKDTree(prof_xyz)
-    dist, nn = tree.query(cell_xyz, k=1)                            # (n_ocean,)
+    if prof["lat"].size:
+        prof_xyz = _xyz(prof["lat"], prof["lon"])
+        tree = cKDTree(prof_xyz)
+        dist, nn = tree.query(cell_xyz, k=1)                        # (n_ocean,)
+    else:
+        # zero-profile month (density-ablation endpoint): no neighbour exists;
+        # use the maximum chord distance (2 = antipodal on the unit sphere) so
+        # distance-gated blends fall back to the prior everywhere.
+        dist = np.full(oi.size, 2.0)
+        nn = np.zeros(oi.size, dtype=int)
     s["ocean_ij"] = (oi, oj)
     s["nn"] = nn
     s["nn_dist"] = dist
@@ -105,7 +112,8 @@ def prepare_month(fields, surf, woa, grid, t, rng, n_profiles):
     near = {}
     for v in VARS:
         g = np.full((grid.ndepth, grid.nlat, grid.nlon), np.nan, "float32")
-        g[:, oi, oj] = prof[v][nn].T                                # (D, n_ocean)
+        if prof["lat"].size:
+            g[:, oi, oj] = prof[v][nn].T                            # (D, n_ocean)
         near[v] = g
     s["near"] = near
     return s
