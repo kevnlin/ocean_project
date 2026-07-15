@@ -43,7 +43,7 @@ DEPTH_INDICES = [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 21, 24, 27, 30, 33,
 # --------------------------------------------------------------------------
 TRAIN_YEARS = (1985, 2010)        # inclusive range to sample training months from
 TEST_YEARS = (2011, 2014)         # held-out evaluation period
-N_TRAIN_MONTHS = 48               # monthly snapshots sampled from TRAIN_YEARS
+N_TRAIN_MONTHS = 312              # monthly snapshots sampled from TRAIN_YEARS (full 1985-2010 window)
 N_TEST_MONTHS = 12                # monthly snapshots from TEST_YEARS
 
 N_PROFILES = 1500                 # synthetic Argo columns sampled per monthly field
