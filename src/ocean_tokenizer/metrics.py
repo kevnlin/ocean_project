@@ -32,6 +32,40 @@ def evaluate(pred: dict, true: dict, depths) -> dict:
     return res
 
 
+def evaluate_layers(pred: dict, true: dict, masks, depths, layers) -> dict:
+    """Per-depth-layer RMSE (unobserved-only, valid-cell-weighted = pooled).
+
+    ``layers``: list of (name, lo_m, hi_m); a depth level d joins the layer with
+    lo < d <= hi (the shallowest layer also takes the surface level d == min).
+    RMSE for a layer pools the squared errors over every scored cell at every
+    depth in the layer, so it equals the true RMSE over that ocean volume
+    (deeper levels, with fewer wet cells, contribute proportionally).
+
+    Returns {'by_layer': {var: {layer_name: rmse}}, 'depths', 'layers'}.
+    """
+    depths = np.asarray(depths)
+    masks = np.asarray(masks).astype(bool)                     # (N,H,W)
+    dmin = depths.min()
+    res = {"by_layer": {}, "depths": depths, "layers": layers}
+    for v in pred:
+        p = np.asarray(pred[v]); t = np.asarray(true[v])       # (N,D,H,W)
+        m = np.broadcast_to(masks[:, None, :, :], p.shape)
+        res["by_layer"][v] = {}
+        for name, lo, hi in layers:
+            sel = (depths > lo) & (depths <= hi)
+            if lo <= dmin:                                      # surface level
+                sel = sel | np.isclose(depths, dmin)
+            di = np.where(sel)[0]
+            if di.size == 0:
+                res["by_layer"][v][name] = np.nan
+                continue
+            keep = m[:, di]
+            pv = np.where(keep, p[:, di], np.nan)
+            tv = np.where(keep, t[:, di], np.nan)
+            res["by_layer"][v][name] = rmse_overall(pv, tv)
+    return res
+
+
 def evaluate_masked(pred: dict, true: dict, masks, depths) -> dict:
     """Unobserved-only evaluation.
 
