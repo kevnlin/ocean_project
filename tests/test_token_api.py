@@ -78,15 +78,17 @@ def test_coordinate_consistency_across_encoders():
     """The same physical location yields identical coord features regardless
     of which modality carries it, and TokenBatch.coord stores it faithfully."""
     lat, lon, month = 12.5, 200.0, 7
-    prof_enc = ProfileEncoder(DEPTHS, d_model=D_MODEL, n_segments=4)
+    prof_enc = ProfileEncoder(DEPTHS, d_model=D_MODEL)
     pt_enc = PointEncoder(d_model=D_MODEL)
 
     tbp = prof_enc(**dict(prof=torch.zeros(1, 1, 2, D),
                           lat=torch.tensor([[lat]]), lon=torch.tensor([[lon]]),
                           month=torch.tensor([month])))
-    seg_depth = DEPTHS.reshape(4, -1).mean(1)
-    expect = np.stack([np.full(4, lat), np.full(4, lon), seg_depth,
-                       np.full(4, month)], -1)
+    seg_depth = np.array([(lo + hi) / 2 for lo, hi in prof_enc.bands],
+                         dtype="float32")           # physical band midpoints
+    S = len(seg_depth)
+    expect = np.stack([np.full(S, lat), np.full(S, lon), seg_depth,
+                       np.full(S, month)], -1)
     np.testing.assert_allclose(tbp.coord[0].numpy(), expect, rtol=1e-5)
 
     depth = float(seg_depth[0])
@@ -101,7 +103,7 @@ def test_coordinate_consistency_across_encoders():
 # ---------------------------------------------------------- variable P counts
 @pytest.mark.parametrize("P", [0, 1, 7, 130])
 def test_variable_profile_counts(P):
-    enc = ProfileEncoder(DEPTHS, d_model=D_MODEL, n_segments=4)
+    enc = ProfileEncoder(DEPTHS, d_model=D_MODEL)
     tb = enc(**profile_obs(P))
     assert tb.emb.shape == (1, P * 4, D_MODEL)
     assert tb.mask.shape == (1, P * 4)
@@ -177,14 +179,16 @@ def test_permutation_invariance():
 
 def test_nan_segment_masked():
     obs = profile_obs(4)
-    obs["prof"][0, 2, :, 5:10] = float("nan")     # kill segment 1 of profile 2
-    enc = ProfileEncoder(DEPTHS, d_model=D_MODEL, n_segments=4)
+    # kill every level of the 50-200 m band (depths 55..186) of profile 2
+    obs["prof"][0, 2, :, 5:13] = float("nan")
+    enc = ProfileEncoder(DEPTHS, d_model=D_MODEL)
+    S = enc.n_bands
     tb = enc(**obs)
-    mask = tb.mask.reshape(4, 4)                   # (P, segments)
+    mask = tb.mask.reshape(4, S)                   # (P, bands)
     assert not mask[2, 1]
-    assert mask.sum() == 15
+    assert mask.sum() == 4 * S - 1
     # masked token embeddings are zeroed
-    assert torch.equal(tb.emb.reshape(4, 4, -1)[2, 1],
+    assert torch.equal(tb.emb.reshape(4, S, -1)[2, 1],
                        torch.zeros(D_MODEL))
 
 
@@ -229,8 +233,9 @@ def test_gradient_flow():
     q = queries()
     out = model({"profiles": profile_obs(10), "surf": surf_obs()}, q)
     out.pow(2).mean().backward()
-    for name in ("profiles", "surf"):
-        g = model.encoders[name].val_proj.weight.grad
+    grads = {"profiles": model.encoders["profiles"].level_mlp[0].weight.grad,
+             "surf": model.encoders["surf"].val_proj.weight.grad}
+    for name, g in grads.items():
         assert g is not None and torch.isfinite(g).all() and g.abs().sum() > 0
     assert model.head[0].weight.grad is not None
 

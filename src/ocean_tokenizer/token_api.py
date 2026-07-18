@@ -89,19 +89,28 @@ class TokenBatch:
     coord    : (B, N, 4)  physical (lat, lon, depth_m, month); 0 where masked
     modality : (B, N)     int64 id into MODALITIES
     mask     : (B, N)     bool, True = real token (False = padding / all-NaN)
+    support_mass : (B, N) optional nonnegative physical support per token
+                   (Task-4/5 seam): ProfileEncoder emits the valid depth span
+                   in metres; encoders that do not yet compute a mass leave
+                   None, which MBCA treats as uniform-within-modality.  Full
+                   provenance metadata (parent_observation_id, ...) extends
+                   here (Task 4).
     """
     emb: torch.Tensor
     coord: torch.Tensor
     modality: torch.Tensor
     mask: torch.Tensor
+    support_mass: torch.Tensor | None = None
 
     @property
     def n_valid(self) -> torch.Tensor:            # (B,) valid tokens per item
         return self.mask.sum(dim=1)
 
     def to(self, device) -> "TokenBatch":
-        return TokenBatch(self.emb.to(device), self.coord.to(device),
-                          self.modality.to(device), self.mask.to(device))
+        return TokenBatch(
+            self.emb.to(device), self.coord.to(device),
+            self.modality.to(device), self.mask.to(device),
+            None if self.support_mass is None else self.support_mass.to(device))
 
     @staticmethod
     def empty(batch: int, d_model: int, device=None) -> "TokenBatch":
@@ -109,21 +118,31 @@ class TokenBatch:
             emb=torch.zeros(batch, 0, d_model, device=device),
             coord=torch.zeros(batch, 0, 4, device=device),
             modality=torch.zeros(batch, 0, dtype=torch.long, device=device),
-            mask=torch.zeros(batch, 0, dtype=torch.bool, device=device))
+            mask=torch.zeros(batch, 0, dtype=torch.bool, device=device),
+            support_mass=torch.zeros(batch, 0, device=device))
 
     @staticmethod
     def cat(parts: list["TokenBatch"]) -> "TokenBatch":
         assert len(parts) > 0, "TokenBatch.cat needs at least one part"
         B = parts[0].emb.shape[0]
         assert all(p.emb.shape[0] == B for p in parts), "batch sizes differ"
+        if all(p.support_mass is None for p in parts):
+            mass = None
+        else:
+            # parts without a mass default to uniform (1 per valid token)
+            mass = torch.cat([
+                (p.mask.to(p.emb.dtype) if p.support_mass is None
+                 else p.support_mass) for p in parts], dim=1)
         return TokenBatch(
             emb=torch.cat([p.emb for p in parts], dim=1),
             coord=torch.cat([p.coord for p in parts], dim=1),
             modality=torch.cat([p.modality for p in parts], dim=1),
-            mask=torch.cat([p.mask for p in parts], dim=1))
+            mask=torch.cat([p.mask for p in parts], dim=1),
+            support_mass=mass)
 
 
-def _finish_tokens(content_emb, coord, coord_proj, mask, modality_id):
+def _finish_tokens(content_emb, coord, coord_proj, mask, modality_id,
+                   support_mass=None):
     """Assemble a TokenBatch: content + coord embedding, zeroed where masked."""
     coord = torch.nan_to_num(coord, nan=0.0)
     emb = content_emb + coord_proj(coord_features(coord))
@@ -131,7 +150,10 @@ def _finish_tokens(content_emb, coord, coord_proj, mask, modality_id):
     coord = coord * mask.unsqueeze(-1)
     modality = torch.full(mask.shape, modality_id, dtype=torch.long,
                           device=mask.device)
-    return TokenBatch(emb=emb, coord=coord, modality=modality, mask=mask)
+    if support_mass is not None:
+        support_mass = support_mass * mask.to(support_mass.dtype)
+    return TokenBatch(emb=emb, coord=coord, modality=modality, mask=mask,
+                      support_mass=support_mass)
 
 
 # --------------------------------------------------------------------------
@@ -223,41 +245,83 @@ class GridPatchEncoder(nn.Module):
 
 
 # --------------------------------------------------------------------------
-# (b) Profile encoder — sparse vertical columns -> multiple tokens each
+# (b) Profile encoder — sparse vertical columns -> physical depth-band tokens
 # --------------------------------------------------------------------------
-class ProfileEncoder(nn.Module):
-    """(B, P, C, D) profiles -> n_segments tokens per profile.
+_BAND_SCALE = 1500.0     # deepest band edge across the 20-/23-level protocols
 
-    The column is split into contiguous depth segments (default 4 x 5 levels at
-    D=20) so vertical / water-mass structure survives tokenisation instead of
-    being flattened into one vector.  Variable profile count P (including P=0)
-    is native; ``valid`` (B, P) marks real profiles inside a padded batch.
-    A segment with no finite level (e.g. below a shallow float's max depth) is
-    masked out.
+
+def default_depth_bands(max_depth: float) -> list[tuple[float, float]]:
+    """Task-5 physical depth bands: 0-50 / 50-200 / 200-500 / 500-max, plus a
+    1000-1500 band only when the grid actually extends below 1000 m (never
+    report a >1000 m band on the 20-level task)."""
+    bands = [(0.0, 50.0), (50.0, 200.0), (200.0, 500.0)]
+    if max_depth > 1000.0:
+        bands += [(500.0, 1000.0), (1000.0, float(min(max_depth, 1500.0)))]
+    else:
+        bands += [(500.0, float(max_depth))]
+    return bands
+
+
+class ProfileEncoder(nn.Module):
+    """(B, P, C, D) profiles -> one token per *physical depth band* per profile.
+
+    Levels are assigned to bands by their physical depth, not by index, so one
+    trained encoder handles the 20-level grid, the extended 23-level grid, and
+    irregular / ragged vertical sampling (each level is embedded by a small
+    per-level MLP and masked-mean-pooled within its band — no dependence on
+    the number of levels or their divisibility).
+
+    Each band token carries (Task 5): pooled T/S content, validity mask,
+    lat/lon, lower/upper/midpoint depth (via band features + the coordinate
+    channel), the represented depth span, month, and a ``support_mass`` equal
+    to the *valid* physical depth span (metres) the token actually represents
+    (the Task-4 observation-measure seam; a level's represented thickness is
+    its inter-level interval clipped to the band).
+
+    A band with no finite level (e.g. below a shallow float's max depth, or a
+    completely missing segment) is masked out.  Variable profile count P
+    (including P=0) is native; ``valid`` (B, P) marks real profiles inside a
+    padded batch.  ``depths`` may be the constructor grid (default), a shared
+    (D,) grid, or per-profile (B, P, D) ragged depths (NaN = absent level).
     """
 
-    def __init__(self, depth_grid, c_vars: int = 2, d_model: int = 128,
-                 n_segments: int = 4, modality: str = "profile"):
+    def __init__(self, depth_grid=None, c_vars: int = 2, d_model: int = 128,
+                 depth_bands=None, modality: str = "profile"):
         super().__init__()
-        depth_grid = torch.as_tensor(np.asarray(depth_grid, dtype="float32"))
-        D = depth_grid.numel()
-        assert D % n_segments == 0, "depth levels must divide into segments"
-        self.seg_len = D // n_segments
-        self.n_segments = n_segments
+        if depth_bands is None:
+            assert depth_grid is not None, \
+                "need depth_grid (to derive default bands) or explicit depth_bands"
+            depth_bands = default_depth_bands(
+                float(np.nanmax(np.asarray(depth_grid, dtype="float64"))))
+        self.bands = tuple((float(lo), float(hi)) for lo, hi in depth_bands)
+        self.n_bands = len(self.bands)
         self.c_vars = c_vars
         self.modality_id = MODALITIES[modality]
-        self.register_buffer("seg_depth",
-                             depth_grid.reshape(n_segments, self.seg_len).mean(1))
-        self.val_proj = nn.Linear(2 * c_vars * self.seg_len, d_model)
+        if depth_grid is not None:
+            self.register_buffer("depth_grid", torch.as_tensor(
+                np.asarray(depth_grid, dtype="float32")))
+        else:
+            self.depth_grid = None
+        lo = torch.tensor([b[0] for b in self.bands], dtype=torch.float32)
+        hi = torch.tensor([b[1] for b in self.bands], dtype=torch.float32)
+        self.register_buffer("band_lo", lo)
+        self.register_buffer("band_hi", hi)
+        # per-level embedding: C values + C finite flags + 2 depth features
+        self.level_mlp = nn.Sequential(
+            nn.Linear(2 * c_vars + 2, d_model), nn.SiLU(),
+            nn.Linear(d_model, d_model))
+        # band metadata: lo, hi, mid, valid-span fraction
+        self.band_proj = nn.Linear(4, d_model)
         self.coord_proj = nn.Linear(N_COORD_FEATS, d_model)
+        self.out_features = d_model
 
-    def forward(self, prof, lat, lon, month, valid=None) -> TokenBatch:
+    def forward(self, prof, lat, lon, month, valid=None,
+                depths=None) -> TokenBatch:
         B, P, C, D = prof.shape
-        S, L = self.n_segments, self.seg_len
-        assert C == self.c_vars and D == S * L
+        S = self.n_bands
+        assert C == self.c_vars
         if P == 0:
-            return TokenBatch.empty(B, self.val_proj.out_features,
-                                    device=prof.device)
+            return TokenBatch.empty(B, self.out_features, device=prof.device)
         if valid is None:
             valid = torch.ones(B, P, dtype=torch.bool, device=prof.device)
         month = torch.as_tensor(month, device=prof.device)
@@ -266,26 +330,76 @@ class ProfileEncoder(nn.Module):
         elif month.ndim == 1:
             month = month[:, None].expand(B, P)
 
-        finite = torch.isfinite(prof)
-        vals = torch.nan_to_num(prof, nan=0.0)
-        # (B, P, C, S, L) -> (B, P, S, C*L)
-        def segment(x):
-            x = x.reshape(B, P, C, S, L).permute(0, 1, 3, 2, 4)
-            return x.reshape(B, P, S, C * L)
-        v = segment(vals)
-        m = segment(finite.float())
-        content = self.val_proj(torch.cat([v, m], dim=-1))           # (B,P,S,d)
-        seg_ok = m.bool().any(dim=-1)                                # (B,P,S)
-        mask = (valid[:, :, None] & seg_ok).reshape(B, P * S)
+        # ---- depths -> (B, P, D), NaN = absent level ----
+        if depths is None:
+            assert self.depth_grid is not None and self.depth_grid.numel() == D, \
+                "no depths given and constructor grid absent or wrong length"
+            depths = self.depth_grid
+        depths = torch.as_tensor(depths, device=prof.device, dtype=prof.dtype)
+        if depths.ndim == 1:
+            depths = depths[None, None, :].expand(B, P, D)
+        d_ok = torch.isfinite(depths)
+        d = torch.nan_to_num(depths, nan=0.0)
 
+        # ---- represented thickness per level: inter-level interval ----
+        if D > 1:
+            gap = (d[..., 1:] - d[..., :-1]).clamp(min=0.0)
+            lower = torch.cat([(d[..., :1] - gap[..., :1] / 2).clamp(min=0.0),
+                               d[..., :-1] + gap / 2], dim=-1)
+            upper = torch.cat([d[..., :-1] + gap / 2,
+                               d[..., -1:] + gap[..., -1:] / 2], dim=-1)
+        else:   # single-level profile: nominal 50 m of represented column
+            lower = (d - 25.0).clamp(min=0.0)
+            upper = d + 25.0
+
+        # ---- band membership by level-centre depth ----
+        lo = self.band_lo.view(1, 1, S, 1)
+        hi = self.band_hi.view(1, 1, S, 1)
+        dc = d.unsqueeze(2)                                    # (B,P,1,D)
+        member = (dc >= lo) & (dc < hi)
+        member[:, :, -1] |= (dc[:, :, 0] >= self.band_hi[-1])  # deepest level -> last band
+        member &= d_ok.unsqueeze(2)
+
+        # ---- per-level embedding (band-agnostic, pooled by membership) ----
+        finite = torch.isfinite(prof)                          # (B,P,C,D)
+        lvl_ok = finite.any(dim=2)                             # (B,P,D)
+        vals = torch.nan_to_num(prof, nan=0.0).permute(0, 1, 3, 2)   # (B,P,D,C)
+        flags = finite.to(prof.dtype).permute(0, 1, 3, 2)
+        dfeat = torch.stack([d / _BAND_SCALE,
+                             torch.log1p(d.clamp(min=0.0))
+                             / math.log1p(_BAND_SCALE)], dim=-1)
+        emb = self.level_mlp(torch.cat([vals, flags, dfeat], dim=-1))  # (B,P,D,d)
+
+        w = (member & lvl_ok.unsqueeze(2)).to(prof.dtype)      # (B,P,S,D)
+        count = w.sum(dim=-1)                                  # (B,P,S)
+        pooled = torch.einsum("bpsd,bpde->bpse", w, emb) / count.clamp(min=1.0)[..., None]
+
+        # ---- support mass: valid represented span, clipped to the band ----
+        span = (torch.minimum(upper.unsqueeze(2), hi)
+                - torch.maximum(lower.unsqueeze(2), lo)).clamp(min=0.0)
+        mass = (span * w).sum(dim=-1)                          # (B,P,S) metres
+
+        # ---- band metadata features ----
+        mid = (self.band_lo + self.band_hi) / 2                # (S,)
+        bfeat = torch.stack([
+            (self.band_lo / _BAND_SCALE).expand(B, P, S),
+            (self.band_hi / _BAND_SCALE).expand(B, P, S),
+            (mid / _BAND_SCALE).expand(B, P, S),
+            mass / (self.band_hi - self.band_lo).clamp(min=1e-6),
+        ], dim=-1)
+        content = pooled + self.band_proj(bfeat)               # (B,P,S,d)
+
+        seg_ok = count > 0                                     # (B,P,S)
+        mask = (valid[:, :, None] & seg_ok).reshape(B, P * S)
         coord = torch.stack([
             torch.nan_to_num(lat, nan=0.0)[:, :, None].expand(B, P, S),
             torch.nan_to_num(lon, nan=0.0)[:, :, None].expand(B, P, S),
-            self.seg_depth[None, None, :].expand(B, P, S),
+            mid[None, None, :].expand(B, P, S),
             month[:, :, None].expand(B, P, S).to(prof.dtype),
         ], dim=-1).reshape(B, P * S, 4)
         return _finish_tokens(content.reshape(B, P * S, -1), coord,
-                              self.coord_proj, mask, self.modality_id)
+                              self.coord_proj, mask, self.modality_id,
+                              support_mass=mass.reshape(B, P * S))
 
 
 # --------------------------------------------------------------------------
