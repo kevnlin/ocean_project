@@ -17,14 +17,21 @@ climate is the (fully known) ground truth, so reconstructions can be scored exac
   (15× bootstrap-ensemble MLP), Buongiorno-Nardelli stacked-LSTM (`src/baselines/`).
 - **Depth-banded RMSE comparison** of every method on identical held-out data.
 
-## Headline result (held-out CESM2-LE)
+## Current headline (protocol_v1: anomaly target, unobserved-only RMSE)
 
-Our method of choice — the multi-modal **2-D U-Net (profiles + WOA + SST/SSS)** — has the
-best full-column RMSE of every method (**0.47 °C / 0.10 PSU**) and the best skill through
-the 50–200 m thermocline. Surface-only reference models lead only in the upper ocean.
-Full tables: [`reports/baseline_comparison.md`](reports/baseline_comparison.md) ·
-[`reports/baseline_table.md`](reports/baseline_table.md) ·
-Stage-1 write-up: [`reports/final_report.md`](reports/final_report.md).
+Under the corrected evaluation (train-only monthly CESM2 anomaly target,
+observed profile columns excluded from scoring), the strongest baseline is the
+multi-modal **depthwise 2-D U-Net (profiles + WOA + SST/SSS)** at
+**0.15 °C / 0.03 PSU** full-column vs a 0.54 °C / 0.12 PSU train-climatology
+floor. The surface-focused reference models (OSnet et al.) lead in the upper
+ocean; no single method is best everywhere. The re-implemented literature
+models are **SSH-ablated adaptations** (no SSH/ADT input) — numbers here do not
+support superiority claims over the published originals.
+Protocol: [`reports/protocol_v1.md`](reports/protocol_v1.md) ·
+Audit: [`reports/week1_audit.md`](reports/week1_audit.md) ·
+Bands: [`reports/depth_band_eval.md`](reports/depth_band_eval.md).
+Scope: contemporaneous reconstruction only — no forecasting, no
+super-resolution claims.
 
 ## Layout
 

@@ -1,0 +1,140 @@
+# =============================================================================
+# protocol_v1 — FROZEN main-experiment protocol (OceanLatent / MBCA)
+# =============================================================================
+# This file is the single source of truth for the primary experiment.
+# Any run that deviates from it must say so explicitly and must NOT be
+# reported in the headline table.  Human-readable rationale:
+# reports/protocol_v1.md
+#
+# Frozen: 2026-07-17 (before the Monday group meeting)
+# =============================================================================
+
+protocol_version: 1
+
+task:
+  name: contemporaneous ocean-state reconstruction   # NOT forecasting
+  description: >
+    Given heterogeneous observations from one calendar month, predict
+    temperature and salinity ANOMALIES (w.r.t. the train-only monthly
+    climatology) at unobserved coordinates.  Absolute fields are recovered
+    by adding the climatology back.
+  out_of_scope:            # never claim / never evaluate under protocol_v1
+    - forecasting / temporal rollout
+    - operational data assimilation
+    - super-resolution
+    - universal ocean foundation model
+
+data:
+  ground_truth:
+    source: CESM2-LE single member, 1x1 deg regridded ("jaisonk" regrid)
+    zarr: processed/cesm2_le_full_standard.zarr
+    member_id: >
+      UNKNOWN — single-member archive with no ensemble axis; member id was not
+      recorded at regrid time and is unrecoverable.  Reported as "one CESM2-LE
+      member (historical+SSP370)" in the paper; treated as a limitation.
+  prior:
+    source: WOA23 monthly climatology (observational)
+    zarr: processed/woa23_standard.zarr
+    note: interpolated (linear lon/lat/depth) onto the analysis grid
+  grid:
+    lat: 180 x 1deg (-89.5 .. 89.5)
+    lon: 360 x 1deg (0.5 .. 359.5, 0-360 convention)
+    ocean_mask: MASK == 1 of the ground-truth store
+
+depth:
+  primary_levels_m: [5, 15, 25, 35, 45, 55, 65, 85, 105, 125, 145, 165.1,
+                     186.3, 222.6, 267.7, 326.9, 408.8, 527.7, 707.6, 984.7]
+  primary_depth_indices: [0, 1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 21,
+                          24, 27, 30, 33, 36, 39]      # native CESM2-LE levels
+  n_levels: 20
+  note: >
+    The primary target reaches ~985 m: there is NO >1000 m layer in
+    protocol_v1.  The extended 23-level grid to 1400 m is a separate,
+    clearly-labelled secondary protocol (see reports/layered_depth_eval.md)
+    and is never mixed into the primary headline table.
+  depth_bands_primary:      # for banded reporting on the 20-level task
+    - {name: 0-100m,   lo: 0.0,   hi: 100.0}
+    - {name: 100-300m, lo: 100.0, hi: 300.0}
+    - {name: 300-max,  lo: 300.0, hi: 984.7}
+
+split:
+  # Contiguous-year split; validation carved out of the END of the train era so
+  # model selection sees the months closest to (but never inside) the test era.
+  train_years:      [1985, 2007]   # inclusive -> 276 monthly snapshots (all months)
+  validation_years: [2008, 2010]   # inclusive -> 36 monthly snapshots (all months)
+  test_years:       [2011, 2014]
+  # Test months: 12 snapshots drawn from 2011-2014 with numpy PCG64 seed 1234
+  # (unchanged from week-1/2 so all past numbers remain comparable).
+  # Frozen explicitly — never resample:
+  test_months: [2011-02, 2011-04, 2011-05, 2011-07, 2011-11, 2012-03,
+                2012-09, 2012-10, 2013-01, 2013-10, 2013-12, 2014-09]
+  test_time_indices: [1933, 1935, 1936, 1938, 1942, 1946, 1952, 1953,
+                      1956, 1965, 1967, 1976]          # into the raw zarr time axis
+  rules:
+    - Test months are used ONCE per final model for the reported number.
+    - No hyperparameter, checkpoint, or architecture choice may depend on test
+      months; all selection uses the validation months.
+    - Earlier week-1/2 runs trained on 1985-2010 (312 months, no val split);
+      those numbers stay comparable on the metric but are superseded by
+      protocol_v1 runs for the paper.
+
+inputs:                      # primary experiment — keep narrow
+  woa_prior:  {vars: [TEMP, SALT], role: climatological T/S prior, dims: "(12,D,H,W)"}
+  surface:    {vars: [SST, SSS],   role: dense surface observations, dims: "(H,W)"}
+  profiles:   {vars: [TEMP, SALT], role: sparse synthetic Argo columns, dims: "(P,D)"}
+  always:     [coordinates lat/lon/depth/month, ocean mask, validity masks]
+  excluded_for_now:
+    ssh_adt: only after the core model is stable AND matched baselines get it too
+    points:  optional for the MVP; never blocks the main implementation
+
+profiles:
+  n_per_month: 1500          # ~3.5% of ocean columns
+  sampling: uniform random ocean columns, without replacement, per month
+  noise: none (exact model columns — stated OSSE limitation)
+  seed_policy: >
+    Per-run profile seed drawn from the run seed; headline runs use seeds
+    [1234, 1235, 1236] for mean +/- std.  Month split NEVER varies with seed.
+  observed_column_mask: >
+    obs_col[i,j] = True iff any profile occupies column (i,j) that month.
+    unobs_mask = ocean & ~obs_col, broadcast over depth (a whole observed
+    column is excluded, every level).
+
+target:
+  type: anomaly
+  definition: "a(t) = field(t) - clim_train[month(t)]"
+  climatology: >
+    Train-only monthly climatology from the 276 TRAIN months exclusively
+    (validation months excluded, so val-based selection is uncontaminated;
+    calendar months absent from train fall back to the all-train mean —
+    with 23 full years, none are absent).
+  normalization: >
+    Anomaly-space z-scores per variable per depth level: mean/std of the
+    training anomalies (AnomNorm).  Surface vars use scalar anomaly stats.
+    All statistics computed on the 276 train months only.
+  absolute_recovery: "pred_abs = clim_train[month] + pred_anomaly"
+
+metric:
+  headline: unobserved-only anomaly RMSE
+  definition: >
+    RMSE(pred, truth) over ocean cells in unobs_mask (observed profile columns
+    excluded at ALL depth levels), NaN-aware, pooled over the 12 test months.
+    Equal weight per valid cell (see weighting).  Reported per variable
+    (TEMP degC, SALT PSU): full-column and per depth band.
+  floors:
+    climatology_floor: train-only CESM2 monthly climatology (= zero anomaly)
+    woa_prior: reported separately; bias-dominated, NOT the skill reference
+  skill: "1 - RMSE / RMSE(climatology_floor), same mask"
+  weighting:
+    primary: valid-cell weighted (every scored cell equal) — matches all
+      numbers reported to date
+    secondary: area-and-thickness weighted RMSE (cos-lat cell area x layer
+      thickness) — reported alongside once implemented; never silently
+      substituted for the primary
+  prohibited:
+    - scoring on observed profile columns (leakage)
+    - reporting "below 1000 m" results on the 20-level task
+    - comparing across depth grids in one table
+
+evaluation_queries:
+  main: fixed dense target grid (all unobserved ocean cells, 20 levels)
+  supporting: [withheld-profile columns, arbitrary-coordinate points]

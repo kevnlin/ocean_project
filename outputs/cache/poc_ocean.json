@@ -1,0 +1,72 @@
+{
+  "config": {
+    "steps": 5000,
+    "queries": 8192,
+    "lr": 0.0003,
+    "seed": 1234,
+    "d_model": 128,
+    "n_latent": 128
+  },
+  "train_months": [
+    1620,
+    1680,
+    1740,
+    1820
+  ],
+  "val_month": [
+    1902
+  ],
+  "results": {
+    "perceiver": {
+      "n_params": 957442,
+      "train_secs": 106.2,
+      "nan_seen": false,
+      "final_train_loss": 0.7956038266489486,
+      "train_rmse": {
+        "TEMP": 0.3076185252092244,
+        "SALT": 0.08189683969934165
+      },
+      "val_rmse": {
+        "TEMP": 1.2632512747810356,
+        "SALT": 0.19575217396316072
+      },
+      "dup_sensitivity": 0.00037132357829250395,
+      "refine_sensitivity": 0.0011696427827700973,
+      "profile_resample_sensitivity": 2.043960557784885e-05
+    },
+    "resampler": {
+      "n_params": 1040130,
+      "train_secs": 186.5,
+      "nan_seen": false,
+      "final_train_loss": 0.5478375695704016,
+      "train_rmse": {
+        "TEMP": 0.2497618915556393,
+        "SALT": 0.06377155985809269
+      },
+      "val_rmse": {
+        "TEMP": 1.2933397067268764,
+        "SALT": 0.20092381260534378
+      },
+      "dup_sensitivity": 3.394022860447876e-05,
+      "refine_sensitivity": 0.8786088824272156,
+      "profile_resample_sensitivity": 7.67837482271716e-05
+    },
+    "mbca": {
+      "n_params": 957442,
+      "train_secs": 103.2,
+      "nan_seen": false,
+      "final_train_loss": 0.4731285688700154,
+      "train_rmse": {
+        "TEMP": 0.2360604923401216,
+        "SALT": 0.06326462519579429
+      },
+      "val_rmse": {
+        "TEMP": 1.2678233708122943,
+        "SALT": 0.203037841994114
+      },
+      "dup_sensitivity": 0.0018915438558906317,
+      "refine_sensitivity": 1.4102222919464111,
+      "profile_resample_sensitivity": 0.0018378880340605974
+    }
+  }
+}
