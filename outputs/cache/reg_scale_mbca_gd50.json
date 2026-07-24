@@ -1,0 +1,102 @@
+{
+  "tag": "reg_scale_mbca_gd50",
+  "task": "week4_full_train",
+  "variant": "mbca",
+  "config": "profiles_woa_surf",
+  "protocol": "protocol_v1",
+  "git_commit": "072c97a67f487f47826427daf2b98554e905938e",
+  "smoke": false,
+  "seed": 1234,
+  "device": "NVIDIA A100-SXM4-80GB",
+  "tf32": true,
+  "steps": 60000,
+  "val_every": 2500,
+  "patience": 8,
+  "queries_per_step": 16384,
+  "lr": 0.0003,
+  "lr_min": 1e-05,
+  "schedule": "cosine",
+  "optimizer": "Adam",
+  "n_params": 4735490,
+  "d_model": 256,
+  "n_latent": 512,
+  "n_heads": 8,
+  "n_self_blocks": 6,
+  "profile_count_augmentation": [
+    0,
+    3000
+  ],
+  "n_profiles_eval": 1500,
+  "obs_query_frac": 0.25,
+  "warmup": 2000,
+  "input_noise": 0.05,
+  "weight_decay": 0.01,
+  "grid_drop": 0.5,
+  "val_queries_subsample": 100000,
+  "coord_features": "fourier_v2",
+  "train_months": 276,
+  "val_months": 36,
+  "test_months": [
+    1933,
+    1935,
+    1936,
+    1938,
+    1942,
+    1946,
+    1952,
+    1953,
+    1956,
+    1965,
+    1967,
+    1976
+  ],
+  "val_floor": {
+    "TEMP": 0.5042736524242886,
+    "SALT": 0.11403355393214279
+  },
+  "test_floor": {
+    "TEMP": 0.5521032754278907,
+    "SALT": 0.13053003502043004
+  },
+  "ckpt": "/home/nvidia/ocean_project/outputs/ckpt/reg_scale_mbca_gd50.pt",
+  "status": "running",
+  "best": {
+    "score": 0.9406583661317742,
+    "step": 5000,
+    "val_TEMP": 0.4731881301895712,
+    "val_SALT": 0.10752918097709087
+  },
+  "gpu_hours": 0.234,
+  "curves": {
+    "step": [
+      2500,
+      5000,
+      7500
+    ],
+    "train_loss": [
+      0.9642093962430954,
+      0.8142177844047547,
+      0.7389838410913945
+    ],
+    "lr": [
+      0.00029994682650237613,
+      0.00029808984576852127,
+      0.0002936130606873837
+    ],
+    "val_TEMP": [
+      0.4768222653038888,
+      0.4731881301895712,
+      0.5181057188863432
+    ],
+    "val_SALT": [
+      0.10857120132918324,
+      0.10752918097709087,
+      0.11875476547415982
+    ],
+    "val_score": [
+      0.9488306223517091,
+      0.9406583661317742,
+      1.034415816722575
+    ]
+  }
+}

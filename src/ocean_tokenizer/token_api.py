@@ -56,61 +56,121 @@ MODALITIES = {"surf_grid": 0, "woa_grid": 1, "profile": 2, "point": 3}
 # --------------------------------------------------------------------------
 # Coordinate featurisation — shared by every encoder and the query decoder
 # --------------------------------------------------------------------------
-N_COORD_FEATS = 7
 _DEPTH_SCALE = 1000.0             # ~ the deepest target level (985 m)
+_N_FREQ_SPHERE = 6                # harmonics 2^0..2^5 on unit-sphere xyz
+_N_FREQ_DEPTH = 5                 # harmonics 2^0..2^4 on linear + log depth
+N_COORD_FEATS = 7 + 3 + 6 * _N_FREQ_SPHERE + 4 * _N_FREQ_DEPTH + 2   # = 68
+
+
+def _fourier(x: torch.Tensor, n_freq: int) -> list[torch.Tensor]:
+    """Multi-scale harmonics sin/cos(2^k pi x), k = 0..n_freq-1."""
+    out = []
+    for k in range(n_freq):
+        a = (2.0 ** k) * math.pi * x
+        out += [torch.sin(a), torch.cos(a)]
+    return out
 
 
 def coord_features(coord: torch.Tensor) -> torch.Tensor:
-    """(..., 4) physical (lat_deg, lon_deg, depth_m, month 1-12) -> (..., 7).
+    """(..., 4) physical (lat_deg, lon_deg, depth_m, month 1-12) -> (..., 68).
 
-    Deterministic, encoder-agnostic: the same location/time always produces the
-    same features, whichever modality (or the query side) supplies it.
+    Deterministic and parameter-free, shared by every modality encoder AND the
+    query decoder, so a location means the same thing on both sides (the
+    coordinate-consistency contract).
+
+    Week-4 revision (fourier_v2): the original 7 smooth features are kept and
+    extended with multi-frequency Fourier features — unit-sphere xyz harmonics
+    (finest wavelength ~3.6 deg, matched to the typical spacing of 1500
+    profiles/month) and linear+log depth harmonics (the log scale resolves
+    adjacent shallow levels).  Rationale: with the original first-harmonic
+    features only, attention cannot form spatially selective patterns; the
+    full-scale Week-4 runs collapsed to the zero-anomaly solution (train loss
+    pinned at 1.0 even when queries were sampled AT observed profile columns —
+    the copy diagnostic of experiments/18_full_train.py --probe-observed).
     """
     lat, lon, depth, month = coord.unbind(-1)
+    lat_r = torch.deg2rad(lat)
     lon_r = torch.deg2rad(lon)
-    return torch.stack([
+    dn = depth / _DEPTH_SCALE
+    ldn = torch.log1p(depth.clamp(min=0.0)) / math.log1p(_DEPTH_SCALE)
+    coslat = torch.cos(lat_r)
+    x, y, z = coslat * torch.cos(lon_r), coslat * torch.sin(lon_r), torch.sin(lat_r)
+    feats = [
         lat / 90.0,
         torch.sin(lon_r), torch.cos(lon_r),
-        depth / _DEPTH_SCALE,
-        torch.log1p(depth.clamp(min=0.0)) / math.log1p(_DEPTH_SCALE),
+        dn, ldn,
         torch.sin(2 * math.pi * month / 12.0),
         torch.cos(2 * math.pi * month / 12.0),
-    ], dim=-1)
+        x, y, z,
+    ]
+    for c in (x, y, z):
+        feats += _fourier(c, _N_FREQ_SPHERE)
+    feats += _fourier(dn, _N_FREQ_DEPTH)
+    feats += _fourier(ldn, _N_FREQ_DEPTH)
+    feats += [torch.sin(4 * math.pi * month / 12.0),
+              torch.cos(4 * math.pi * month / 12.0)]
+    return torch.stack(feats, dim=-1)
 
 
 # --------------------------------------------------------------------------
 # TokenBatch — the unified OceanObservationToken schema
 # --------------------------------------------------------------------------
+VAR_IDS = {"MULTI": -1, "TEMP": 0, "SALT": 1, "SST": 2, "SSS": 3}
+
+
 @dataclass
 class TokenBatch:
     """A batch of observation tokens from one or more modalities.
 
+    Core (always present):
     emb      : (B, N, d)  encoded token embeddings (masked-out tokens are 0)
     coord    : (B, N, 4)  physical (lat, lon, depth_m, month); 0 where masked
     modality : (B, N)     int64 id into MODALITIES
     mask     : (B, N)     bool, True = real token (False = padding / all-NaN)
-    support_mass : (B, N) optional nonnegative physical support per token
-                   (Task-4/5 seam): ProfileEncoder emits the valid depth span
-                   in metres; encoders that do not yet compute a mass leave
-                   None, which MBCA treats as uniform-within-modality.  Full
-                   provenance metadata (parent_observation_id, ...) extends
-                   here (Task 4).
+
+    Support & provenance (Task 4; None until an encoder supplies them —
+    definitions in docs/token_measure_definition.md).  These exist so a test
+    or the fusion stage can distinguish *new physical evidence* from *a
+    different representation of the same evidence*:
+    support_mass : (B, N) float  nonnegative physical support (see docs; MBCA
+                   treats a missing mass as uniform-within-modality)
+    parent_id    : (B, N) int64  id of the source observation within its
+                   modality (profile index, whole-field 0, point index);
+                   tokens sharing (modality, parent_id) represent one obs
+    family_id    : (B, N) int64  tokenization-scheme id (patch/band layout),
+                   so retokenizations of the same evidence are identifiable
+    variable_id  : (B, N) int64  VAR_IDS; -1 = token carries multiple vars
+    depth_lower  : (B, N) float  represented depth interval (m)
+    depth_upper  : (B, N) float
+    reliability  : (B, N) float  optional per-token quality in [0, 1]
     """
     emb: torch.Tensor
     coord: torch.Tensor
     modality: torch.Tensor
     mask: torch.Tensor
     support_mass: torch.Tensor | None = None
+    parent_id: torch.Tensor | None = None
+    family_id: torch.Tensor | None = None
+    variable_id: torch.Tensor | None = None
+    depth_lower: torch.Tensor | None = None
+    depth_upper: torch.Tensor | None = None
+    reliability: torch.Tensor | None = None
+
+    _OPT_INT = ("parent_id", "family_id", "variable_id")
+    _OPT_FLOAT = ("support_mass", "depth_lower", "depth_upper", "reliability")
 
     @property
     def n_valid(self) -> torch.Tensor:            # (B,) valid tokens per item
         return self.mask.sum(dim=1)
 
+    def _opt(self, name):
+        return getattr(self, name)
+
     def to(self, device) -> "TokenBatch":
-        return TokenBatch(
-            self.emb.to(device), self.coord.to(device),
-            self.modality.to(device), self.mask.to(device),
-            None if self.support_mass is None else self.support_mass.to(device))
+        kw = {n: (None if self._opt(n) is None else self._opt(n).to(device))
+              for n in self._OPT_INT + self._OPT_FLOAT}
+        return TokenBatch(self.emb.to(device), self.coord.to(device),
+                          self.modality.to(device), self.mask.to(device), **kw)
 
     @staticmethod
     def empty(batch: int, d_model: int, device=None) -> "TokenBatch":
@@ -126,24 +186,43 @@ class TokenBatch:
         assert len(parts) > 0, "TokenBatch.cat needs at least one part"
         B = parts[0].emb.shape[0]
         assert all(p.emb.shape[0] == B for p in parts), "batch sizes differ"
-        if all(p.support_mass is None for p in parts):
-            mass = None
-        else:
-            # parts without a mass default to uniform (1 per valid token)
-            mass = torch.cat([
-                (p.mask.to(p.emb.dtype) if p.support_mass is None
-                 else p.support_mass) for p in parts], dim=1)
+
+        def cat_opt(name, int_default=None):
+            vals = [p._opt(name) for p in parts]
+            if all(v is None for v in vals):
+                return None
+            filled = []
+            for p, v in zip(parts, vals):
+                if v is not None:
+                    filled.append(v)
+                elif name == "support_mass":
+                    # missing mass -> uniform (1 per valid token)
+                    filled.append(p.mask.to(p.emb.dtype))
+                elif int_default is not None:
+                    filled.append(torch.full(p.mask.shape, int_default,
+                                             dtype=torch.long,
+                                             device=p.mask.device))
+                else:
+                    filled.append(torch.zeros(p.mask.shape, dtype=p.emb.dtype,
+                                              device=p.mask.device))
+            return torch.cat(filled, dim=1)
+
+        kw = {n: cat_opt(n, int_default=-1) for n in TokenBatch._OPT_INT}
+        kw.update({n: cat_opt(n) for n in TokenBatch._OPT_FLOAT})
         return TokenBatch(
             emb=torch.cat([p.emb for p in parts], dim=1),
             coord=torch.cat([p.coord for p in parts], dim=1),
             modality=torch.cat([p.modality for p in parts], dim=1),
-            mask=torch.cat([p.mask for p in parts], dim=1),
-            support_mass=mass)
+            mask=torch.cat([p.mask for p in parts], dim=1), **kw)
 
 
 def _finish_tokens(content_emb, coord, coord_proj, mask, modality_id,
-                   support_mass=None):
-    """Assemble a TokenBatch: content + coord embedding, zeroed where masked."""
+                   support_mass=None, **meta):
+    """Assemble a TokenBatch: content + coord embedding, zeroed where masked.
+
+    ``meta`` may carry any of the Task-4 provenance fields (parent_id,
+    family_id, variable_id, depth_lower, depth_upper, reliability).
+    """
     coord = torch.nan_to_num(coord, nan=0.0)
     emb = content_emb + coord_proj(coord_features(coord))
     emb = emb * mask.unsqueeze(-1)
@@ -153,12 +232,23 @@ def _finish_tokens(content_emb, coord, coord_proj, mask, modality_id,
     if support_mass is not None:
         support_mass = support_mass * mask.to(support_mass.dtype)
     return TokenBatch(emb=emb, coord=coord, modality=modality, mask=mask,
-                      support_mass=support_mass)
+                      support_mass=support_mass, **meta)
 
 
 # --------------------------------------------------------------------------
 # (a) Grid-patch encoder — dense gridded fields (surface or volume)
 # --------------------------------------------------------------------------
+def _level_edges(depth: torch.Tensor):
+    """(D,) level centres -> (lower, upper) represented interval edges (D,)."""
+    d = depth
+    if d.numel() == 1:
+        return (d - 25.0).clamp(min=0.0), d + 25.0
+    gap = (d[1:] - d[:-1]).clamp(min=0.0)
+    lower = torch.cat([(d[:1] - gap[:1] / 2).clamp(min=0.0), d[:-1] + gap / 2])
+    upper = torch.cat([d[:-1] + gap / 2, d[-1:] + gap[-1:] / 2])
+    return lower, upper
+
+
 class GridPatchEncoder(nn.Module):
     """Dense gridded field -> one token per (ph, pw) spatial patch.
 
@@ -168,14 +258,26 @@ class GridPatchEncoder(nn.Module):
                                encoding is one token per (level, patch)
     lat (H,), lon (W,) in degrees; month (B,) 1-12 (broadcast to every token).
     NaN cells become (value 0, finite-flag 0); an all-NaN patch is masked out.
+
+    Task-4 support mass (docs/token_measure_definition.md):
+      surface patch  mu_i = sum over valid cells of the spherical area weight
+                     cos(lat_cell)  (proportional to true cell area on an
+                     equiangular grid);
+      volume patch   mu_i = (same area sum) x represented layer thickness,
+                     where a level's thickness is its inter-level interval.
+    Provenance: parent_id = 0 (the whole field is one observation),
+    family_id = 10000*ph + pw (the tokenization scheme), variable_id = MULTI,
+    depth_lower/upper = the represented depth interval.
     """
 
     def __init__(self, c_in: int, d_model: int = 128, patch=(10, 12),
-                 modality: str = "surf_grid"):
+                 modality: str = "surf_grid", family_id: int | None = None):
         super().__init__()
         self.c_in = c_in
         self.ph, self.pw = patch
         self.modality_id = MODALITIES[modality]
+        self.family_id = (10000 * self.ph + self.pw
+                          if family_id is None else family_id)
         self.val_proj = nn.Linear(2 * c_in * self.ph * self.pw, d_model)
         self.coord_proj = nn.Linear(N_COORD_FEATS, d_model)
 
@@ -194,12 +296,32 @@ class GridPatchEncoder(nn.Module):
         vals = torch.nan_to_num(field, nan=0.0)
         # (B, C, nh, ph, nw, pw) -> (B, nh*nw, C*ph*pw)
         def patchify(x):
-            x = x.reshape(B, C, nh, ph, nw, pw).permute(0, 2, 4, 1, 3, 5)
-            return x.reshape(B, nh * nw, C * ph * pw)
+            xB, xC = x.shape[:2]
+            x = x.reshape(xB, xC, nh, ph, nw, pw).permute(0, 2, 4, 1, 3, 5)
+            return x.reshape(xB, nh * nw, xC * ph * pw)
         v = patchify(vals)
         m = patchify(finite.float())
         content = self.val_proj(torch.cat([v, m], dim=-1))          # (B, N, d)
         mask = m.bool().any(dim=-1)                                  # (B, N)
+        N = nh * nw
+
+        # ---- support mass: spherical area weight over valid cells ----
+        # cell area ~ cos(lat) * dlat * dlon, spacings inferred from the
+        # coordinate vectors so a genuinely refined grid (2x cells at half
+        # spacing) conserves regional mass exactly.
+        latt = torch.as_tensor(lat, device=field.device, dtype=field.dtype)
+        lont = torch.as_tensor(lon, device=field.device, dtype=field.dtype)
+        dlat = ((latt.max() - latt.min()) / max(H - 1, 1)).clamp(min=1e-6)
+        dlon = ((lont.max() - lont.min()) / max(W - 1, 1)).clamp(min=1e-6)
+        aw = torch.cos(torch.deg2rad(latt)) * dlat * dlon
+        awmap = aw[:, None].expand(H, W)
+        if (Hp, Wp) != (H, W):
+            pad = awmap.new_zeros(Hp, Wp)
+            pad[:H, :W] = awmap
+            awmap = pad
+        aw_p = patchify(awmap[None, None])[0]                        # (N, ph*pw)
+        cell_ok = m.reshape(B, N, C, ph * pw).bool().any(dim=2)      # (B,N,cells)
+        mass = (aw_p[None] * cell_ok.to(field.dtype)).sum(-1)        # (B, N)
 
         # patch-centre coordinates (edge-clamped index midpoint)
         dev = field.device
@@ -207,14 +329,22 @@ class GridPatchEncoder(nn.Module):
         cj = torch.clamp(torch.arange(nw, device=dev) * pw + pw // 2, max=W - 1)
         clat = lat[ci][:, None].expand(nh, nw).reshape(-1)           # (N,)
         clon = lon[cj][None, :].expand(nh, nw).reshape(-1)
-        N = nh * nw
         coord = torch.stack([
             clat[None].expand(B, N),
             clon[None].expand(B, N),
             depth_val[:, None].expand(B, N),
             month[:, None].expand(B, N).to(field.dtype),
         ], dim=-1)                                                   # (B, N, 4)
-        return content, coord, mask
+        return content, coord, mask, mass
+
+    def _meta(self, B, N, dlo, dhi, device, dtype):
+        return dict(
+            parent_id=torch.zeros(B, N, dtype=torch.long, device=device),
+            family_id=torch.full((B, N), self.family_id, dtype=torch.long,
+                                 device=device),
+            variable_id=torch.full((B, N), VAR_IDS["MULTI"], dtype=torch.long,
+                                   device=device),
+            depth_lower=dlo.to(dtype), depth_upper=dhi.to(dtype))
 
     def forward(self, field, lat, lon, month, depth=None) -> TokenBatch:
         month = torch.as_tensor(month, device=field.device)
@@ -224,24 +354,40 @@ class GridPatchEncoder(nn.Module):
             B = field.shape[0]
             d = (torch.zeros(B, device=field.device) if depth is None
                  else torch.as_tensor(float(depth), device=field.device).expand(B))
-            content, coord, mask = self._encode_2d(field, lat, lon, month, d)
+            content, coord, mask, mass = self._encode_2d(field, lat, lon,
+                                                         month, d)
+            N = content.shape[1]
+            dlo = d[:, None].expand(B, N)
+            dhi = dlo
         elif field.ndim == 5:                                        # volume
             B, C, D, H, W = field.shape
             assert depth is not None and len(depth) == D, \
                 "volume input needs the (D,) depth grid"
             flat = field.permute(0, 2, 1, 3, 4).reshape(B * D, C, H, W)
-            dval = torch.as_tensor(depth, device=field.device,
-                                   dtype=field.dtype).repeat(B)
+            dgrid = torch.as_tensor(depth, device=field.device,
+                                    dtype=field.dtype)
+            dval = dgrid.repeat(B)
             mo = month.repeat_interleave(D)
-            content, coord, mask = self._encode_2d(flat, lat, lon, mo, dval)
+            content, coord, mask, mass = self._encode_2d(flat, lat, lon,
+                                                         mo, dval)
             n = content.shape[1]
+            lo, hi = _level_edges(dgrid)                             # (D,)
+            thick = (hi - lo).clamp(min=1e-6)
+            # volume mass = area x represented layer thickness
+            mass = mass * thick.repeat(B)[:, None]
             content = content.reshape(B, D * n, -1)
             coord = coord.reshape(B, D * n, 4)
             mask = mask.reshape(B, D * n)
+            mass = mass.reshape(B, D * n)
+            N = D * n
+            dlo = lo.repeat_interleave(n)[None].expand(B, N)
+            dhi = hi.repeat_interleave(n)[None].expand(B, N)
         else:
             raise ValueError(f"expected (B,C,H,W) or (B,C,D,H,W), got {field.shape}")
         return _finish_tokens(content, coord, self.coord_proj, mask,
-                              self.modality_id)
+                              self.modality_id, support_mass=mass,
+                              **self._meta(field.shape[0], N, dlo, dhi,
+                                           field.device, field.dtype))
 
 
 # --------------------------------------------------------------------------
@@ -286,8 +432,15 @@ class ProfileEncoder(nn.Module):
     """
 
     def __init__(self, depth_grid=None, c_vars: int = 2, d_model: int = 128,
-                 depth_bands=None, modality: str = "profile"):
+                 depth_bands=None, modality: str = "profile",
+                 normalize_per_profile: bool = True,
+                 family_id: int | None = None):
         super().__init__()
+        # Task 4 (first implementation): normalize band masses within each
+        # profile so a profile with more sampled depth levels does not
+        # automatically receive more total mass.  Set False to emit the raw
+        # represented span in metres.
+        self.normalize_per_profile = normalize_per_profile
         if depth_bands is None:
             assert depth_grid is not None, \
                 "need depth_grid (to derive default bands) or explicit depth_bands"
@@ -295,6 +448,7 @@ class ProfileEncoder(nn.Module):
                 float(np.nanmax(np.asarray(depth_grid, dtype="float64"))))
         self.bands = tuple((float(lo), float(hi)) for lo, hi in depth_bands)
         self.n_bands = len(self.bands)
+        self.family_id = self.n_bands if family_id is None else family_id
         self.c_vars = c_vars
         self.modality_id = MODALITIES[modality]
         if depth_grid is not None:
@@ -397,9 +551,26 @@ class ProfileEncoder(nn.Module):
             mid[None, None, :].expand(B, P, S),
             month[:, :, None].expand(B, P, S).to(prof.dtype),
         ], dim=-1).reshape(B, P * S, 4)
+
+        out_mass = mass
+        if self.normalize_per_profile:
+            out_mass = mass / mass.sum(dim=-1, keepdim=True).clamp(min=1e-9)
+
+        dev = prof.device
+        meta = dict(
+            parent_id=torch.arange(P, device=dev)[None, :, None]
+                .expand(B, P, S).reshape(B, P * S),
+            family_id=torch.full((B, P * S), self.family_id,
+                                 dtype=torch.long, device=dev),
+            variable_id=torch.full((B, P * S), VAR_IDS["MULTI"],
+                                   dtype=torch.long, device=dev),
+            depth_lower=self.band_lo[None, None, :].expand(B, P, S)
+                .reshape(B, P * S).to(prof.dtype),
+            depth_upper=self.band_hi[None, None, :].expand(B, P, S)
+                .reshape(B, P * S).to(prof.dtype))
         return _finish_tokens(content.reshape(B, P * S, -1), coord,
                               self.coord_proj, mask, self.modality_id,
-                              support_mass=mass.reshape(B, P * S))
+                              support_mass=out_mass.reshape(B, P * S), **meta)
 
 
 # --------------------------------------------------------------------------
@@ -445,8 +616,16 @@ class PointEncoder(nn.Module):
                              torch.nan_to_num(lon, nan=0.0),
                              torch.nan_to_num(depth, nan=0.0),
                              month.to(v.dtype)], dim=-1)
+        # Task 4: no support mass yet (points excluded from the first MVP's
+        # mass scheme; MBCA falls back to uniform-within-modality), but
+        # provenance is stamped so duplication is detectable.
+        meta = dict(
+            parent_id=torch.arange(N, device=values.device)[None].expand(B, N),
+            family_id=torch.zeros(B, N, dtype=torch.long, device=values.device),
+            variable_id=var_id.to(torch.long),
+            depth_lower=coord[..., 2], depth_upper=coord[..., 2])
         return _finish_tokens(content, coord, self.coord_proj, mask,
-                              self.modality_id)
+                              self.modality_id, **meta)
 
 
 # --------------------------------------------------------------------------
@@ -473,7 +652,9 @@ class SharedLatentModel(nn.Module):
         tb = TokenBatch.cat(parts) if parts else TokenBatch.empty(
             batch, self.d_model, device=device)
         emb = tb.emb + self.modality_emb(tb.modality) * tb.mask.unsqueeze(-1)
-        return TokenBatch(emb, tb.coord, tb.modality, tb.mask)
+        kw = {n: getattr(tb, n)
+              for n in TokenBatch._OPT_INT + TokenBatch._OPT_FLOAT}
+        return TokenBatch(emb, tb.coord, tb.modality, tb.mask, **kw)
 
     def fuse(self, tokens: TokenBatch) -> torch.Tensor:
         """TokenBatch -> latent (B, L, d)."""

@@ -137,12 +137,40 @@ def mbca_weights(mass, modality, mask, eps: float = 1e-8) -> torch.Tensor:
 # Shared trunk: latent array + fusion cross-attn + self blocks + query decoder
 # --------------------------------------------------------------------------
 class AttnFusionModel(SharedLatentModel):
-    """encode -> (variant fusion) -> latent self-attention -> query decode."""
+    """encode -> (variant fusion) -> latent self-attention -> query decode.
+
+    ``anchor_grid=(nlat_a, nlon_a)`` switches the latent array to
+    *geographically anchored* tokens: one latent per coarse map cell, whose
+    initial state is a learned free vector plus the shared coordinate
+    featurisation of the cell centre (month/depth features held constant).
+    Fusion cross-attention then has an immediate geographic matching signal
+    between latent queries and observation-token keys — the same signal the
+    query decoder uses on the way out — instead of having to discover
+    geography from scratch (Week-4 finding: an unstructured global latent
+    reaches only ~6 % skill before month-memorisation overtakes learning,
+    failing hardest in the SST/SSS-rich top 100 m).  The latent remains a
+    shared, modality-agnostic state array; only its parameterisation gains a
+    spatial prior (GraphDOP-style mesh latent).
+    """
 
     def __init__(self, encoders, d_model: int = 128, n_latent: int = 128,
                  n_heads: int = 4, n_self_blocks: int = 4, c_out: int = 2,
-                 mlp_ratio: float = 2.0):
+                 mlp_ratio: float = 2.0, anchor_grid: tuple[int, int] | None = None):
         super().__init__(encoders, d_model)
+        if anchor_grid is not None:
+            na, no = anchor_grid
+            n_latent = na * no
+            lat_c = torch.linspace(-90 + 90.0 / na, 90 - 90.0 / na, na)
+            lon_c = torch.linspace(180.0 / no, 360 - 180.0 / no, no)
+            coords = torch.stack([
+                lat_c[:, None].expand(na, no).reshape(-1),
+                lon_c[None, :].expand(na, no).reshape(-1),
+                torch.zeros(na * no), torch.zeros(na * no)], dim=-1)
+            self.register_buffer("anchor_coord", coords)      # (n_latent, 4)
+            self.anchor_proj = nn.Linear(N_COORD_FEATS, d_model)
+        else:
+            self.anchor_coord = None
+            self.anchor_proj = None
         self.n_latent = n_latent
         self.latent0 = nn.Parameter(torch.randn(n_latent, d_model) * 0.02)
         self.null_token = nn.Parameter(torch.zeros(1, 1, d_model))
@@ -176,7 +204,10 @@ class AttnFusionModel(SharedLatentModel):
             bias = torch.cat([bias, torch.full((B, 1), _NULL_BIAS,
                                                device=bias.device,
                                                dtype=bias.dtype)], dim=1)
-        z = self.latent0[None].expand(B, -1, -1)
+        z = self.latent0
+        if self.anchor_proj is not None:
+            z = z + self.anchor_proj(coord_features(self.anchor_coord))
+        z = z[None].expand(B, -1, -1)
         z = z + self.fuse_attn(self.fuse_ln_q(z), self.fuse_ln_kv(kv),
                                key_bias=bias, key_mask=mask)
         for blk in self.blocks:
@@ -206,9 +237,10 @@ class FixedBudgetResampler(AttnFusionModel):
 
     def __init__(self, encoders, d_model: int = 128, n_latent: int = 128,
                  n_heads: int = 4, n_self_blocks: int = 4, c_out: int = 2,
-                 mlp_ratio: float = 2.0, k_per_modality: int = 32):
+                 mlp_ratio: float = 2.0, k_per_modality: int = 32,
+                 anchor_grid: tuple[int, int] | None = None):
         super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
-                         c_out, mlp_ratio)
+                         c_out, mlp_ratio, anchor_grid=anchor_grid)
         self.k = k_per_modality
         self.res_query = nn.Parameter(
             torch.randn(len(MODALITIES), k_per_modality, d_model) * 0.02)
@@ -254,7 +286,8 @@ VARIANTS = {"perceiver": StandardPerceiver,
 def build_fusion_model(variant: str, grid, d_model: int = 128,
                        n_latent: int = 128, n_heads: int = 4,
                        n_self_blocks: int = 4, patch=(10, 12),
-                       seed: int | None = None, **kw):
+                       seed: int | None = None,
+                       anchor_grid: tuple[int, int] | None = None, **kw):
     """Wire the project's three modality encoders into a fusion variant.
 
     With the same ``seed``, every variant starts from identical encoder,
@@ -273,4 +306,4 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
     }
     cls = VARIANTS[variant]
     return cls(encoders, d_model=d_model, n_latent=n_latent, n_heads=n_heads,
-               n_self_blocks=n_self_blocks, **kw)
+               n_self_blocks=n_self_blocks, anchor_grid=anchor_grid, **kw)
