@@ -151,10 +151,10 @@ def test_gradient_flow():
 
 
 # ----------------------------------------------------------------- support mass
-def test_support_mass_full_column_covers_bands():
-    """A complete 20-level profile's band masses roughly tile the bands and
-    sum to ~the full represented column span."""
-    enc = ProfileEncoder(DEPTHS_20, d_model=D_MODEL)
+def test_support_mass_raw_span_covers_bands():
+    """With normalize_per_profile=False, band masses are raw represented depth
+    spans (m) that roughly tile the column."""
+    enc = ProfileEncoder(DEPTHS_20, d_model=D_MODEL, normalize_per_profile=False)
     tb = enc(**obs(DEPTHS_20, P=1))
     mass = tb.support_mass.reshape(enc.n_bands).numpy()
     assert (mass > 0).all()
@@ -166,11 +166,20 @@ def test_support_mass_full_column_covers_bands():
     assert 900 < total < 1200          # ~full column (5..985 m + edge halves)
 
 
-def test_support_mass_halves_when_levels_halved():
-    """Dropping every other level should roughly halve nothing — mass tracks
-    *represented span*, not level count: it stays ~the same (intervals widen).
-    This is exactly the property MBCA needs (mass != token/level count)."""
+def test_support_mass_normalized_per_profile_by_default():
+    """Task-4 first implementation: each profile's band masses sum to 1, so a
+    profile with more sampled levels gets no extra total mass."""
     enc = ProfileEncoder(DEPTHS_20, d_model=D_MODEL)
+    tb = enc(**obs(DEPTHS_20, P=3))
+    mass = tb.support_mass.reshape(3, enc.n_bands)
+    assert torch.allclose(mass.sum(-1), torch.ones(3), atol=1e-5)
+
+
+def test_support_mass_stable_when_levels_halved():
+    """Dropping every other level leaves total mass ~unchanged — mass tracks
+    *represented span*, not level count (intervals widen).  This is exactly
+    the property MBCA needs (mass != token/level count)."""
+    enc = ProfileEncoder(DEPTHS_20, d_model=D_MODEL, normalize_per_profile=False)
     full = enc(**obs(DEPTHS_20, P=1))
     sparse_depths = DEPTHS_20[::2]
     o = obs(DEPTHS_20, P=1)
@@ -179,3 +188,18 @@ def test_support_mass_halves_when_levels_halved():
     m_full = full.support_mass.sum()
     m_sparse = sparse.support_mass.sum()
     assert 0.7 < float(m_sparse / m_full) < 1.3
+
+
+def test_provenance_metadata_stamped():
+    enc = ProfileEncoder(DEPTHS_20, d_model=D_MODEL)
+    P = 3
+    tb = enc(**obs(DEPTHS_20, P=P))
+    S = enc.n_bands
+    pid = tb.parent_id.reshape(P, S)
+    assert (pid == torch.arange(P)[:, None]).all()      # tokens grouped by profile
+    assert (tb.family_id == enc.family_id).all()
+    lo = tb.depth_lower.reshape(P, S)[0].numpy()
+    hi = tb.depth_upper.reshape(P, S)[0].numpy()
+    assert list(zip(lo.tolist(), hi.tolist())) == [list(b) for b in enc.bands] \
+        or np.allclose(lo, [b[0] for b in enc.bands])
+    assert np.allclose(hi, [b[1] for b in enc.bands])
