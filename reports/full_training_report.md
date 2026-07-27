@@ -17,6 +17,8 @@ protocol_v1 (split, metric, inputs, eval) is unchanged.  The week-3 POC froze th
 | model | TEMP (degC) | SALT (PSU) | TEMP 0-100m | TEMP 100-300m | TEMP 300-max |
 |---|---|---|---|---|---|
 | Climatology floor (train-only) | 0.5521 | 0.1305 | — | — | — |
+| Nearest-profile fill (3 seeds) | 0.9595 ± 0.0012 | 0.3107 ± 0.0022 | 1.0401 | 0.9985 | 0.7228 |
+| Pointwise MLP (3 seeds) | 0.2983 ± 0.0003 | 0.0525 ± 0.0003 | 0.2577 | 0.3957 | 0.1696 |
 | Depthwise U-Net (certified, seed 1234) | 0.1580 | 0.0325 | 0.1589 | 0.1916 | 0.0837 |
 | Joint-depth U-Net (certified, seed 1234) | 0.1948 | 0.0420 | 0.1973 | 0.2341 | 0.1063 |
 | MBCA (method) (3 seeds) | 0.5221 ± 0.0028 | 0.1206 ± 0.0017 | 0.6126 | 0.5554 | 0.1954 |
@@ -26,7 +28,7 @@ protocol_v1 (split, metric, inputs, eval) is unchanged.  The week-3 POC froze th
 | Standard Perceiver — unanchored 128-latent ablation (seed 1234) | 0.5346 | 0.1226 | 0.6232 | 0.5723 | 0.2072 |
 | Fixed-budget resampler — unanchored 128-latent ablation (seed 1234) | 0.5258 | 0.1212 | 0.6155 | 0.5606 | 0.1994 |
 
-Skill vs floor = 1 − RMSE/floor.  The certified U-Net numbers are the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count augmentation); the shared-latent rows carry count augmentation and are additionally capable of the section-3 sweeps with the same checkpoint.
+Skill vs floor = 1 − RMSE/floor.  The pointwise MLP and nearest-profile rows are recomputed under protocol_v1 (276 train / 12 pinned test, 1500 profiles, `profiles_woa_surf`, unobserved-only anomaly RMSE, 3 seeds — experiments/21_baselines_protocol_v1.py); the certified U-Net numbers are the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count augmentation).  The shared-latent rows carry count augmentation and are additionally capable of the section-3/4 sweeps with the same checkpoint. All ML baselines (MLP, both U-Nets) still beat the shared latent on this reconstruction metric — the accuracy gap of the training-dynamics finding above; the shared latent's contribution is the flexibility axis (§3) and the fusion-rule/invariance comparison (§2, gate §5).
 
 ## 2. Sensitivity at the selected checkpoint (Task-6 protocol, real data)
 
@@ -77,11 +79,25 @@ The week-2 ablation retrained the depthwise U-Net *per density* (reports/week2_d
 
 No baseline in the repo can produce 3a/3b without retraining one model per row.
 
-## 4. Submission gate #2 (from the week-3 plan)
+## 4. Withheld-profile evaluation (leave-profiles-out generalisation)
+
+Predict the full column at the coordinates of **300 profiles held out of the model input** each month (of 1500), scored on the OSSE truth there — the supporting decode demonstration protocol_v1 lists but the headline (unobserved-cell) metric does not exercise. Physical anomaly RMSE = absolute RMSE (climatology cancels), so the shared-latent variants and the field baselines are directly comparable on the identical withheld columns. `near`/`far` split at 3° great-circle distance to the nearest *input* profile (mean ± std over 3 seeds).
+
+| method | TEMP all | TEMP near | TEMP far | SALT all |
+|---|---|---|---|---|
+| MBCA (method) | 0.5252 ± 0.0166 | 0.5094 | 0.5490 | 0.1190 ± 0.0015 |
+| Standard Perceiver | 0.5272 ± 0.0124 | 0.5112 | 0.5513 | 0.1197 ± 0.0008 |
+| Fixed-budget resampler | 0.5247 ± 0.0168 | 0.5111 | 0.5453 | 0.1205 ± 0.0015 |
+| Nearest-profile (from input) | 1.0281 ± 0.0317 | 0.7248 | 1.3842 | 0.3425 ± 0.0004 |
+| Climatology floor | 0.5539 ± 0.0148 | 0.5372 | 0.5791 | 0.1291 ± 0.0008 |
+
+*Data: synthetic_OSSE (no real Argo store present).* A **real-Argo** leave-one-profile-out test needs the external Argo store (absent on this machine — `data/` holds only CESM2-LE + WOA23) and must additionally guard against reanalysis-assimilation leakage; deferred until the data lands.
+
+## 5. Submission gate #2 (from the week-3 plan)
 
 F-C (MBCA) vs F-A (Perceiver) accuracy: 0.5221 vs 0.5243 degC -> **PASS** on the accuracy axis; see section 2 for the invariance axis (the insurance policy).
 
-## 5. Provenance
+## 6. Provenance
 
 - `fullA_mbca_s1234`: best step 2500 (val score 0.9458), 0.35 GPU-h, commit `072c97a6`, obs_query_frac 0.25, coord fourier_v2
 - `fullA_mbca_s1235`: best step 2500 (val score 0.9561), 0.36 GPU-h, commit `072c97a6`, obs_query_frac 0.25, coord fourier_v2

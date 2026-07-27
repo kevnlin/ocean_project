@@ -58,6 +58,8 @@ small_runs = {v: d for v, d in small_runs.items()
               if d and d.get("status") == "done"}
 aud_dw = load(os.path.join(C.CACHE, "audit_depthwise_e40.json"))
 aud_j = load(os.path.join(C.CACHE, "audit_joint_e400_cos.json"))
+base_pv1 = load(os.path.join(C.CACHE, "baselines_protocol_v1.json"))   # MLP/nearest
+withheld = load(os.path.join(C.CACHE, "withheld_profile_eval.json"))
 
 any_run = next(iter(runs.values()), None)
 if any_run is None:
@@ -131,6 +133,16 @@ A("| model | TEMP (degC) | SALT (PSU) | TEMP 0-100m | TEMP 100-300m | TEMP 300-m
 A("|---|---|---|---|---|---|")
 A(f"| Climatology floor (train-only) | {FLOOR['TEMP']:.4f} | {FLOOR['SALT']:.4f} "
   f"| — | — | — |")
+if base_pv1:
+    for m, label in (("nearest", "Nearest-profile fill (3 seeds)"),
+                     ("mlp", "Pointwise MLP (3 seeds)")):
+        if m not in base_pv1["summary"]:
+            continue
+        s = base_pv1["summary"][m]
+        bT = s["by_band"]["TEMP"]
+        A(f"| {label} | {s['TEMP_mean']:.4f} ± {s['TEMP_std']:.4f} | "
+          f"{s['SALT_mean']:.4f} ± {s['SALT_std']:.4f} | "
+          f"{bT['0-100m']:.4f} | {bT['100-300m']:.4f} | {bT['300-max']:.4f} |")
 if aud_dw:
     t = aud_dw["test"]
     A(f"| Depthwise U-Net (certified, seed 1234) | {t['TEMP']:.4f} | "
@@ -176,10 +188,17 @@ for v in VARIANTS:
           f"{t['by_band']['TEMP']['100-300m']:.4f} | "
           f"{t['by_band']['TEMP']['300-max']:.4f} |")
 A("")
-A("Skill vs floor = 1 − RMSE/floor.  The certified U-Net numbers are the "
-  "week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count "
-  "augmentation); the shared-latent rows carry count augmentation and are "
-  "additionally capable of the section-3 sweeps with the same checkpoint.")
+A("Skill vs floor = 1 − RMSE/floor.  The pointwise MLP and nearest-profile "
+  "rows are recomputed under protocol_v1 (276 train / 12 pinned test, 1500 "
+  "profiles, `profiles_woa_surf`, unobserved-only anomaly RMSE, 3 seeds — "
+  "experiments/21_baselines_protocol_v1.py); the certified U-Net numbers are "
+  "the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count "
+  "augmentation).  The shared-latent rows carry count augmentation and are "
+  "additionally capable of the section-3/4 sweeps with the same checkpoint. "
+  "All ML baselines (MLP, both U-Nets) still beat the shared latent on this "
+  "reconstruction metric — the accuracy gap of the training-dynamics finding "
+  "above; the shared latent's contribution is the flexibility axis "
+  "(§3) and the fusion-rule/invariance comparison (§2, gate §5).")
 A("")
 
 # ---------------- sensitivity probes ----------------
@@ -261,8 +280,44 @@ if evals:
       "per row.")
     A("")
 
+# ---------------- withheld-profile evaluation ----------------
+if withheld:
+    A("## 4. Withheld-profile evaluation (leave-profiles-out generalisation)")
+    A("")
+    A(f"Predict the full column at the coordinates of **{withheld['withhold_per_month']} "
+      f"profiles held out of the model input** each month (of "
+      f"{withheld['n_profiles']}), scored on the OSSE truth there — the "
+      "supporting decode demonstration protocol_v1 lists but the headline "
+      "(unobserved-cell) metric does not exercise. Physical anomaly RMSE = "
+      "absolute RMSE (climatology cancels), so the shared-latent variants and "
+      "the field baselines are directly comparable on the identical withheld "
+      "columns. `near`/`far` split at "
+      f"{withheld['far_deg']:g}° great-circle distance to the nearest *input* "
+      "profile (mean ± std over 3 seeds).")
+    A("")
+    order = list(withheld["variants"]) + ["nearest", "clim_floor"]
+    NAMES = {**{v: VNAMES.get(v, v) for v in withheld["variants"]},
+             "nearest": "Nearest-profile (from input)",
+             "clim_floor": "Climatology floor"}
+    A("| method | TEMP all | TEMP near | TEMP far | SALT all |")
+    A("|---|---|---|---|---|")
+    for m in order:
+        if m not in withheld["summary"]:
+            continue
+        s = withheld["summary"][m]
+        A(f"| {NAMES[m]} | "
+          f"{s['all']['TEMP_mean']:.4f} ± {s['all']['TEMP_std']:.4f} | "
+          f"{s['near']['TEMP_mean']:.4f} | {s['far']['TEMP_mean']:.4f} | "
+          f"{s['all']['SALT_mean']:.4f} ± {s['all']['SALT_std']:.4f} |")
+    A("")
+    A(f"*Data: {withheld['data']}.* A **real-Argo** leave-one-profile-out test "
+      "needs the external Argo store (absent on this machine — `data/` holds "
+      "only CESM2-LE + WOA23) and must additionally guard against "
+      "reanalysis-assimilation leakage; deferred until the data lands.")
+    A("")
+
 # ---------------- gate ----------------
-A("## 4. Submission gate #2 (from the week-3 plan)")
+A("## 5. Submission gate #2 (from the week-3 plan)")
 A("")
 mbca_T, _, n_m = agg("mbca", "TEMP")
 perc_T, _, n_p = agg("perceiver", "TEMP")
@@ -274,7 +329,7 @@ if n_m and n_p:
 else:
     A("Gate not yet evaluable — waiting for both MBCA and Perceiver runs.")
 A("")
-A("## 5. Provenance")
+A("## 6. Provenance")
 A("")
 for (v, s), d in sorted(runs.items()):
     A(f"- `{d['tag']}`: best step {d['best']['step']} "
