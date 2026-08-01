@@ -102,15 +102,32 @@ probe_packs, _, _ = rd.make_packs(fval_small,
                                   n_eval, quiet=True)
 
 
-def dup_half(obs):
+def dup_half(obs, declare=False):
+    """Re-ingest half the profiles.
+
+    ``declare=False`` — the copies arrive as anonymous extra columns, so no
+    method can know they are copies except from the observations themselves.
+    ``declare=True`` — the copies carry the provenance of the float cycle they
+    came from (and a delayed-mode stream id), which is what a real duplicated
+    Argo record looks like.  DFS-Attention consolidates those exactly; the
+    other variants have no field to consolidate on and behave as in the
+    anonymous case.
+    """
     o = {k: dict(v) for k, v in obs.items()}
     pv = o["profiles"]
-    Ph = pv["prof"].shape[1] // 2
+    P = pv["prof"].shape[1]
+    Ph = P // 2
     o["profiles"] = {
         "prof": torch.cat([pv["prof"], pv["prof"][:, :Ph]], 1),
         "lat": torch.cat([pv["lat"], pv["lat"][:, :Ph]], 1),
         "lon": torch.cat([pv["lon"], pv["lon"][:, :Ph]], 1),
         "month": pv["month"]}
+    if declare:
+        ar = torch.arange(P, device=pv["prof"].device)
+        o["profiles"]["parent"] = torch.cat([ar, ar[:Ph]])[None]
+        o["profiles"]["source"] = torch.cat(
+            [torch.full((P,), 300, device=ar.device),
+             torch.full((Ph,), 301, device=ar.device)])[None]
     return o
 
 
@@ -167,7 +184,10 @@ def probe(pack, manip):
 
 
 probes = {}
-for name, manip in (("duplicate_half", dup_half), ("patch_refine_2x", refine2x),
+for name, manip in (("duplicate_half", dup_half),
+                    ("duplicate_half_declared",
+                     lambda o: dup_half(o, declare=True)),
+                    ("patch_refine_2x", refine2x),
                     ("profile_resample_2x", resample2x)):
     rels, r_bases, r_mans = [], [], []
     for pack in probe_packs:
@@ -227,6 +247,39 @@ for row_name, drop in (("full", None), ("drop_surf", "surf"),
     print(f"  {row_name:14s}: TEMP={matrix[row_name]['TEMP']:.4f} "
           f"SALT={matrix[row_name]['SALT']:.4f}", flush=True)
 out["modality_matrix"] = matrix
+
+# ======================================================================
+# (4) DFS-only: the evidence budget of the real observing system
+# ======================================================================
+if variant == "dfs":
+    print("evidence budget (DFS variant) ...", flush=True)
+    from ocean_tokenizer import dfs as DFS
+    ev = {}
+    for sname, ts in (("protocol", DFS.PROTOCOL_SCALE),
+                      ("coarse", DFS.COARSE_SCALE), ("fine", DFS.FINE_SCALE)):
+        tot, bym, cut, ntok = [], {}, [], []
+        for p in packs:
+            tb = model.encode(p["obs"], batch=1, device=dev)
+            r = model.evidence(tb, ts)
+            tot.append(float(r.total))
+            cut.append(float(r.neighbour_cut))
+            obs_mask, _ = model._split(tb)
+            ntok.append(int(obs_mask.sum()))
+            for k, v in r.by_modality.items():
+                bym.setdefault(k, []).append(float(v))
+        ev[sname] = {
+            "dfs_total": float(np.mean(tot)),
+            "obs_tokens": float(np.mean(ntok)),
+            "dfs_per_token": float(np.mean(tot) / max(np.mean(ntok), 1)),
+            "by_modality": {k: float(np.mean(v)) for k, v in bym.items()},
+            "profile_share": float(np.mean(bym.get("profile", [0]))
+                                   / max(np.mean(tot), 1e-9)),
+            "neighbour_cut": float(np.mean(cut))}
+        print(f"  {sname:9s} DFS={ev[sname]['dfs_total']:.1f} of "
+              f"{ev[sname]['obs_tokens']:.0f} obs tokens "
+              f"(profile share {ev[sname]['profile_share']:.3f}, "
+              f"cut {ev[sname]['neighbour_cut']:.4f})", flush=True)
+    out["evidence"] = ev
 
 path = os.path.join(C.CACHE, f"full_eval_{args.tag}.json")
 with open(path, "w") as f:

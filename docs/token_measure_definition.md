@@ -5,6 +5,16 @@ provenance fields identify "same evidence, different representation." The code
 (`src/ocean_tokenizer/token_api.py`) implements exactly what is written here —
 if they ever disagree, this document wins and the code is a bug.*
 
+> **Scope note.** `support_mass` is the **hand-designed** measure consumed by
+> MBCA, which is now a baseline rather than the method. The current method,
+> DFS-Attention, does not use `support_mass` at all: it *estimates* each
+> token's effective evidence from a three-dimensional, stratification- and
+> target-resolution-aware support kernel. See
+> [`dfs_attention.md`](dfs_attention.md). The same `TokenBatch` carries both —
+> `support_mass` for MBCA, and `support_h` / `depth_lower` / `depth_upper` /
+> `support_t` / `sigma` / `strat` / `source_id` / `record_id` for DFS — so the
+> two can be compared on identical inputs.
+
 ## Purpose
 
 Standard attention weights evidence by **token count** — an arbitrary artifact

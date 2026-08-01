@@ -29,9 +29,9 @@ D_MODEL, N_LATENT = 32, 16
 DEPTHS = np.array([5, 15, 25, 35, 45, 55, 65, 85, 105, 125, 145, 165,
                    186, 222, 267, 327, 408, 527, 707, 985], dtype="float32")
 D = len(DEPTHS)
-VARIANTS = ("perceiver", "resampler", "mbca")
+VARIANTS = ("perceiver", "resampler", "mbca", "dfs")
 LABEL = {"perceiver": "Standard Perceiver", "resampler": "Fixed resampler",
-         "mbca": "MBCA"}
+         "mbca": "MBCA", "dfs": "DFS-Attention"}
 
 
 class FakeGrid:
@@ -126,15 +126,16 @@ L.append(f"**Unit-test verdict:** `{verdict}` (suites: token API, profile "
          "profile_resampling [D]).\n")
 
 L.append("## Architectural probes — relative output change (lower = more invariant)\n")
-L.append("| probe | " + " | ".join(LABEL[v] for v in VARIANTS) + " | MBCA expectation |")
-L.append("|---|---|---|---|---|")
+L.append("| probe | " + " | ".join(LABEL[v] for v in VARIANTS)
+         + " | expectation |")
+L.append("|---|" + "---|" * (len(VARIANTS) + 1))
 rows = [
-    ("Test A — exact partition x2", "partition_x2", "**exact (0)**"),
-    ("Test A — exact partition x4", "partition_x4", "**exact (0)**"),
-    ("Test A — exact partition x8", "partition_x8", "**exact (0)**"),
-    ("Test B — duplication x2 (mass split)", "dup_x2", "**exact (0)**"),
-    ("Test B — duplication x4 (mass split)", "dup_x4", "**exact (0)**"),
-    ("Test B — duplication x8 (mass split)", "dup_x8", "**exact (0)**"),
+    ("Test A — exact partition x2", "partition_x2", "**exact (0)** for MBCA + DFS"),
+    ("Test A — exact partition x4", "partition_x4", "**exact (0)** for MBCA + DFS"),
+    ("Test A — exact partition x8", "partition_x8", "**exact (0)** for MBCA + DFS"),
+    ("Test B — duplication x2 (mass split)", "dup_x2", "**exact (0)** for MBCA + DFS"),
+    ("Test B — duplication x4 (mass split)", "dup_x4", "**exact (0)** for MBCA + DFS"),
+    ("Test B — duplication x8 (mass split)", "dup_x8", "**exact (0)** for MBCA + DFS"),
     ("Test C — physical 2x refinement (pred)", "refine2x_pred", "smallest"),
     ("Test C — physical 2x refinement (latent)", "refine2x_latent", "smallest"),
 ]

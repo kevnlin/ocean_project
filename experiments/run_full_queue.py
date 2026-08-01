@@ -1,4 +1,5 @@
-"""Week-4 queue runner: all 9 full-scale runs (3 variants x 3 seeds).
+"""Queue runner for the full-scale runs (variants x seeds; 12 by default,
+4 fusion variants x 3 seeds -- DFS-Attention included).
 
 Dispatches experiments/18_full_train.py jobs with bounded concurrency:
 up to --per-gpu concurrent runs on GPU 7 (always ours) and on GPU 6 only
@@ -29,13 +30,16 @@ ap.add_argument("--gpus", default="7,6", help="preference order; non-7 GPUs "
                 "are used only when free")
 ap.add_argument("--prefix", default="full", help="run tag prefix "
                 "(<prefix>_<variant>_s<seed>)")
+ap.add_argument("--variants", default="mbca,perceiver,resampler,dfs",
+                help="fusion variants to queue (seed-major order)")
+ap.add_argument("--seeds", default="1234,1235,1236")
 ap.add_argument("extra", nargs="*", help="args after -- go to 18_full_train.py")
 args = ap.parse_args()
 EXTRA = args.extra
 PREFIX = args.prefix
 
-JOBS = [(v, s) for s in (1234, 1235, 1236)
-        for v in ("mbca", "perceiver", "resampler")]
+JOBS = [(v, s) for s in (int(x) for x in args.seeds.split(","))
+        for v in args.variants.split(",")]
 GPUS = [g.strip() for g in args.gpus.split(",")]
 
 

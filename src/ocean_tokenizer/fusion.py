@@ -1,6 +1,6 @@
 """Task 3 — comparable fusion variants for the shared-latent model.
 
-Three variants, differing ONLY in the token->latent fusion rule (identical
+Four variants, differing ONLY in the token->latent fusion rule (identical
 modality encoders, model dim, latent token count, latent self-attention
 trunk, coordinate query decoder, optimizer, data):
 
@@ -28,6 +28,18 @@ trunk, coordinate query decoder, optimizer, data):
                             (k, v, w/n) leaves every attention output
                             unchanged (n * exp(s + log(w/n)) = exp(s + log w)).
 
+* ``DFSAttention``          (Variant D) — the current method.  Token weights
+                            are no longer hand-designed: each observation's
+                            *degrees of freedom for signal* are estimated from
+                            a three-dimensional, stratification- and
+                            target-resolution-aware support kernel
+                            (``dfs.dfs_scores``), transported through a
+                            fixed-budget resampler without loss
+                            (``dfs.EvidenceResampler``), and fused against a
+                            climatological background.  See
+                            ``docs/dfs_attention.md``; MBCA remains the
+                            hand-weighted baseline it is compared to.
+
 First-implementation choices (kept deliberately simple / interpretable):
 equal pi_m across available modalities; no learned quality gate; no
 uncertainty prediction.  Tokens without a support mass (encoders predating
@@ -45,6 +57,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from . import dfs
 from .token_api import (TokenBatch, SharedLatentModel, MODALITIES,
                         coord_features, N_COORD_FEATS)
 
@@ -193,8 +206,14 @@ class AttnFusionModel(SharedLatentModel):
         """-> (kv (B,N,d), mask (B,N), key_bias (B,N) or None)."""
         return tokens.emb, tokens.mask, None
 
+    def _latent0(self, B: int) -> torch.Tensor:
+        z = self.latent0
+        if self.anchor_proj is not None:
+            z = z + self.anchor_proj(coord_features(self.anchor_coord))
+        return z[None].expand(B, -1, -1)
+
     # ---- shared fuse / decode ------------------------------------------
-    def fuse(self, tokens: TokenBatch) -> torch.Tensor:
+    def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
         kv, mask, bias = self._prepare_tokens(tokens)
         B = kv.shape[0]
         kv = torch.cat([kv, self.null_token.expand(B, 1, -1)], dim=1)
@@ -204,17 +223,17 @@ class AttnFusionModel(SharedLatentModel):
             bias = torch.cat([bias, torch.full((B, 1), _NULL_BIAS,
                                                device=bias.device,
                                                dtype=bias.dtype)], dim=1)
-        z = self.latent0
-        if self.anchor_proj is not None:
-            z = z + self.anchor_proj(coord_features(self.anchor_coord))
-        z = z[None].expand(B, -1, -1)
+        z = self._latent0(B)
         z = z + self.fuse_attn(self.fuse_ln_q(z), self.fuse_ln_kv(kv),
                                key_bias=bias, key_mask=mask)
         for blk in self.blocks:
             z = blk(z)
         return z
 
-    def decode(self, latent, query_coord):
+    def decode(self, latent, query_coord, query_scale=None):
+        """``query_scale`` is accepted (and ignored) by every variant except
+        DFS-Attention, whose decoder is scale-conditioned; keeping it in the
+        base signature lets one evaluation loop drive all four variants."""
         q = self.q_proj(coord_features(query_coord))
         a = self.dec_attn(self.dec_ln_q(q), self.dec_ln_kv(latent))
         return self.head(torch.cat([a, q], dim=-1))
@@ -276,11 +295,165 @@ class MBCA(AttnFusionModel):
 
 
 # --------------------------------------------------------------------------
+# Variant D — DFS-Attention
+# --------------------------------------------------------------------------
+class DFSAttention(AttnFusionModel):
+    """Scale-aware evidence fusion (docs/dfs_attention.md).
+
+    Three stages replace MBCA's single log-mass prior, addressing the two
+    limitations that retired it (hand-designed weights; evidence discarded at
+    the resampler):
+
+    1. **Set-level effective-evidence estimation.**  ``dfs.dfs_scores`` scores
+       every observation token by its ridge leverage under a three-dimensional,
+       stratification- and target-resolution-aware support kernel, so tau_i is
+       the *marginal* information token i adds once physical overlap, vertical
+       complementarity, timing, uncertainty and provenance are accounted for.
+       The climatological background is not part of the evidence set — it is
+       the prior the evidence is measured against.
+
+    2. **Conservative evidence transport.**  ``dfs.EvidenceResampler``
+       compresses the observation tokens to a fixed budget while moving their
+       evidence with them: the outgoing masses sum to the incoming DFS exactly,
+       so the total physical evidence survives the resampler instead of being
+       flattened to equal weights.
+
+    3. **Background-referenced latent fusion.**  The latent array first reads
+       the climatological background, then attends to the transported evidence
+       with an additive ``log nu_s`` prior against a background key held at
+       ``log lambda_bg``.  The comparison is therefore between an absolute
+       number of observed degrees of freedom and the background's effective
+       weight: where evidence is thin the fusion falls back to climatology, and
+       where it is rich the observations win.  lambda_bg is the ridge parameter
+       of stage 1 wearing its other hat — the background precision.
+
+    The decoder is additionally conditioned on the target resolution
+    (``query_scale``), which is the same scale that set the kernel lengths, so
+    "what is being asked for" is consistent between evidence and decode.
+    """
+
+    BACKGROUND = ("woa_grid",)
+
+    def __init__(self, encoders, d_model: int = 128, n_latent: int = 128,
+                 n_heads: int = 4, n_self_blocks: int = 4, c_out: int = 2,
+                 mlp_ratio: float = 2.0, anchor_grid=None, k_slots: int = 32,
+                 k_neighbors: int = 32, learn_scales: bool = False,
+                 target_scale=None, s_cross: float = dfs.S_CROSS,
+                 detach_evidence: bool = True):
+        super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
+                         c_out, mlp_ratio, anchor_grid=anchor_grid)
+        self.scales = dfs.SupportScales(learn_residual=learn_scales)
+        self.resampler = dfs.EvidenceResampler(d_model, k_slots, n_heads)
+        self.k_neighbors = int(k_neighbors)
+        self.s_cross = float(s_cross)
+        self.target_scale = target_scale or dfs.PROTOCOL_SCALE
+        # evidence is a property of the observing geometry, not a learned
+        # quantity, so it is estimated without gradient unless the length-scale
+        # residual is being learned
+        self.detach_evidence = bool(detach_evidence) and not learn_scales
+        self.bg_ln_kv = nn.LayerNorm(d_model)
+        self.bg_attn = CrossAttention(d_model, n_heads)
+        # the background is the REFERENCE, not an optional extra: the gate
+        # starts at 1 so the latent is climatology-anchored from step 0 (a
+        # zero-initialised gate would leave the whole background branch, WOA
+        # encoder included, without gradient)
+        self.bg_gate = nn.Parameter(torch.ones(1))
+        # background precision: how many degrees of freedom of evidence it
+        # takes to outweigh the climatology (log-space, learnable)
+        self.log_lambda_bg = nn.Parameter(torch.zeros(1))
+        self.scale_proj = nn.Linear(2, d_model)
+        nn.init.zeros_(self.scale_proj.weight)
+        nn.init.zeros_(self.scale_proj.bias)
+        self._bg_ids = torch.tensor([MODALITIES[m] for m in self.BACKGROUND])
+        self.last_evidence = None          # diagnostics of the last fuse()
+
+    # ---- helpers -------------------------------------------------------
+    def _split(self, tokens: TokenBatch):
+        bg_ids = self._bg_ids.to(tokens.modality.device)
+        is_bg = (tokens.modality[..., None] == bg_ids).any(-1)
+        return tokens.mask & ~is_bg, tokens.mask & is_bg
+
+    def evidence(self, tokens: TokenBatch, target=None) -> dfs.DFSResult:
+        """Per-token degrees of freedom for signal at the target scale."""
+        obs_mask, _ = self._split(tokens)
+        ctx = torch.no_grad() if self.detach_evidence else _nullctx()
+        with ctx:
+            return dfs.dfs_scores(tokens, target or self.target_scale,
+                                  self.scales, k_neighbors=self.k_neighbors,
+                                  s_cross=self.s_cross, evidence_mask=obs_mask)
+
+    # ---- fuse ----------------------------------------------------------
+    def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
+        target = target or self.target_scale
+        obs_mask, bg_mask = self._split(tokens)
+        B = tokens.emb.shape[0]
+        res = self.evidence(tokens, target)
+
+        # (2) conservative transport: fixed budget, evidence carried along
+        kv, kv_mask, nu = self.resampler(tokens.emb, obs_mask, res.tau,
+                                         tokens.modality)
+        self.last_evidence = dict(tau=res.tau, nu=nu, total=res.total,
+                                  by_modality=res.by_modality)
+
+        # (3a) background-referenced latent: read the climatology first
+        z = self._latent0(B)
+        if bool(bg_mask.any()):
+            z = z + self.bg_gate * self.bg_attn(
+                self.fuse_ln_q(z), self.bg_ln_kv(tokens.emb),
+                key_mask=bg_mask)
+        z_bg = z
+
+        # (3b) observation increment against the background key
+        kv = torch.cat([kv, self.null_token.expand(B, 1, -1)], dim=1)
+        one = torch.ones(B, 1, dtype=torch.bool, device=kv.device)
+        kv_mask = torch.cat([kv_mask, one], dim=1)
+        bias = torch.cat([torch.log(nu + _LOG_EPS),
+                          self.log_lambda_bg.expand(B, 1)], dim=1)
+        z = z_bg + self.fuse_attn(self.fuse_ln_q(z), self.fuse_ln_kv(kv),
+                                  key_bias=bias, key_mask=kv_mask)
+        for blk in self.blocks:
+            z = blk(z)
+        return z
+
+    # ---- scale-conditioned decode --------------------------------------
+    def decode(self, latent, query_coord, query_scale=None):
+        q = self.q_proj(coord_features(query_coord))
+        if query_scale is None:
+            ts = self.target_scale
+            query_scale = torch.tensor([ts.dx_km, ts.dz_m],
+                                       device=query_coord.device,
+                                       dtype=query_coord.dtype)
+            query_scale = query_scale.expand(*query_coord.shape[:-1], 2)
+        sf = torch.stack([torch.log(query_scale[..., 0].clamp(min=1e-3)
+                                    / dfs.PROTOCOL_SCALE.dx_km),
+                          torch.log(query_scale[..., 1].clamp(min=1e-3)
+                                    / dfs.PROTOCOL_SCALE.dz_m)], dim=-1)
+        q = q + self.scale_proj(sf)
+        a = self.dec_attn(self.dec_ln_q(q), self.dec_ln_kv(latent))
+        return self.head(torch.cat([a, q], dim=-1))
+
+    def forward(self, obs: dict, query_coord: torch.Tensor, target=None,
+                query_scale=None) -> torch.Tensor:
+        tokens = self.encode(obs, batch=query_coord.shape[0],
+                             device=query_coord.device)
+        return self.decode(self.fuse(tokens, target), query_coord, query_scale)
+
+
+class _nullctx:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *a):
+        return False
+
+
+# --------------------------------------------------------------------------
 # Builder — identical encoders/trunk for every variant
 # --------------------------------------------------------------------------
 VARIANTS = {"perceiver": StandardPerceiver,
             "resampler": FixedBudgetResampler,
-            "mbca": MBCA}
+            "mbca": MBCA,
+            "dfs": DFSAttention}
 
 
 def build_fusion_model(variant: str, grid, d_model: int = 128,
