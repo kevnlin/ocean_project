@@ -117,6 +117,21 @@ def coord_features(coord: torch.Tensor) -> torch.Tensor:
 # --------------------------------------------------------------------------
 VAR_IDS = {"MULTI": -1, "TEMP": 0, "SALT": 1, "SST": 2, "SSS": 3}
 
+# --------------------------------------------------------------------------
+# DFS observation-error / provenance defaults (docs/dfs_attention.md)
+# --------------------------------------------------------------------------
+# sigma is an observation-error std in ANOMALY Z-UNITS (the space the encoders
+# actually see), so it is comparable across variables.  It is dominated by
+# representativeness error, not instrument error: a 10x12-cell surface patch
+# stands for ~1e6 km^2 of ocean, a profile band for one column.
+DEFAULT_SIGMA = {"surf_grid": 0.35, "woa_grid": 0.60, "profile": 0.10,
+                 "point": 0.15}
+# One id per processing stream.  k_s = 1 within a stream (shared retrieval /
+# processing error -> mutually redundant) and s_cross < 1 across streams.
+SOURCE_IDS = {"surf_grid": 100, "woa_grid": 200, "profile": 300, "point": 400}
+KM_PER_DEG = 111.195                       # mean great-circle km per degree
+_NO_RECORD = -1                            # record_id sentinel: never merged
+
 
 @dataclass
 class TokenBatch:
@@ -143,6 +158,31 @@ class TokenBatch:
     depth_lower  : (B, N) float  represented depth interval (m)
     depth_upper  : (B, N) float
     reliability  : (B, N) float  optional per-token quality in [0, 1]
+
+    Three-dimensional scale-aware support (DFS-Attention, docs/dfs_attention.md).
+    ``depth_lower/upper`` above is the vertical leg; these add the horizontal
+    and temporal legs plus the error model, so S_i = S_h x S_z x S_t is fully
+    specified and the redundancy kernel k_h k_z k_t k_s can be evaluated:
+    support_h    : (B, N) float  horizontal support radius (km) the token
+                   represents (patch half-diagonal; a profile's e-folding
+                   representativeness radius)
+    support_t    : (B, N) float  temporal support / staleness window (days)
+    time_offset  : (B, N) float  signed offset (days) from the analysis time
+    sigma        : (B, N) float  observation-error std in the token's own
+                   normalised units (measurement + representativeness);
+                   <= 0 or missing means "use the estimator default"
+    strat        : (B, N) float  local vertical structure indicator: the
+                   magnitude of the vertical gradient of the token's own
+                   content, in normalised units per 100 m.  Large = thermocline
+                   / sharp gradient (short vertical decorrelation, dense levels
+                   stay informative); ~0 = vertically smooth water column.
+    source_id    : (B, N) int64  provenance stream (float/sensor/processing
+                   version).  Tokens sharing a source have correlated errors:
+                   k_s < 1 between streams, 1 within one.
+    record_id    : (B, N) int64  identity of the underlying RAW measurement.
+                   Tokens sharing a record are the SAME measurement re-ingested
+                   (an exact duplicate, or a real-time/delayed-mode pair) and
+                   are consolidated to a single degree of freedom.
     """
     emb: torch.Tensor
     coord: torch.Tensor
@@ -155,9 +195,18 @@ class TokenBatch:
     depth_lower: torch.Tensor | None = None
     depth_upper: torch.Tensor | None = None
     reliability: torch.Tensor | None = None
+    support_h: torch.Tensor | None = None
+    support_t: torch.Tensor | None = None
+    time_offset: torch.Tensor | None = None
+    sigma: torch.Tensor | None = None
+    strat: torch.Tensor | None = None
+    source_id: torch.Tensor | None = None
+    record_id: torch.Tensor | None = None
 
-    _OPT_INT = ("parent_id", "family_id", "variable_id")
-    _OPT_FLOAT = ("support_mass", "depth_lower", "depth_upper", "reliability")
+    _OPT_INT = ("parent_id", "family_id", "variable_id", "source_id",
+                "record_id")
+    _OPT_FLOAT = ("support_mass", "depth_lower", "depth_upper", "reliability",
+                  "support_h", "support_t", "time_offset", "sigma", "strat")
 
     @property
     def n_valid(self) -> torch.Tensor:            # (B,) valid tokens per item
@@ -249,6 +298,39 @@ def _level_edges(depth: torch.Tensor):
     return lower, upper
 
 
+def _volume_strat(field: torch.Tensor, depth: torch.Tensor) -> torch.Tensor:
+    """(B,C,D,H,W) volume -> (B,D,H,W) |d value / dz| per 100 m, max over vars.
+
+    Central differences on the (irregular) level grid; NaN-tolerant (a level
+    with a missing neighbour falls back to the one-sided difference, and an
+    entirely missing column gives 0 = "no structure detected").
+    """
+    B, C, D, H, W = field.shape
+    if D < 2:
+        return field.new_zeros(B, D, H, W)
+    dz = (depth[1:] - depth[:-1]).clamp(min=1e-3)                 # (D-1,)
+    dv = field[:, :, 1:] - field[:, :, :-1]                       # (B,C,D-1,H,W)
+    g = (dv / dz.view(1, 1, -1, 1, 1)).abs() * 100.0              # per 100 m
+    g = torch.nan_to_num(g, nan=0.0).amax(dim=1)                  # (B,D-1,H,W)
+    out = torch.zeros(B, D, H, W, device=field.device, dtype=field.dtype)
+    out[:, :-1] = g
+    out[:, 1:] = torch.maximum(out[:, 1:], g)
+    return out
+
+
+def _patch_mean(x: torch.Tensor, ph: int, pw: int) -> torch.Tensor:
+    """(B,1,H,W) -> (B, nh*nw) mean over each (ph, pw) patch (edge-padded)."""
+    B, _, H, W = x.shape
+    Hp, Wp = math.ceil(H / ph) * ph, math.ceil(W / pw) * pw
+    if (Hp, Wp) != (H, W):
+        pad = x.new_zeros(B, 1, Hp, Wp)
+        pad[:, :, :H, :W] = x
+        x = pad
+    nh, nw = Hp // ph, Wp // pw
+    return (x.reshape(B, 1, nh, ph, nw, pw).permute(0, 2, 4, 1, 3, 5)
+             .reshape(B, nh * nw, ph * pw).mean(-1))
+
+
 class GridPatchEncoder(nn.Module):
     """Dense gridded field -> one token per (ph, pw) spatial patch.
 
@@ -271,13 +353,21 @@ class GridPatchEncoder(nn.Module):
     """
 
     def __init__(self, c_in: int, d_model: int = 128, patch=(10, 12),
-                 modality: str = "surf_grid", family_id: int | None = None):
+                 modality: str = "surf_grid", family_id: int | None = None,
+                 sigma: float | None = None, source_id: int | None = None,
+                 support_t: float = 30.0):
         super().__init__()
         self.c_in = c_in
         self.ph, self.pw = patch
         self.modality_id = MODALITIES[modality]
         self.family_id = (10000 * self.ph + self.pw
                           if family_id is None else family_id)
+        # DFS metadata: a gridded product is one processing stream; its error is
+        # dominated by representativeness (a patch stands for many cells).
+        self.sigma = (DEFAULT_SIGMA[modality] if sigma is None else float(sigma))
+        self.source_id = (SOURCE_IDS[modality] if source_id is None
+                          else int(source_id))
+        self.support_t = float(support_t)
         self.val_proj = nn.Linear(2 * c_in * self.ph * self.pw, d_model)
         self.coord_proj = nn.Linear(N_COORD_FEATS, d_model)
 
@@ -329,33 +419,57 @@ class GridPatchEncoder(nn.Module):
         cj = torch.clamp(torch.arange(nw, device=dev) * pw + pw // 2, max=W - 1)
         clat = lat[ci][:, None].expand(nh, nw).reshape(-1)           # (N,)
         clon = lon[cj][None, :].expand(nh, nw).reshape(-1)
+        # ---- horizontal support radius (km): half-diagonal of the footprint
+        dy_km = ph * dlat * KM_PER_DEG
+        dx_km = pw * dlon * KM_PER_DEG * torch.cos(torch.deg2rad(clat)).abs()
+        sup_h = 0.5 * torch.sqrt(dx_km ** 2 + dy_km ** 2)            # (N,)
+        sup_h = sup_h[None].expand(B, N).contiguous()
         coord = torch.stack([
             clat[None].expand(B, N),
             clon[None].expand(B, N),
             depth_val[:, None].expand(B, N),
             month[:, None].expand(B, N).to(field.dtype),
         ], dim=-1)                                                   # (B, N, 4)
-        return content, coord, mask, mass
+        return content, coord, mask, mass, sup_h
 
-    def _meta(self, B, N, dlo, dhi, device, dtype):
+    def _meta(self, B, N, dlo, dhi, device, dtype, sup_h, strat=None):
+        """Task-4 provenance + the DFS 3-D support / error metadata.
+
+        ``record_id`` identifies the raw measurement a token stands for: for a
+        gridded product that is (family, token slot), so re-ingesting the same
+        patch twice is recognised as one measurement, while a genuinely
+        different patch is a different record.
+        """
+        slot = torch.arange(N, device=device, dtype=torch.long)[None].expand(B, N)
         return dict(
             parent_id=torch.zeros(B, N, dtype=torch.long, device=device),
             family_id=torch.full((B, N), self.family_id, dtype=torch.long,
                                  device=device),
             variable_id=torch.full((B, N), VAR_IDS["MULTI"], dtype=torch.long,
                                    device=device),
-            depth_lower=dlo.to(dtype), depth_upper=dhi.to(dtype))
+            depth_lower=dlo.to(dtype), depth_upper=dhi.to(dtype),
+            support_h=sup_h.to(dtype),
+            support_t=torch.full((B, N), self.support_t, dtype=dtype,
+                                 device=device),
+            time_offset=torch.zeros(B, N, dtype=dtype, device=device),
+            sigma=torch.full((B, N), self.sigma, dtype=dtype, device=device),
+            strat=(torch.zeros(B, N, dtype=dtype, device=device)
+                   if strat is None else strat.to(dtype)),
+            source_id=torch.full((B, N), self.source_id, dtype=torch.long,
+                                 device=device),
+            record_id=(self.family_id * 1_000_003 + slot).contiguous())
 
     def forward(self, field, lat, lon, month, depth=None) -> TokenBatch:
         month = torch.as_tensor(month, device=field.device)
         if month.ndim == 0:
             month = month[None].expand(field.shape[0])
+        strat = None
         if field.ndim == 4:                                          # surface
             B = field.shape[0]
             d = (torch.zeros(B, device=field.device) if depth is None
                  else torch.as_tensor(float(depth), device=field.device).expand(B))
-            content, coord, mask, mass = self._encode_2d(field, lat, lon,
-                                                         month, d)
+            content, coord, mask, mass, sup_h = self._encode_2d(
+                field, lat, lon, month, d)
             N = content.shape[1]
             dlo = d[:, None].expand(B, N)
             dhi = dlo
@@ -368,17 +482,25 @@ class GridPatchEncoder(nn.Module):
                                     dtype=field.dtype)
             dval = dgrid.repeat(B)
             mo = month.repeat_interleave(D)
-            content, coord, mask, mass = self._encode_2d(flat, lat, lon,
-                                                         mo, dval)
+            content, coord, mask, mass, sup_h = self._encode_2d(
+                flat, lat, lon, mo, dval)
             n = content.shape[1]
             lo, hi = _level_edges(dgrid)                             # (D,)
             thick = (hi - lo).clamp(min=1e-6)
             # volume mass = area x represented layer thickness
             mass = mass * thick.repeat(B)[:, None]
+            # local stratification: |d(value)/dz| per 100 m, patch-averaged, so
+            # the vertical decorrelation scale can shorten where the column is
+            # sharply structured (thermocline) and lengthen where it is smooth.
+            strat = _volume_strat(field, dgrid)                      # (B,D,H,W)
+            strat = _patch_mean(strat[:, None].permute(0, 2, 1, 3, 4)
+                                .reshape(B * D, 1, H, W), self.ph, self.pw)
             content = content.reshape(B, D * n, -1)
             coord = coord.reshape(B, D * n, 4)
             mask = mask.reshape(B, D * n)
             mass = mass.reshape(B, D * n)
+            sup_h = sup_h.reshape(B, D * n)
+            strat = strat.reshape(B, D * n)
             N = D * n
             dlo = lo.repeat_interleave(n)[None].expand(B, N)
             dhi = hi.repeat_interleave(n)[None].expand(B, N)
@@ -387,7 +509,8 @@ class GridPatchEncoder(nn.Module):
         return _finish_tokens(content, coord, self.coord_proj, mask,
                               self.modality_id, support_mass=mass,
                               **self._meta(field.shape[0], N, dlo, dhi,
-                                           field.device, field.dtype))
+                                           field.device, field.dtype,
+                                           sup_h, strat))
 
 
 # --------------------------------------------------------------------------
@@ -434,8 +557,18 @@ class ProfileEncoder(nn.Module):
     def __init__(self, depth_grid=None, c_vars: int = 2, d_model: int = 128,
                  depth_bands=None, modality: str = "profile",
                  normalize_per_profile: bool = True,
-                 family_id: int | None = None):
+                 family_id: int | None = None, sigma: float | None = None,
+                 source_id: int | None = None, support_radius_km: float = 50.0,
+                 support_t: float = 10.0):
         super().__init__()
+        # DFS metadata (docs/dfs_attention.md): a profile is a point in the
+        # horizontal, so its horizontal support is a representativeness radius,
+        # not a footprint; the vertical support is the band, already exact.
+        self.sigma = (DEFAULT_SIGMA[modality] if sigma is None else float(sigma))
+        self.source_id = (SOURCE_IDS[modality] if source_id is None
+                          else int(source_id))
+        self.support_radius_km = float(support_radius_km)
+        self.support_t = float(support_t)
         # Task 4 (first implementation): normalize band masses within each
         # profile so a profile with more sampled depth levels does not
         # automatically receive more total mass.  Set False to emit the raw
@@ -469,8 +602,19 @@ class ProfileEncoder(nn.Module):
         self.coord_proj = nn.Linear(N_COORD_FEATS, d_model)
         self.out_features = d_model
 
-    def forward(self, prof, lat, lon, month, valid=None,
-                depths=None) -> TokenBatch:
+    def forward(self, prof, lat, lon, month, valid=None, depths=None,
+                parent=None, source=None, sigma=None,
+                time_offset=None) -> TokenBatch:
+        """``parent`` (B,P) int64 overrides the default per-column identity.
+
+        Two input columns carrying the SAME ``parent`` are declared to be the
+        same float/cycle re-ingested (e.g. a real-time and a delayed-mode copy
+        of one profile); their band tokens then share a ``record_id`` and the
+        DFS estimator consolidates them into one degree of freedom.  ``source``
+        (B,P) int64 is the processing stream (k_s), ``sigma`` (B,P) a per-column
+        error std, ``time_offset`` (B,P) the offset in days from the analysis
+        time.
+        """
         B, P, C, D = prof.shape
         S = self.n_bands
         assert C == self.c_vars
@@ -533,6 +677,22 @@ class ProfileEncoder(nn.Module):
                 - torch.maximum(lower.unsqueeze(2), lo)).clamp(min=0.0)
         mass = (span * w).sum(dim=-1)                          # (B,P,S) metres
 
+        # ---- local stratification: |d value / dz| per 100 m within the band --
+        # This is what makes vertical redundancy stratification-dependent: two
+        # levels 20 m apart across a thermocline are NOT interchangeable, the
+        # same two levels inside a mixed layer nearly are.
+        if D > 1:
+            dzl = (d[..., 1:] - d[..., :-1]).clamp(min=1e-3)   # (B,P,D-1)
+            dv = (prof[..., 1:] - prof[..., :-1])              # (B,P,C,D-1)
+            g = (dv / dzl.unsqueeze(2)).abs() * 100.0
+            g = torch.nan_to_num(g, nan=0.0).amax(dim=2)       # (B,P,D-1)
+            glev = torch.zeros_like(d)
+            glev[..., :-1] = g
+            glev[..., 1:] = torch.maximum(glev[..., 1:], g)
+        else:
+            glev = torch.zeros_like(d)
+        strat = (glev.unsqueeze(2) * w).sum(-1) / count.clamp(min=1.0)
+
         # ---- band metadata features ----
         mid = (self.band_lo + self.band_hi) / 2                # (S,)
         bfeat = torch.stack([
@@ -557,9 +717,26 @@ class ProfileEncoder(nn.Module):
             out_mass = mass / mass.sum(dim=-1, keepdim=True).clamp(min=1e-9)
 
         dev = prof.device
+        flat = lambda x: x.reshape(B, P * S)
+        if parent is None:
+            parent = torch.arange(P, device=dev)[None].expand(B, P)
+        parent = torch.as_tensor(parent, device=dev, dtype=torch.long)
+        src = (torch.full((B, P), self.source_id, dtype=torch.long, device=dev)
+               if source is None
+               else torch.as_tensor(source, device=dev, dtype=torch.long))
+        # per-band error: the base column error, reduced by averaging over the
+        # levels the band actually pools (dense sampling buys precision, not
+        # extra degrees of freedom -- the leverage term handles the latter).
+        sig0 = (torch.full((B, P), self.sigma, dtype=prof.dtype, device=dev)
+                if sigma is None
+                else torch.as_tensor(sigma, device=dev, dtype=prof.dtype))
+        sig = sig0[:, :, None] / count.clamp(min=1.0).sqrt()          # (B,P,S)
+        toff = (torch.zeros(B, P, dtype=prof.dtype, device=dev)
+                if time_offset is None
+                else torch.as_tensor(time_offset, device=dev, dtype=prof.dtype))
+        band_idx = torch.arange(S, device=dev)[None, None, :].expand(B, P, S)
         meta = dict(
-            parent_id=torch.arange(P, device=dev)[None, :, None]
-                .expand(B, P, S).reshape(B, P * S),
+            parent_id=flat(parent[:, :, None].expand(B, P, S)),
             family_id=torch.full((B, P * S), self.family_id,
                                  dtype=torch.long, device=dev),
             variable_id=torch.full((B, P * S), VAR_IDS["MULTI"],
@@ -567,7 +744,18 @@ class ProfileEncoder(nn.Module):
             depth_lower=self.band_lo[None, None, :].expand(B, P, S)
                 .reshape(B, P * S).to(prof.dtype),
             depth_upper=self.band_hi[None, None, :].expand(B, P, S)
-                .reshape(B, P * S).to(prof.dtype))
+                .reshape(B, P * S).to(prof.dtype),
+            support_h=torch.full((B, P * S), self.support_radius_km,
+                                 dtype=prof.dtype, device=dev),
+            support_t=torch.full((B, P * S), self.support_t,
+                                 dtype=prof.dtype, device=dev),
+            time_offset=flat(toff[:, :, None].expand(B, P, S)),
+            sigma=flat(sig),
+            strat=flat(strat),
+            source_id=flat(src[:, :, None].expand(B, P, S)),
+            # same float/cycle + same band = the same raw measurement, whatever
+            # stream it arrived on (real-time vs delayed-mode copies merge).
+            record_id=flat(parent[:, :, None] * (S + 1) + band_idx + 1))
         return _finish_tokens(content.reshape(B, P * S, -1), coord,
                               self.coord_proj, mask, self.modality_id,
                               support_mass=out_mass.reshape(B, P * S), **meta)
@@ -584,16 +772,24 @@ class PointEncoder(nn.Module):
     """
 
     def __init__(self, variables=("TEMP", "SALT", "SST", "SSS"),
-                 d_model: int = 128, modality: str = "point"):
+                 d_model: int = 128, modality: str = "point",
+                 sigma: float | None = None, source_id: int | None = None,
+                 support_radius_km: float = 25.0, support_t: float = 5.0):
         super().__init__()
         self.variables = tuple(variables)
         self.modality_id = MODALITIES[modality]
+        self.sigma = (DEFAULT_SIGMA[modality] if sigma is None else float(sigma))
+        self.source_id = (SOURCE_IDS[modality] if source_id is None
+                          else int(source_id))
+        self.support_radius_km = float(support_radius_km)
+        self.support_t = float(support_t)
         self.var_emb = nn.Embedding(len(self.variables), 16)
         self.val_proj = nn.Linear(1 + 1 + 16, d_model)   # value, finite, var emb
         self.coord_proj = nn.Linear(N_COORD_FEATS, d_model)
 
-    def forward(self, values, var_id, lat, lon, depth, month,
-                valid=None) -> TokenBatch:
+    def forward(self, values, var_id, lat, lon, depth, month, valid=None,
+                parent=None, source=None, sigma=None,
+                time_offset=None) -> TokenBatch:
         B, N = values.shape
         if N == 0:
             return TokenBatch.empty(B, self.val_proj.out_features,
@@ -618,12 +814,34 @@ class PointEncoder(nn.Module):
                              month.to(v.dtype)], dim=-1)
         # Task 4: no support mass yet (points excluded from the first MVP's
         # mass scheme; MBCA falls back to uniform-within-modality), but
-        # provenance is stamped so duplication is detectable.
+        # provenance is stamped so duplication is detectable.  DFS-Attention
+        # does not need support_mass: a point's evidence comes from its ridge
+        # leverage under the 3-D support kernel, which already discounts a
+        # cluster of near-duplicate sensors.
+        dev, dt = values.device, v.dtype
+        if parent is None:
+            parent = torch.arange(N, device=dev)[None].expand(B, N)
+        parent = torch.as_tensor(parent, device=dev, dtype=torch.long)
+        cnst = lambda x: torch.full((B, N), float(x), dtype=dt, device=dev)
         meta = dict(
-            parent_id=torch.arange(N, device=values.device)[None].expand(B, N),
-            family_id=torch.zeros(B, N, dtype=torch.long, device=values.device),
+            parent_id=parent,
+            family_id=torch.zeros(B, N, dtype=torch.long, device=dev),
             variable_id=var_id.to(torch.long),
-            depth_lower=coord[..., 2], depth_upper=coord[..., 2])
+            depth_lower=coord[..., 2], depth_upper=coord[..., 2],
+            support_h=cnst(self.support_radius_km),
+            support_t=cnst(self.support_t),
+            time_offset=(cnst(0.0) if time_offset is None
+                         else torch.as_tensor(time_offset, device=dev, dtype=dt)
+                              .expand(B, N)),
+            sigma=(cnst(self.sigma) if sigma is None
+                   else torch.as_tensor(sigma, device=dev, dtype=dt).expand(B, N)),
+            strat=cnst(0.0),
+            source_id=(torch.full((B, N), self.source_id, dtype=torch.long,
+                                  device=dev) if source is None
+                       else torch.as_tensor(source, device=dev, dtype=torch.long)
+                            .expand(B, N)),
+            # one point = one raw measurement; var_id keeps T and S distinct
+            record_id=parent * 8 + var_id.to(torch.long).clamp(min=0) + 1)
         return _finish_tokens(content, coord, self.coord_proj, mask,
                               self.modality_id, **meta)
 

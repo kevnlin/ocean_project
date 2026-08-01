@@ -28,7 +28,7 @@ import warnings; warnings.filterwarnings("ignore")
 import numpy as np
 import torch
 
-from ocean_tokenizer import data, config as C
+from ocean_tokenizer import data, config as C, dfs
 from ocean_tokenizer.anomaly import Climatology, AnomNorm
 from ocean_tokenizer.fusion import build_fusion_model
 from ocean_tokenizer.fullrun import FullRunData, VARS
@@ -41,7 +41,7 @@ TEST_TIME_INDICES = [1933, 1935, 1936, 1938, 1942, 1946, 1952, 1953,
 CFG_NAME = "profiles_woa_surf"      # protocol_v1 primary inputs (no SSH/points)
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--variant", choices=["perceiver", "resampler", "mbca"],
+ap.add_argument("--variant", choices=["perceiver", "resampler", "mbca", "dfs"],
                 required=True)
 ap.add_argument("--seed", type=int, default=1234,
                 help="init + profile-sampling seed (headline: 1234/1235/1236)")
@@ -95,11 +95,25 @@ ap.add_argument("--grid-drop", type=float, default=0.0,
                      "Evaluation inputs stay complete.")
 ap.add_argument("--weight-decay", type=float, default=0.0,
                 help=">0 switches the optimizer to AdamW")
+ap.add_argument("--scale-aug", type=float, default=0.0,
+                help="DFS only: probability that a training step asks for a "
+                     "COARSER reconstruction (truth box-averaged over fz "
+                     "levels x fx x fx cells, query carrying that (dx, dz)). "
+                     "0 = the frozen protocol_v1 single-scale task; >0 makes "
+                     "the scale-conditioned decoder trainable, at the cost of "
+                     "no longer being a like-for-like protocol_v1 run.")
+ap.add_argument("--scale-aug-fz", default="2,4", help="vertical coarsening factors")
+ap.add_argument("--scale-aug-fx", default="2,3", help="horizontal coarsening factors")
 ap.add_argument("--val-queries", type=int, default=0,
                 help=">0: fixed random subsample of each val month's query "
                      "pool (cheap model selection; test always uses the "
                      "full pool)")
 args = ap.parse_args()
+SCALE_FZ = [int(x) for x in args.scale_aug_fz.split(",")]
+SCALE_FX = [int(x) for x in args.scale_aug_fx.split(",")]
+if args.scale_aug > 0 and args.variant != "dfs":
+    ap.error("--scale-aug is only meaningful for --variant dfs "
+             "(no other variant is scale-conditioned)")
 tag = args.tag or f"full_{args.variant}_s{args.seed}"
 if args.smoke:
     args.steps, args.val_every, args.patience = 300, 100, 3
@@ -234,6 +248,8 @@ META = {
     "input_noise": args.input_noise, "weight_decay": args.weight_decay,
     "grid_drop": args.grid_drop,
     "val_queries_subsample": args.val_queries,
+    "scale_aug": args.scale_aug,
+    "scale_aug_factors": {"fz": SCALE_FZ, "fx": SCALE_FX},
     "coord_features": "fourier_v2",
     "train_months": int(tr_idx.size), "val_months": int(va_idx.size),
     "test_months": te_idx.tolist(),
@@ -291,8 +307,20 @@ for step in range(1, args.steps + 1):
             idx_t = torch.cat([idx_t[:args.queries - oidx.numel()], oidx])
     if idx_t.numel() == 0:
         continue
-    y = ZAf_tr[t][:, idx_t].T                                   # (q,2)
-    q, _ = rd.q_from_flat(idx_t, mo)
+    qscale = None
+    if args.scale_aug > 0 and rng.random() < args.scale_aug:
+        # ask for a coarser field this step (target-resolution awareness)
+        fz = int(rng.choice(SCALE_FZ))
+        fx = int(rng.choice(SCALE_FX))
+        q, y, qscale, _ = rd.coarse_query(idx_t, mo, ZA_tr[t], fz, fx)
+        if q.shape[1] == 0:
+            continue
+        tgt_scale = dfs.TargetScale(dx_km=float(qscale[0, 0, 0]),
+                                    dz_m=float(qscale[0, :, 1].median()))
+    else:
+        y = ZAf_tr[t][:, idx_t].T                               # (q,2)
+        q, _ = rd.q_from_flat(idx_t, mo)
+        tgt_scale = None
 
     obs = rd.obs_dict(ZA_tr, surfZ_tr, t, mo, ii_t, jj_t)
     if args.grid_drop > 0:
@@ -314,7 +342,8 @@ for step in range(1, args.steps + 1):
                                 + s * torch.randn_like(obs["surf"]["field"]))
         obs["woa"]["field"] = (obs["woa"]["field"]
                                + s * torch.randn_like(obs["woa"]["field"]))
-    out = model(obs, q)
+    out = (model(obs, q, tgt_scale, qscale) if args.variant == "dfs"
+           else model(obs, q))
     loss = ((out - y[None]) ** 2).mean()
     if not torch.isfinite(loss):
         nan_streak += 1

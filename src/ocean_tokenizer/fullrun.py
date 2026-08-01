@@ -15,6 +15,7 @@ import numpy as np
 import torch
 
 from . import config as C
+from .token_api import KM_PER_DEG
 
 VARS = ("TEMP", "SALT")
 BANDS = [("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
@@ -95,6 +96,63 @@ class FullRunData:
                               month=torch.tensor([mo], device=dev),
                               depth=self.depth_t)
         return obs
+
+    def level_edges(self):
+        """(D,) lower / upper represented depth edges of the analysis levels."""
+        if getattr(self, "_edges", None) is None:
+            d = self.depth_t
+            gap = (d[1:] - d[:-1]).clamp(min=0.0)
+            lo = torch.cat([(d[:1] - gap[:1] / 2).clamp(min=0.0),
+                            d[:-1] + gap / 2])
+            hi = torch.cat([d[:-1] + gap / 2, d[-1:] + gap[-1:] / 2])
+            self._edges = (lo, hi)
+        return self._edges
+
+    def coarse_query(self, idx_t, mo, ZAvol_t, fz: int = 1, fx: int = 1):
+        """Targets for a COARSER reconstruction than the native analysis grid.
+
+        The plan's target-resolution axis needs supervision at more than one
+        scale, otherwise the scale-conditioned decoder never sees a scale it
+        must respond to.  A coarse target is the truth box-averaged over
+        ``fz`` levels x ``fx`` x ``fx`` cells — the same field asked for at a
+        lower resolution — and the query carries the box centre plus the box's
+        (dx, dz) so evidence estimation and decoding agree about what is being
+        asked.  ``fz = fx = 1`` reproduces the native protocol query exactly.
+
+        Returns (q (1,Q,4), y (Q,2), scale (1,Q,2) in (km, m)).  Queries whose
+        whole box is land/missing are dropped.
+        """
+        dev = self.dev
+        D, H, W, HW = self.D, self.H, self.W, self.HW
+        di, rem = idx_t // HW, idx_t % HW
+        ii, jj = rem // W, rem % W
+        if fz == 1 and fx == 1:
+            q, dd = self.q_from_flat(idx_t, mo)
+            y = ZAvol_t.view(2, -1)[:, idx_t].T.contiguous()
+            lo, hi = self.level_edges()
+            sc = torch.stack([torch.full_like(q[0, :, 0], 1.0 * KM_PER_DEG),
+                              (hi - lo)[dd]], dim=-1)[None]
+            return q, y, sc, dd
+        ar = lambda n: torch.arange(n, device=dev)
+        dk = (di[:, None] + ar(fz)).clamp(max=D - 1)                # (Q,fz)
+        ik = (ii[:, None] + ar(fx)).clamp(max=H - 1)                # (Q,fx)
+        jk = (jj[:, None] + ar(fx)) % W                             # (Q,fx)
+        box = ZAvol_t[:, dk[:, :, None, None], ik[:, None, :, None],
+                      jk[:, None, None, :]]                         # (2,Q,fz,fx,fx)
+        box = box.flatten(2)
+        ok = torch.isfinite(box)
+        y = torch.where(ok, box, torch.zeros_like(box)).sum(-1) / \
+            ok.sum(-1).clamp(min=1)
+        keep = ok.any(-1).all(0)                                    # (Q,)
+        lo, hi = self.level_edges()
+        depth_c = self.depth_t[dk].mean(1)
+        lat_c = self.lat_t[ik].mean(1)
+        lon_c = (self.lon_t[jj] + (fx - 1) / 2.0) % 360.0
+        q = torch.stack([lat_c, lon_c, depth_c,
+                         torch.full_like(depth_c, float(mo))], -1)[None]
+        sc = torch.stack([torch.full_like(depth_c, fx * KM_PER_DEG),
+                          hi[dk[:, -1]] - lo[dk[:, 0]]], dim=-1)[None]
+        return (q[:, keep], y.T[keep].contiguous(), sc[:, keep], dk[keep, 0])
 
     def q_from_flat(self, idx_t, mo):
         """flat (D*HW) indices -> ((1,Q,4) query coords, (Q,) depth idx)."""

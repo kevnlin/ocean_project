@@ -2,20 +2,20 @@
 
 *Architectural probes: random-init models, fixed seed, identical trunks — the invariances under test are structural, not learned. Trained-model sensitivity: Stage-A toy (converged models, held-out fields). Definitions: docs/token_measure_definition.md.*
 
-**Unit-test verdict:** `89 passed in 74.75s (0:01:14)` (suites: token API, profile encoder, fusion, mbca_invariance [A+B], token_refinement [C], profile_resampling [D]).
+**Unit-test verdict:** `114 passed in 40.36s` (suites: token API, profile encoder, fusion, mbca_invariance [A+B], token_refinement [C], profile_resampling [D]).
 
 ## Architectural probes — relative output change (lower = more invariant)
 
-| probe | Standard Perceiver | Fixed resampler | MBCA | MBCA expectation |
-|---|---|---|---|---|
-| Test A — exact partition x2 | 4.3e-04 | 3.8e-04 | 5.5e-08 | **exact (0)** |
-| Test A — exact partition x4 | 0.0012 | 0.0011 | 5.8e-08 | **exact (0)** |
-| Test A — exact partition x8 | 0.0025 | 0.0023 | 4.3e-08 | **exact (0)** |
-| Test B — duplication x2 (mass split) | 0.0023 | 0.0018 | 6.1e-08 | **exact (0)** |
-| Test B — duplication x4 (mass split) | 0.0048 | 0.0034 | 4.0e-08 | **exact (0)** |
-| Test B — duplication x8 (mass split) | 0.0069 | 0.0045 | 5.8e-08 | **exact (0)** |
-| Test C — physical 2x refinement (pred) | 0.0241 | 0.0162 | 0.0058 | smallest |
-| Test C — physical 2x refinement (latent) | 0.3544 | 0.1531 | 0.0843 | smallest |
+| probe | Standard Perceiver | Fixed resampler | MBCA | DFS-Attention | expectation |
+|---|---|---|---|---|---|
+| Test A — exact partition x2 | 0.0027 | 4.5e-04 | 8.6e-08 | 7.9e-08 | **exact (0)** for MBCA + DFS |
+| Test A — exact partition x4 | 0.0079 | 0.0013 | 1.2e-07 | 9.9e-08 | **exact (0)** for MBCA + DFS |
+| Test A — exact partition x8 | 0.0174 | 0.0028 | 1.0e-07 | 7.6e-08 | **exact (0)** for MBCA + DFS |
+| Test B — duplication x2 (mass split) | 0.0173 | 0.0022 | 1.2e-07 | 1.0e-07 | **exact (0)** for MBCA + DFS |
+| Test B — duplication x4 (mass split) | 0.0345 | 0.0040 | 1.3e-07 | 1.0e-07 | **exact (0)** for MBCA + DFS |
+| Test B — duplication x8 (mass split) | 0.0481 | 0.0054 | 1.0e-07 | 1.1e-07 | **exact (0)** for MBCA + DFS |
+| Test C — physical 2x refinement (pred) | 0.0882 | 0.0396 | 0.0327 | 0.0381 | smallest |
+| Test C — physical 2x refinement (latent) | 0.3737 | 0.1205 | 0.3561 | 0.1755 | smallest |
 
 Measure contract under physical 2x refinement: grid-modality total support mass ratio refined/coarse = **0.9950** (exact conservation = 1; token count grows ~4x).
 

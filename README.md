@@ -7,6 +7,14 @@ climate is the (fully known) ground truth, so reconstructions can be scored exac
 
 ## What's here
 
+- **DFS-Attention** — the method: scale-aware *effective-evidence* fusion of
+  heterogeneous observations. Each observation's degrees of freedom for signal are
+  estimated by ridge leverage under a three-dimensional, stratification- and
+  target-resolution-aware support kernel, transported through a fixed-budget
+  resampler without loss, and fused against a climatological background
+  (`ocean_tokenizer.dfs`, `fusion.DFSAttention`, [`docs/dfs_attention.md`](docs/dfs_attention.md)).
+  MBCA — hand-designed physical weights + log-weighted attention — is retained as
+  the baseline it is compared against.
 - **Unified data pipeline** — CESM2-LE (ground truth) + WOA23 (prior) standardized to a
   common 1° / 20-level grid as Zarr (`experiments/standardize.py`, `ocean_tokenizer.data`).
 - **Four lossless tokenizers** — grid-patch, volume-patch, vertical-profile, point-query
@@ -37,6 +45,8 @@ super-resolution claims.
 
 ```
 src/ocean_tokenizer/   core package: config, data, tokenizers, argo, unet, baselines, metrics
+                       + token_api (token schema), dfs (evidence estimator),
+                         fusion (perceiver / resampler / MBCA / DFS-Attention)
 src/baselines/         reference models (nesperso_pcamlp / osnet_mlp / nardelli_lstm) + README
                        + build_comparison_table.py
 experiments/           runnable scripts 00–05 + standardize.py
@@ -57,6 +67,12 @@ pip install -r requirements.txt
 ## Reproduce
 
 ```bash
+# DFS-Attention
+python experiments/23_dfs_evidence_probes.py   # -> reports/dfs_evidence_probes.md
+python experiments/18_full_train.py --variant dfs --seed 1234 --tag fullA_dfs_s1234
+python experiments/19_full_eval.py  --tag fullA_dfs_s1234
+python experiments/25_dfs_report.py            # -> reports/dfs_success_criterion.md
+
 # core pipeline
 python experiments/00_data_cards.py            # data cards + common grid
 python experiments/01_tokenizer_roundtrip.py   # lossless round-trip check

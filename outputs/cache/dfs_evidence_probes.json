@@ -1,0 +1,353 @@
+{
+ "meta": {
+  "seconds": 73.34022450447083,
+  "torch": "2.12.1+cu130",
+  "scale": {
+   "protocol": {
+    "dx_km": 111.195,
+    "dz_m": 50.0,
+    "dt_d": 30.0
+   },
+   "coarse": {
+    "dx_km": 555.9749999999999,
+    "dz_m": 250.0,
+    "dt_d": 90.0
+   },
+   "fine": {
+    "dx_km": 27.79875,
+    "dz_m": 10.0,
+    "dt_d": 5.0
+   }
+  }
+ },
+ "results": {
+  "duplication": {
+   "base_dfs": 95.78106689453125,
+   "base_tokens": 96,
+   "rows": [
+    {
+     "case": "one level token",
+     "factor": 2,
+     "tokens": 97,
+     "dfs": 95.78106689453125,
+     "d_dfs": 0.0,
+     "dy_perceiver": 0.0009775635553523898,
+     "dy_resampler": 0.002059811959043145,
+     "dy_mbca": 0.00030430726474151015,
+     "dy_dfs": 9.518170429601014e-08
+    },
+    {
+     "case": "one level token",
+     "factor": 4,
+     "tokens": 99,
+     "dfs": 95.78106689453125,
+     "d_dfs": 0.0,
+     "dy_perceiver": 0.0028636872302740812,
+     "dy_resampler": 0.006163498852401972,
+     "dy_mbca": 0.0009081548196263611,
+     "dy_dfs": 1.111284433363835e-07
+    },
+    {
+     "case": "one level token",
+     "factor": 8,
+     "tokens": 103,
+     "dfs": 95.78106689453125,
+     "d_dfs": 0.0,
+     "dy_perceiver": 0.006380927283316851,
+     "dy_resampler": 0.014293049462139606,
+     "dy_mbca": 0.002096988959237933,
+     "dy_dfs": 1.026978040385984e-07
+    },
+    {
+     "case": "6 whole profiles",
+     "factor": 2,
+     "tokens": 120,
+     "dfs": 95.78107452392578,
+     "d_dfs": 7.62939453125e-06,
+     "dy_perceiver": 0.0021925470791757107,
+     "dy_resampler": 0.001172838732600212,
+     "dy_mbca": 0.002290204633027315,
+     "dy_dfs": 1.0146185758230786e-07
+    },
+    {
+     "case": "6 whole profiles",
+     "factor": 4,
+     "tokens": 168,
+     "dfs": 95.78106689453125,
+     "d_dfs": 0.0,
+     "dy_perceiver": 0.004560199100524187,
+     "dy_resampler": 0.0025853493716567755,
+     "dy_mbca": 0.004763832315802574,
+     "dy_dfs": 1.1549646217190457e-07
+    },
+    {
+     "case": "6 whole profiles",
+     "factor": 8,
+     "tokens": 264,
+     "dfs": 95.78108215332031,
+     "d_dfs": 1.52587890625e-05,
+     "dy_perceiver": 0.006576626095920801,
+     "dy_resampler": 0.003945729695260525,
+     "dy_mbca": 0.006865947041660547,
+     "dy_dfs": 1.1259250243256247e-07
+    },
+    {
+     "case": "real-time + delayed-mode",
+     "factor": 2,
+     "tokens": 192,
+     "dfs": 95.09696197509766,
+     "d_dfs": 0.0,
+     "dy_perceiver": 0.0005964640877209604,
+     "dy_resampler": 0.00028422134346328676,
+     "dy_mbca": 9.849685511653661e-08,
+     "dy_dfs": 1.0118051818608365e-07
+    }
+   ]
+  },
+  "depth_complementarity": [
+   {
+    "bands": 1,
+    "dfs": 0.9980040192604065,
+    "depth_span": 45.0
+   },
+   {
+    "bands": 2,
+    "dfs": 1.9966940879821777,
+    "depth_span": 186.0
+   },
+   {
+    "bands": 3,
+    "dfs": 2.9942002296447754,
+    "depth_span": 408.0
+   },
+   {
+    "bands": 4,
+    "dfs": 3.990878105163574,
+    "depth_span": 985.0
+   }
+  ],
+  "vertical_density": [
+   {
+    "target": "protocol (\u0394z = 50 m)",
+    "column": "smooth",
+    "sampling_dbar": 10.0,
+    "levels": 30,
+    "tokens": 30,
+    "dfs": 7.138615608215332
+   },
+   {
+    "target": "protocol (\u0394z = 50 m)",
+    "column": "smooth",
+    "sampling_dbar": 2.0,
+    "levels": 149,
+    "tokens": 30,
+    "dfs": 8.197848320007324
+   },
+   {
+    "target": "protocol (\u0394z = 50 m)",
+    "column": "thermocline",
+    "sampling_dbar": 10.0,
+    "levels": 30,
+    "tokens": 30,
+    "dfs": 8.422919273376465
+   },
+   {
+    "target": "protocol (\u0394z = 50 m)",
+    "column": "thermocline",
+    "sampling_dbar": 2.0,
+    "levels": 149,
+    "tokens": 30,
+    "dfs": 9.616521835327148
+   },
+   {
+    "target": "fine (\u0394z = 10 m)",
+    "column": "smooth",
+    "sampling_dbar": 10.0,
+    "levels": 30,
+    "tokens": 30,
+    "dfs": 9.351183891296387
+   },
+   {
+    "target": "fine (\u0394z = 10 m)",
+    "column": "smooth",
+    "sampling_dbar": 2.0,
+    "levels": 149,
+    "tokens": 30,
+    "dfs": 10.799421310424805
+   },
+   {
+    "target": "fine (\u0394z = 10 m)",
+    "column": "thermocline",
+    "sampling_dbar": 10.0,
+    "levels": 30,
+    "tokens": 30,
+    "dfs": 17.874401092529297
+   },
+   {
+    "target": "fine (\u0394z = 10 m)",
+    "column": "thermocline",
+    "sampling_dbar": 2.0,
+    "levels": 149,
+    "tokens": 30,
+    "dfs": 19.73502540588379
+   }
+  ],
+  "resolution_sweep": {
+   "smooth": [
+    {
+     "dz_m": 250.0,
+     "dfs": 4.131778240203857
+    },
+    {
+     "dz_m": 100.0,
+     "dfs": 6.031878471374512
+    },
+    {
+     "dz_m": 50.0,
+     "dfs": 8.197848320007324
+    },
+    {
+     "dz_m": 25.0,
+     "dfs": 9.915373802185059
+    },
+    {
+     "dz_m": 10.0,
+     "dfs": 10.799421310424805
+    },
+    {
+     "dz_m": 5.0,
+     "dfs": 10.957157135009766
+    }
+   ],
+   "thermocline": [
+    {
+     "dz_m": 250.0,
+     "dfs": 4.156972885131836
+    },
+    {
+     "dz_m": 100.0,
+     "dfs": 6.312884330749512
+    },
+    {
+     "dz_m": 50.0,
+     "dfs": 9.616521835327148
+    },
+    {
+     "dz_m": 25.0,
+     "dfs": 14.30722713470459
+    },
+    {
+     "dz_m": 10.0,
+     "dfs": 19.73502540588379
+    },
+    {
+     "dz_m": 5.0,
+     "dfs": 21.110675811767578
+    }
+   ]
+  },
+  "horizontal": [
+   {
+    "case": "uniform (global)",
+    "profiles": 24,
+    "tokens": 96,
+    "dfs": 95.78076171875
+   },
+   {
+    "case": "clustered (2 deg box)",
+    "profiles": 24,
+    "tokens": 96,
+    "dfs": 30.69457244873047
+   },
+   {
+    "case": "half the profiles, each twice (new floats)",
+    "profiles": 24,
+    "tokens": 96,
+    "dfs": 47.94519805908203
+   },
+   {
+    "case": "half the profiles, each twice (same float)",
+    "profiles": 24,
+    "tokens": 96,
+    "dfs": 47.890533447265625
+   },
+   {
+    "case": "16 profiles, one water mass",
+    "profiles": 16,
+    "tokens": 64,
+    "dfs": 23.539234161376953
+   },
+   {
+    "case": "16 profiles across a front",
+    "profiles": 16,
+    "tokens": 64,
+    "dfs": 23.792516708374023
+   }
+  ],
+  "five_km_pair": [
+   {
+    "target": "coarse (5 deg)",
+    "dfs_pair": 4.067691326141357,
+    "dfs_single": 3.9410104751586914,
+    "ratio": 1.0321442563477492
+   },
+   {
+    "target": "protocol (1 deg)",
+    "dfs_pair": 5.51476526260376,
+    "dfs_single": 3.990878105163574,
+    "ratio": 1.381842571304925
+   },
+   {
+    "target": "fine (0.25 deg)",
+    "dfs_pair": 6.643170356750488,
+    "dfs_single": 3.9909396171569824,
+    "ratio": 1.6645629836621958
+   },
+   {
+    "target": "very fine (5 km)",
+    "dfs_pair": 6.649225234985352,
+    "dfs_single": 3.9909396171569824,
+    "ratio": 1.6660801397246012
+   }
+  ],
+  "grid_products": [
+   {
+    "case": "20x20 cells/patch",
+    "patch_deg": 20.0,
+    "tokens": 9,
+    "dfs": 8.017817497253418
+   },
+   {
+    "case": "10x10 cells/patch",
+    "patch_deg": 10.0,
+    "tokens": 36,
+    "dfs": 32.07126998901367
+   },
+   {
+    "case": "5x5 cells/patch",
+    "patch_deg": 5.0,
+    "tokens": 144,
+    "dfs": 128.2730712890625
+   },
+   {
+    "case": "2x2 cells/patch",
+    "patch_deg": 2.0,
+    "tokens": 900,
+    "dfs": 657.8427124023438
+   },
+   {
+    "case": "1x1 cells/patch",
+    "patch_deg": 1.0,
+    "tokens": 3600,
+    "dfs": 1011.023681640625
+   },
+   {
+    "case": "two overlapping products (5x5)",
+    "patch_deg": 5.0,
+    "tokens": 288,
+    "dfs": 224.0987548828125
+   }
+  ],
+  "grid_single_5x5": 128.2730712890625
+ }
+}
