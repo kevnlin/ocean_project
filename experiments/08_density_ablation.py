@@ -36,6 +36,12 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--seed", type=int, required=True,
                 help="sweep seed (profile sampling + torch); month split stays C.SEED")
 ap.add_argument("--densities", type=str, default="0,100,300,750,1500,3000")
+ap.add_argument("--out-suffix", default="",
+                help="appended to the cache filenames.  The default empty "
+                     "suffix reproduces the original week-2 behaviour and "
+                     "OVERWRITES density_ablation_seed<seed>.json; pass e.g. "
+                     "--out-suffix _ext when extending the sweep, then merge "
+                     "with experiments/merge_density_json.py")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 DENSITIES = [int(x) for x in args.densities.split(",")]
@@ -87,8 +93,10 @@ def git_commit():
 
 results = []
 depth_tables = {}
-out_json = os.path.join(C.CACHE, f"density_ablation_seed{args.seed}.json")
-out_npz = os.path.join(C.CACHE, f"density_ablation_seed{args.seed}_depth.npz")
+out_json = os.path.join(C.CACHE,
+                        f"density_ablation_seed{args.seed}{args.out_suffix}.json")
+out_npz = os.path.join(C.CACHE,
+                       f"density_ablation_seed{args.seed}{args.out_suffix}_depth.npz")
 
 def flush_outputs():
     run_cfg = {

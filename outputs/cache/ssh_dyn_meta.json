@@ -1,0 +1,21 @@
+{
+  "task": "make_ssh",
+  "method": "TEOS-10 steric height (baroclinic only)",
+  "p_ref_dbar": 990.0,
+  "years": [
+    1985,
+    2014
+  ],
+  "smoke": false,
+  "git_commit": "06eb1b49f355d239e8f51edd9b2389b0295b0204",
+  "n_months": 360,
+  "diagnostics": {
+    "coverage_frac_of_ocean": 0.8668475056020757,
+    "ssh_mean_m": 1.3950732946395874,
+    "ssh_anom_std_m": 0.028935829177498817,
+    "ssh_anom_std_cm": 2.893582820892334,
+    "corr_ssh_anom_vs_sst_anom": 0.4704763889312744,
+    "corr_ssh_anom_vs_temp100_300_anom": 0.7080573439598083
+  },
+  "cpu_hours": 0.221
+}
