@@ -12,7 +12,11 @@
 # --- Runtime artifacts ---
 /outputs/*.log
 /outputs/*.pid
+/outputs/logs/
 /outputs/cache/synthetic_argo_example.npz
+# Pseudo-SSH archive: 360 monthly (180,360) fields, ~90 MB — regenerate with
+# experiments/28_make_ssh.py (its *_meta.json diagnostics ARE tracked).
+/outputs/cache/ssh_dyn*.npz
 
 # --- Python ---
 __pycache__/
