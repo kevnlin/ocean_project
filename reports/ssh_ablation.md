@@ -1,9 +1,8 @@
 # Phase 4 — the pseudo-SSH ("satellite altimeter") modality
 
-*Status 2026-08-08: **modality built and characterised; the U-Net ablation is
-written and smoke-verified but not yet run** — every GPU on the box is at
-73-75 GB / 80 GB. §3 states the hypothesis before any result exists; §4 gives
-the exact launch command.*
+*Status 2026-08-08: **modality built, characterised, and the ablation run —
+both pre-registered hypotheses confirmed** (§5). §3 states the hypothesis as it
+was written before any model was trained, and has not been edited since.*
 
 The advisor's tokenization list is "argo profile, satellite altimeter,
 satellite images (2 dimension)… take sst ssh". The pipeline had SST and SSS but
@@ -90,15 +89,16 @@ does not peek at the outcome of §3.
 > the WOA prior. **A negative result is a result** and will be reported as one,
 > with this paragraph unedited.
 
-## 4. Experimental design (written, smoke-verified, awaiting a GPU)
+## 4. Experimental design
 
-[experiments/29_ssh_ablation.py](../experiments/29_ssh_ablation.py). Two arms,
+[experiments/29_ssh_ablation.py](../experiments/29_ssh_ablation.py). Arms
 identical in **every** respect except the cfg:
 
-| arm | cfg | c_in |
-|---|---|---|
-| control | `profiles_woa_surf` | 10 |
-| treatment | `profiles_woa_surf_ssh` | 12 |
+| arm | cfg | c_in | role |
+|---|---|---|---|
+| control | `profiles_woa_surf` | 10 | the established baseline |
+| treatment | `profiles_woa_surf_ssh` | 12 | + SSH value and finite flag |
+| `profiles_only` | `profiles` | 6 | not part of this ablation — the M1 like-for-like row, see [oi_baseline.md](oi_baseline.md) |
 
 Same seed, same profile draws, same epochs, same validation-selected checkpoint
 rule, same 12 pinned test months. The control is retrained inside this script
@@ -117,35 +117,81 @@ every pre-existing config is **bit-identical** with the SSH code present, so the
 certified checkpoints keep their c_in = 10 and every historical number stays
 reproducible.
 
-**Launch when a card frees up** (`nvidia-smi` first):
+**The command actually used.** Every card on this box is held by other people's
+jobs (~73 GB of 80 GB each), so the run had to fit in the remainder. The
+training stack is ~17 GB at c_in = 12, which does not; `--cpu-tensors` keeps it
+in host memory and ships one batch at a time, `--fwd-batch 16` caps the
+inference peak (batch 64 reserves ~6.9 GB, batch 16 ~1.7 GB), and
+`--mem-cap-gb` is a hard ceiling so a runaway allocation fails *this* process
+rather than OOM-killing a co-tenant. Measured peak: **3.9 GB**.
 
 ```bash
-CUDA_VISIBLE_DEVICES=N python experiments/29_ssh_ablation.py
-# or, on a partially-occupied card (~4 GB instead of ~17 GB):
-CUDA_VISIBLE_DEVICES=N python experiments/29_ssh_ablation.py --cpu-tensors
+CUDA_VISIBLE_DEVICES=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+  python experiments/29_ssh_ablation.py --ssh-cache outputs/cache/ssh_dyn.npz \
+  --cpu-tensors --fwd-batch 16 --mem-cap-gb 5.5 \
+  --arms control_pws,treat_pws_ssh,profiles_only
 ```
 
-Then paste the resulting table into §5 and answer H1/H2 against §3 **without
-editing §3**.
+(`expandable_segments` matters here: it brings reserved memory down from
+4.83 GB to 3.62 GB by making it track allocated memory instead of over-reserving.)
 
 ## 5. Results
 
-*Pending — no GPU was free on 2026-08-08. `outputs/cache/ssh_ablation.json` will
-carry the numbers; the script prints the control/treatment delta per band
-directly.*
+*Run 2026-08-08 on GPU 4 (shared card, `--cpu-tensors --fwd-batch 16
+--mem-cap-gb 5.5`, 3.9 GB peak), 67.5 min for three arms. Seed 1234,
+`outputs/cache/ssh_ablation.json`. **1 seed — not yet a 3-seed headline.***
 
-| | TEMP full | 0–100 m | 100–300 m | 300–max | SALT full |
+TEMP, unobserved-only anomaly RMSE (°C), 12 pinned test months:
+
+| | full column | 0–100 m | 100–300 m | 300–max | SALT full |
 |---|---|---|---|---|---|
-| control `profiles_woa_surf` | — | — | — | — | — |
-| treatment `profiles_woa_surf_ssh` | — | — | — | — | — |
-| **delta** (negative = SSH helps) | — | — | — | — | — |
+| control `profiles_woa_surf` | 0.1586 | 0.1582 | 0.1937 | 0.0838 | 0.0331 |
+| treatment `profiles_woa_surf_ssh` | **0.1366** | **0.1401** | **0.1631** | **0.0718** | **0.0316** |
+| **delta** (negative = SSH helps) | **−0.0220** | −0.0182 | **−0.0306** | −0.0120 | −0.0015 |
+| **relative gain** | **+13.9 %** | +11.5 % | **+15.8 %** | +14.3 % | +4.5 % |
+
+The control arm reproduces the certified checkpoint closely (0.1586 vs 0.1580
+for `audit_depthwise_e40`), so the comparison is anchored to the established
+baseline rather than to an idiosyncratic re-training.
+
+### Verdict against §3 — both hypotheses confirmed
+
+**H1 — confirmed.** Full-column TEMP improves by **13.9 %** (0.1586 → 0.1366).
+For scale, that single channel buys about as much as **doubling the profile
+count**: the density curve needs ~1500 → ~2800 profiles/month to achieve the
+same drop. SALT improves too, by a smaller 4.5 %, which is consistent with
+steric height being dominated by the thermal term.
+
+**H2 — confirmed, on both readings.** The 100–300 m band gains the most in
+absolute terms (−0.0306 °C, vs −0.0182 at 0–100 m and −0.0120 at 300–max) *and*
+in relative terms (+15.8 %, vs +11.5 % and +14.3 %). This is the pre-registered
+prediction and the mechanism behind it: SSH integrates the density structure of
+the whole column, so it carries thermocline-displacement information that SST
+and SSS — which see only the surface — cannot.
+
+Two independent pieces of evidence now point the same way: the modality's own
+correlation structure (§2: 0.708 with 100–300 m temperature vs 0.470 with SST,
+computed before any model was trained) and the ablation's band ordering.
+
+**A caveat that the numbers cannot settle.** §1.2 stands: the pseudo-SSH is
+computed *from* the TEMP/SALT the model is asked to reconstruct. A 13.9 % gain
+from a derived field is an upper bound on what a real altimeter would give,
+because real ADT carries a barotropic component we omit, plus measurement and
+representativeness error we do not simulate. The honest claim is **"a vertically
+integrated surface constraint helps, and helps most in the thermocline"** — not
+"altimetry buys 14 %". Phase 5 against CMEMS L4 ADT is what would test the
+latter.
 
 ## 6. Next
 
-* Run the ablation (above), 3 seeds for the headline.
-* If H2 holds, the same channel should go into the shared-latent model as a
-  third `GridPatchEncoder` stream (540 extra tokens/month) and be re-tested
-  there — the fusion core is where a thermocline constraint should pay off most.
-* Route B (true CESM2-LE SSH) stays on the backlog. Ask how the original 1°
-  regrid was done before attempting it; until then no claim about *real*
-  altimetry may be made from this field.
+* **3 seeds** (1235/1236) before this becomes a headline row.
+* Add the channel to the shared-latent model as a third `GridPatchEncoder`
+  stream (+540 tokens/month) and re-test there — on this evidence the fusion
+  core is where a thermocline constraint should pay off most.
+* The gain is large enough to change the Phase-2 story: at 1500 profiles the
+  SSH-equipped U-Net (0.1366) already beats what the profile-only system needs
+  ~2800 profiles to reach. Worth re-running the density curve *with* SSH to see
+  whether the 0.1 °C crossing moves left of 4000.
+* Route B (true CESM2-LE SSH) stays on the backlog and is now clearly worth it —
+  it is the only way to separate "vertically integrated constraint" from
+  "derived from the target". Ask how the original 1° regrid was done first.

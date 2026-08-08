@@ -63,10 +63,20 @@ for s in SEEDS:
 D = sorted(agg["TEMP"])
 if not D:
     raise SystemExit(f"no rows for method={args.method}")
-n_seeds = len(agg["TEMP"][D[0]])
-print(f"method={args.method}  densities={D}  seeds={n_seeds}\n")
+# Seed count can differ per density: an extension run (4000/6000) may exist for
+# only one seed while the original curve has three.  Say so rather than letting
+# a "+/- 0.0000" masquerade as a tight 3-seed error bar.
+n_by_density = {int(n): len(agg["TEMP"][n]) for n in D}
+print(f"method={args.method}  densities={D}")
+print(f"seeds per density: {n_by_density}")
+if len(set(n_by_density.values())) > 1:
+    single = [n for n, c in n_by_density.items() if c == 1]
+    print(f"  NOTE: {single} are single-seed; their '+/- 0.0000' is not an "
+          f"error bar, it is one measurement.")
+print()
 
-summary = {"method": args.method, "seeds": SEEDS, "densities": D, "by_var": {}}
+summary = {"method": args.method, "seeds": SEEDS, "densities": D,
+           "n_seeds_by_density": n_by_density, "by_var": {}}
 fits = {}
 for v in VARS:
     mean = np.array([np.mean(agg[v][n]) for n in D])

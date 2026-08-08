@@ -337,12 +337,21 @@ def _unet_channels(sample, grid, norm, cfg):
 
 
 def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device,
-                       unobs_loss=False):
+                       unobs_loss=False, hold_device=None):
     """Depthwise 2D U-Net: one shared 2D net applied per depth slice.
 
     ``unobs_loss``: if True the training loss is restricted to *unobserved*
     ocean cells (profile columns excluded) so the model is scored on its
     interpolation skill rather than on copying the obs it is fed.
+
+    ``hold_device``: where the training stack lives.  ``None`` (the default)
+    keeps it on ``device``, which is the original behaviour and is bit-identical
+    to every result committed before this argument existed.  Pass ``"cpu"`` to
+    hold it in host memory and ship one batch at a time: the stack is ~16 GB for
+    312 months at 10 channels, which does not fit alongside other people's jobs
+    on a shared card, whereas a single batch needs well under 4 GB.  The RNG
+    stream is deliberately untouched — ``randperm`` still draws on ``device`` —
+    so the two paths differ only in where tensors are stored.
     """
     D, H, W = grid.ndepth, grid.nlat, grid.nlon
     ocean_t = torch.from_numpy(grid.ocean.astype("float32")).to(device)
@@ -360,25 +369,32 @@ def train_predict_unet(train_samples, test_samples, grid, norm, cfg, device,
     # flatten to slices
     Xall = np.concatenate([x for x, _ in Xtr], axis=0)       # (N*D, C, H, W)
     Yall = np.concatenate([y for _, y in Xtr], axis=0)       # (N*D, 2, H, W)
-    Xall_t = torch.from_numpy(Xall).to(device)
-    Yall_t = torch.from_numpy(Yall).to(device)
+    hold = hold_device or device
+    Xall_t = torch.from_numpy(Xall).to(hold)
+    Yall_t = torch.from_numpy(Yall).to(hold)
     # per-slice spatial loss weight (unobserved ocean, or all ocean)
     if unobs_loss:
         wm = np.stack([np.repeat(s["unobs_mask"].astype("float32")[None], D, axis=0)
                        for s in train_samples], axis=0).reshape(-1, H, W)  # (N*D,H,W)
-        Wall_t = torch.from_numpy(wm).to(device)
+        Wall_t = torch.from_numpy(wm).to(hold)
     else:
-        Wall_t = ocean_t[None].expand(Xall_t.shape[0], H, W)
+        Wall_t = ocean_t.to(hold)[None].expand(Xall_t.shape[0], H, W)
     N = Xall_t.shape[0]
     nb = int(np.ceil(N / C.UNET_BATCH))
+    offload = hold != device
     for ep in range(C.UNET_EPOCHS):
         perm = torch.randperm(N, device=device)
         for b in range(nb):
             sl = perm[b * C.UNET_BATCH:(b + 1) * C.UNET_BATCH]
+            if offload:
+                sl = sl.to(hold)
+            xb, yb, wb = Xall_t[sl], Yall_t[sl], Wall_t[sl]
+            if offload:
+                xb, yb, wb = xb.to(device), yb.to(device), wb.to(device)
             opt.zero_grad()
-            out = model(Xall_t[sl])
-            w = Wall_t[sl][:, None]                          # (b,1,H,W)
-            loss = (((out - Yall_t[sl]) ** 2) * w).sum() / (w.sum() * len(VARS) + 1e-8)
+            out = model(xb)
+            w = wb[:, None]                                  # (b,1,H,W)
+            loss = (((out - yb) ** 2) * w).sum() / (w.sum() * len(VARS) + 1e-8)
             loss.backward(); opt.step()
 
     preds = []

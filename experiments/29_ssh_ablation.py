@@ -66,7 +66,15 @@ TEST_TIME_INDICES = [1933, 1935, 1936, 1938, 1942, 1946, 1952, 1953,
 BANDS = [("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-max", 300.0, 1e9)]
 ARMS = {"control_pws": ("profiles", "woa", "surf"),
-        "treat_pws_ssh": ("profiles", "woa", "surf", "ssh")}
+        "treat_pws_ssh": ("profiles", "woa", "surf", "ssh"),
+        # Not part of the SSH ablation: the M1 like-for-like row.  OI sees only
+        # profiles, so a profiles-only U-Net isolates "whose interpolator is
+        # better" from "whose inputs are richer".  It belongs here because this
+        # script consumes the RNG in the same order as 13_joint_audit.py
+        # (276 train -> 36 val -> 12 test), so its test months carry the *same*
+        # profile draws that 27_oi_vs_unet.py scored OI on -- the two numbers
+        # are directly comparable without re-deriving anything.
+        "profiles_only": ("profiles",)}
 VARS = B.VARS
 
 ap = argparse.ArgumentParser()
@@ -75,6 +83,14 @@ ap.add_argument("--epochs", type=int, default=C.UNET_EPOCHS)
 ap.add_argument("--ssh-cache", default=None)
 ap.add_argument("--cpu-tensors", action="store_true",
                 help="keep the training stack in host memory (low GPU memory)")
+ap.add_argument("--fwd-batch", type=int, default=64,
+                help="depth-slices per inference forward pass.  Inference peaks "
+                     "higher than training (no gradient checkpointing, whole "
+                     "batch resident): 64 reserves ~6.9 GB vs ~4.8 GB for a "
+                     "training step.  Drop to 16 (~1.7 GB) when sharing a card.")
+ap.add_argument("--mem-cap-gb", type=float, default=None,
+                help="hard per-process GPU memory ceiling, so a co-tenant's job "
+                     "cannot be OOM-killed by this one")
 ap.add_argument("--arms", default="control_pws,treat_pws_ssh")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
@@ -82,7 +98,17 @@ ARM_NAMES = args.arms.split(",")
 
 t0 = time.time()
 device = C.DEVICE if torch.cuda.is_available() else "cpu"
-print(f"device={device} cpu_tensors={args.cpu_tensors} smoke={args.smoke}", flush=True)
+if args.mem_cap_gb and device == "cuda":
+    # This box is shared: other people's jobs already hold ~73 GB of the card.
+    # A hard ceiling means a runaway allocation here fails *this* process
+    # instead of OOM-killing a co-tenant's training run.
+    total = torch.cuda.get_device_properties(0).total_memory
+    torch.cuda.set_per_process_memory_fraction(
+        min(args.mem_cap_gb * 1e9 / total, 1.0))
+    print(f"GPU memory ceiling: {args.mem_cap_gb:.1f} GB "
+          f"({args.mem_cap_gb*1e9/total:.1%} of the card)", flush=True)
+print(f"device={device} cpu_tensors={args.cpu_tensors} "
+      f"fwd_batch={args.fwd_batch} smoke={args.smoke}", flush=True)
 grid = data.CommonGrid()
 
 tr_idx = data.select_month_indices(C.GT_SOURCE, TRAIN_YEARS)
@@ -173,8 +199,9 @@ def run_arm(name, cfg):
     def predict(X_t, samples):
         model.eval()
         outs = []
-        for i in range(0, X_t.shape[0], 64):
-            outs.append(model(X_t[i:i + 64].to(device)).float().cpu().numpy())
+        for i in range(0, X_t.shape[0], args.fwd_batch):
+            outs.append(model(X_t[i:i + args.fwd_batch].to(device))
+                        .float().cpu().numpy())
         model.train()
         out = np.concatenate(outs, 0).reshape(len(samples), D, len(VARS), H, W
                                               ).transpose(0, 2, 1, 3, 4)

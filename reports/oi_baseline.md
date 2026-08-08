@@ -21,13 +21,16 @@
 | Climatology floor (train-only) | 0.5520 | 0.1305 | +0.000 |
 | Nearest-profile fill | 0.9670 | 0.3119 | -0.752 |
 | **Optimal interpolation** | 0.2287 | 0.0528 | +0.586 |
+| Depthwise U-Net (profiles_only) | 0.1829 | 0.0489 | +0.669 |
 | Depthwise U-Net (profiles_woa_surf, certified) | 0.1580 | 0.0325 | +0.714 |
 
 ### Verdict
 
 The full system (depthwise U-Net, profiles+WOA+SST/SSS) **beats** optimal interpolation: **+30.9 % on TEMP** (0.2287 → 0.1580 degC) and **+38.4 % on SALT** (0.0528 → 0.0325 PSU).
 
-> The `profiles_only` U-Net row (the like-for-like information comparison) still needs a free GPU: `CUDA_VISIBLE_DEVICES=N python experiments/27_oi_vs_unet.py --train-profiles-only`. Until it lands, the comparison above confounds *better interpolator* with *more inputs*.
+Like-for-like (both see profiles only): U-Net 0.1829 vs OI 0.2287 degC (+20.0 %). This isolates *whose interpolator is better* from *whose inputs are richer*: **even on identical information the learned interpolator wins**, and the remaining 10.9 points of the full system's margin are what the extra modalities buy.
+
+> Adding the pseudo-SSH channel (Phase 4, [ssh_ablation.md](ssh_ablation.md)) takes the same architecture to **0.1366 degC**, widening the margin over OI to **+40.3 %** at unchanged profile count. That row is not in the table above because this comparison is against the *certified* system; it is the direction of travel.
 
 ### Context: where OI sits among the existing protocol_v1 rows
 
@@ -49,6 +52,7 @@ The full system (depthwise U-Net, profiles+WOA+SST/SSS) **beats** optimal interp
 | Climatology floor (train-only) | 0.6485 | 0.5844 | 0.2140 |
 | Nearest-profile fill | 1.0510 | 1.0000 | 0.7342 |
 | **Optimal interpolation** | 0.2509 | 0.2622 | 0.0953 |
+| Depthwise U-Net (profiles_only) | 0.2035 | 0.2037 | 0.0867 |
 | Depthwise U-Net (profiles_woa_surf, certified) | 0.1589 | 0.1916 | 0.0837 |
 
 Gain of the U-Net over OI, by band: **0-100m** +36.7 % · **100-300m** +26.9 % · **300-max** +12.1 %.
@@ -57,7 +61,17 @@ Gain of the U-Net over OI, by band: **0-100m** +36.7 % · **100-300m** +26.9 % �
 
 Note also that OI is the *only* method here whose 100-300 m error exceeds its 0-100 m error (0.2622 > 0.2509): with profiles alone, the thermocline is genuinely the hardest layer. The U-Net inverts that ordering by using the surface fields.
 
-**Testable prediction this makes**: the `profiles_only` U-Net (pending a GPU) should show a *much* smaller 0-100 m advantage over OI than the full system does, because it loses exactly the modality that produces this band's gain. If it does not, this explanation is wrong and the advantage is coming from the convolutional prior instead.
+**Testable prediction this makes**: the `profiles_only` U-Net should show a *much* smaller 0-100 m advantage over OI than the full system does, because it loses exactly the modality that produces this band's gain. If it does not, this explanation is wrong and the advantage is coming from the convolutional prior instead.
+
+#### Prediction resolved
+
+| band | OI | profiles_only | gain vs OI | full system | gain vs OI | edge lost (pts) |
+|---|---|---|---|---|---|---|
+| 0-100m | 0.2509 | 0.2035 | +18.9 % | 0.1589 | +36.7 % | **17.8** |
+| 100-300m | 0.2622 | 0.2037 | +22.3 % | 0.1916 | +26.9 % | **4.6** |
+| 300-max | 0.0953 | 0.0867 | +9.0 % | 0.0837 | +12.1 % | **3.2** |
+
+**Confirmed.** Removing SST/SSS costs the U-Net **17.8 points** of its edge over OI at 0-100 m, against only 4.6 at 100-300 m and 3.2 at 300-max — roughly a 4x larger effect where the surface data actually lives. The 0-100 m gain really is the surface modality, not the convolutional prior.
 
 ## 3. Regional check — North Atlantic box (20-55 N, 275-335 E, 2100 cells)
 
@@ -70,6 +84,8 @@ Gulf Stream + subtropical gyre — a high-eddy-energy region where interpolation
 | Nearest-profile fill | 1.3265 | 0.3437 | 1.37x |
 | **Optimal interpolation** | 0.3139 | 0.0625 | 1.37x |
 | Depthwise U-Net (profiles_woa_surf, certified) | 0.1938 | 0.0335 | 1.23x |
+
+*(The profiles_only row is global-only — it comes from `29_ssh_ablation.py`, which does not compute the regional box.)*
 
 Regional margin over OI: +38.3 % vs +30.9 % globally — consistent with the global conclusion.
 

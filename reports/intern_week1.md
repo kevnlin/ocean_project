@@ -3,10 +3,19 @@
 *2026-08-08. Branch `intern/oi-multimodal/setup`. Execution of
 [Plan_OI_MultiModal_RealData.md](../Plan_OI_MultiModal_RealData.md).*
 
-**Headline**: the OI baseline (milestone M1) is implemented, tested, tuned and
-scored; the SSH modality is built and characterised; the architecture spec is
-written. Two GPU-bound experiments are written and smoke-verified but not run —
-every card on the box was at 73–75 GB / 80 GB all day.
+**Headline**
+
+1. **M1 answered**: the learned system beats optimal interpolation by **+30.9 %**
+   (TEMP), and still by **+20.0 %** when both see *only* profiles.
+2. **SSH helps, exactly as pre-registered**: +13.9 % full-column TEMP, largest
+   gain in the 100–300 m thermocline (+15.8 %). Both hypotheses confirmed.
+3. **The advisor's density question is measured, not extrapolated**: TEMP
+   crosses 0.1 °C at **≈4050 profiles/month**.
+4. The architecture / normalization / tokenization spec is written.
+
+Every card on this box is held by other people's jobs (~73 GB of 80 GB each), so
+the GPU work was fitted into the remainder — a host-memory training stack, a
+capped inference batch and a hard per-process memory ceiling, peaking at 3.9 GB.
 
 ---
 
@@ -90,6 +99,12 @@ $$\hat z_g = C_{go}\,(C_{oo} + \gamma I)^{-1} d, \qquad C(r) = e^{-r^2/2L^2}$$
 (+38.3 %) than globally — the conclusion is regionally consistent, not a global
 average hiding a regional failure.
 
+**Like-for-like, the learned interpolator still wins.** A `profiles_only` U-Net
+— the same information OI gets, nothing more — scores **0.1829 °C vs OI's
+0.2287 (+20.0 %)**. So two thirds of the full system's margin is a better
+interpolator and one third is the extra modalities. That row is the one the
+plan asked for and it is the honest form of the M1 claim.
+
 Three findings worth carrying beyond this report:
 
 1. **OI beats the pointwise MLP** (0.2287 vs 0.2983 °C, +23.4 %). A properly
@@ -104,9 +119,14 @@ Three findings worth carrying beyond this report:
    surface directly and the thermocline only indirectly.
 3. **OI is the only method whose 100–300 m error exceeds its 0–100 m error**
    (0.2622 > 0.2509). With profiles alone, the thermocline really is the hardest
-   layer; the surface fields are what invert that ordering. This yields a
-   falsifiable prediction for the pending `profiles_only` run — see
-   [oi_baseline.md](oi_baseline.md) §2.
+   layer; the surface fields are what invert that ordering.
+
+I turned (2)–(3) into a falsifiable prediction before running the
+`profiles_only` arm — that stripping SST/SSS should cost the U-Net most of its
+0–100 m edge specifically. **Confirmed**: it loses **17.8 points** of its
+advantage over OI at 0–100 m, against 4.6 at 100–300 m and 3.2 at 300–max — a
+~4× larger effect exactly where the surface data lives. The surface gain is the
+modality, not the convolutional prior.
 
 The error map ([fig_oi_vs_unet_error_map.png](fig_oi_vs_unet_error_map.png))
 localises OI's error to the equatorial Pacific cold tongue, the Kuroshio, the
@@ -126,22 +146,28 @@ compares OI and the U-Net on the same profiles, not merely on the same settings.
 (OI sees profiles only, so a profiles-only U-Net isolates *whose interpolator is
 better* from *whose inputs are richer*). It needs training, hence a GPU.
 
-## 3. Phase 2 — the density extrapolation is not what the plan says
+## 3. Phase 2 — measured: TEMP crosses 0.1 °C at ≈4050 profiles/month
 
-The plan quotes "RMSE ∝ N^−0.41 → 4000 profiles = 0.100 °C". That α is the
-**last segment only**. Fitting the whole curve gives α = 0.269, and the local
-slope rises monotonically (0.151 → 0.254 → 0.340 → 0.410), so the curve is not
-a power law at all.
+Measured (seed 1234): **4000 → 0.1006 °C**, **6000 → 0.0817 °C**. The crossing
+is just past 4000, so **the plan's "≈4000" estimate was right**.
 
-| model | N at 0.1 °C |
-|---|---|
-| global fit (conservative) | **6143** |
-| tail slope (= the plan's, optimistic) | **3973** |
+It was right for a reason I initially argued against, and the correction is
+worth recording. Before running, I fitted the whole 100–3000 curve (α = 0.269),
+predicted 0.1122 at 4000 and a crossing at 6143, and called that the
+*conservative* reading against the plan's tail-slope α = 0.410. The reasoning
+was that returns must eventually flatten against an irreducible error floor.
+True in the limit, but false anywhere on the measured range: local α keeps
+rising — 0.151, 0.254, 0.340, 0.410, 0.382, **0.513** — so the steepest segment
+of the entire curve is the last one, 4000 → 6000. My global fit was not
+conservative, it was biased by a low-density regime the question was not about.
 
-The honest answer is **~4000–6100 profiles/month**, and the ambiguity is exactly
-why the 4000/6000 runs are worth the GPU time. Full reasoning, including why the
-slope steepens (low-density saturation against the no-observation limit) in
-[density_4000_6000.md](density_4000_6000.md).
+Lesson for the next extrapolation: with monotonic local slopes, use the tail
+slope; a global fit over a saturating regime is not the safe choice. Full
+write-up in [density_4000_6000.md](density_4000_6000.md) §3.
+
+Also worth noting for planning: Phase 4's SSH channel buys ~14 % at 1500
+profiles, which on this curve would otherwise cost ~1500 → ~2800 profiles. A
+derived satellite field is a great deal cheaper than doubling the float array.
 
 I also removed a footgun: `08_density_ablation.py` wrote to a fixed cache path,
 so an extension run would have silently overwritten committed week-2 results. It
@@ -184,30 +210,74 @@ The characterisation is the interesting part:
 
 It correlates *more* with thermocline temperature than with SST, so it is not a
 restatement of the SST channel the model already has — which is the mechanism
-the pre-registered hypothesis depends on. Hypothesis, design and launch command:
-[ssh_ablation.md](ssh_ablation.md), written **before** any model was trained.
+the pre-registered hypothesis depends on.
+
+### The ablation: both hypotheses confirmed
+
+| TEMP (°C) | full | 0–100 m | 100–300 m | 300–max | SALT |
+|---|---|---|---|---|---|
+| control `profiles_woa_surf` | 0.1586 | 0.1582 | 0.1937 | 0.0838 | 0.0331 |
+| + SSH `profiles_woa_surf_ssh` | **0.1366** | 0.1401 | **0.1631** | 0.0718 | 0.0316 |
+| relative gain | **+13.9 %** | +11.5 % | **+15.8 %** | +14.3 % | +4.5 % |
+
+**H1 confirmed** (+13.9 % full column). **H2 confirmed** — the 100–300 m band
+gains most, on both the absolute (−0.0306 °C) and relative (+15.8 %) reading,
+which is exactly what the pre-registered mechanism predicts: SSH integrates the
+whole column's density structure, so it carries thermocline displacement that
+surface temperature and salinity cannot. Two independent lines of evidence now
+agree — the modality's own correlation structure (computed before any training)
+and the ablation's band ordering.
+
+The control arm lands at 0.1586 against the certified 0.1580, so the comparison
+is anchored to the established baseline rather than to an idiosyncratic retrain.
+
+**The caveat stands and matters**: the pseudo-SSH is derived *from* the TEMP/SALT
+being reconstructed. 13.9 % is an upper bound on what a real altimeter gives.
+The defensible claim is "a vertically integrated surface constraint helps, most
+in the thermocline" — not "altimetry buys 14 %". §3 of
+[ssh_ablation.md](ssh_ablation.md) is unedited since before the run.
 
 The `ssh` cfg token is strictly additive; 8 tests (4 of them one per
 pre-existing config) pin that every config without `ssh` is **bit-identical**
 with the SSH code present, so `audit_depthwise_e40` keeps its c_in = 10 and
 every historical number stays reproducible.
 
-## 6. Blocked on GPU
+## 6. Running GPU work on a fully-occupied box
 
-All eight A100s were at 73–75 GB / 80 GB for the entire session. Both blocked
-items are written, smoke-verified end-to-end, and one command away:
+All eight A100s are held by other people (VLLM servers on 4/5, `pi05_axis`
+training on the rest), ~73 GB of 80 GB each. GPUs 4 and 5 were at **0 %
+utilization** — memory reserved by idle inference servers — so compute was free
+there even though memory was not. Three changes made the runs fit in ~4 GB:
 
-| item | command | note |
-|---|---|---|
-| SSH ablation (Phase 4.2) | `CUDA_VISIBLE_DEVICES=N python experiments/29_ssh_ablation.py` | add `--cpu-tensors` to fit ~4 GB instead of ~17 GB |
-| Density 4000/6000 (Phase 2) | `CUDA_VISIBLE_DEVICES=N python experiments/08_density_ablation.py --seed 1234 --densities 4000,6000 --out-suffix _ext` | ~half a day per seed |
-| `profiles_only` U-Net (Phase 1) | `CUDA_VISIBLE_DEVICES=N python experiments/27_oi_vs_unet.py --train-profiles-only` | completes the M1 like-for-like row |
+1. **`--cpu-tensors`** (`baselines.train_predict_unet(hold_device=...)`) keeps
+   the ~17 GB training stack in host memory and ships one batch at a time.
+   Strictly opt-in: the default is unchanged and
+   [tests/test_unet_hold_device.py](../tests/test_unet_hold_device.py) pins that
+   the offload path is bit-identical and does not move the RNG stream.
+2. **`--fwd-batch 16`** — inference peaks *higher* than training (whole batch
+   resident, no autograd freeing): batch 64 reserves 6.9 GB, batch 16 only 1.7.
+3. **`PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`** cuts reserved memory
+   from 4.83 GB to 3.62 GB by making it track allocated rather than
+   over-reserving, plus **`--mem-cap-gb`** as a hard ceiling so a runaway
+   allocation fails *this* process instead of OOM-killing a co-tenant.
+
+Measured peak 3.9 GB; no co-tenant lost memory. Both jobs ran concurrently on
+separate cards (67 min and 51 min).
+
+Still outstanding:
+
+| item | note |
+|---|---|
+| Seeds 1235/1236 for the SSH ablation and for density 4000/6000 | everything above is **1 seed**; the repo convention is 3 for headline numbers |
+| `mlp` / `unet_joint` rows at 4000/6000 | only `clim_floor` and `unet_depthwise` were run — the curve is fitted on those |
+| Density sweep *with* the SSH channel | does the 0.1 °C crossing move left of 4000? |
 
 ## 7. Next week
 
-1. Run the three GPU items above; 3 seeds for anything headline.
-2. Answer H1/H2 in [ssh_ablation.md](ssh_ablation.md) **without editing the
-   pre-registered §3**.
+1. Seeds 1235/1236 for every single-seed number above.
+2. Put the SSH channel into the shared-latent model as a third
+   `GridPatchEncoder` stream (+540 tokens/month) — on this evidence the fusion
+   core is where a thermocline constraint should pay off most.
 3. Phase 4.4 loss study — per-modality renormalisation (cBottle idea 1) is the
    cheapest concrete answer to the advisor's "look into the loss function".
 4. Begin Phase 5 (M2) scoping: EN4 profiles + OISST for the North Atlantic. The

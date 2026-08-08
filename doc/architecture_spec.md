@@ -388,15 +388,25 @@ Skill = 1 − RMSE/floor.
 | Nearest-profile fill (3 seeds) | 0.9595 ± 0.0012 | 0.3107 ± 0.0022 |
 | Pointwise MLP (3 seeds) | 0.2983 ± 0.0003 | 0.0525 ± 0.0003 |
 | **Optimal interpolation** (L=500 km, γ=0.1, k=10; seed 1234) | **0.2287** | **0.0528** |
+| Depthwise U-Net, `profiles_only` (seed 1234) | 0.1829 | 0.0489 |
 | Depthwise U-Net (certified, seed 1234) | **0.1580** | **0.0325** |
+| Depthwise U-Net + pseudo-SSH (seed 1234) | **0.1366** | **0.0316** |
 | Joint-depth U-Net (certified, seed 1234) | 0.1948 | 0.0420 |
 | Shared latent — DFS / MBCA / Perceiver (3 seeds) | ~0.52 | ~0.12 |
 
 **The OI row is the bar that matters.** It is the operational standard, and it
 beats the pointwise MLP outright. The convolutional U-Nets clear it by ~31 %
-(TEMP); the shared-latent variants, at ~0.52, are currently *far below* it. Any
+(TEMP) — and still by 20 % when restricted to OI's own information
+(`profiles_only`), so the margin is a better interpolator, not just richer
+inputs. The shared-latent variants, at ~0.52, are currently *far below* it. Any
 table claiming a learned method is useful needs this row in it —
 [oi_baseline.md](../reports/oi_baseline.md).
+
+**The SSH row is the cheapest open win.** One derived channel takes the same
+architecture from 0.1580 to 0.1366 (−13.9 %), with the largest gain in the
+100–300 m thermocline — the layer §D.5's band table shows is weakest. It is not
+yet in the shared-latent model; adding it as a third `GridPatchEncoder` stream
+(+540 tokens/month) is the obvious next step ([ssh_ablation.md](../reports/ssh_ablation.md)).
 
 The shared-latent rows sit near the floor. That is the **month-identity recall**
 failure documented in [full_training_report.md](../reports/full_training_report.md):

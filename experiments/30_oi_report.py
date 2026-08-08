@@ -145,8 +145,22 @@ if tun is not None:
 if cmp is not None:
     g = cmp["results"]["global"]
     na = cmp["results"]["north_atlantic"]
-    present = [m for m in ORDER if m in g]
     hp = cmp["oi_hyperparams"]
+
+    # The profiles_only U-Net -- OI's like-for-like counterpart -- is trained by
+    # 29_ssh_ablation.py rather than here, because that script needs the same
+    # training loop for its own arms.  Its numbers are directly comparable:
+    # it consumes the RNG in the same order as 13_joint_audit.py (276 train ->
+    # 36 val -> 12 test), so its test months carry the *same* profile draws
+    # this script scored OI on.  Global only -- it does not compute the regional
+    # box -- so the row is injected into the global tables and omitted from the
+    # North Atlantic one rather than silently reusing a global number there.
+    abl = load(os.path.join(C.CACHE, f"ssh_ablation{SFX}.json"))
+    po = (abl or {}).get("results", {}).get("profiles_only")
+    if po:
+        g["unet_depthwise_profiles_only"] = {
+            "full": po["test"], "by_band": po["test_by_band"]}
+    present = [m for m in ORDER if m in g]
 
     def pct(a, b):
         """improvement of b over a, in %"""
@@ -219,7 +233,21 @@ if cmp is not None:
             out += [f"Like-for-like (both see profiles only): U-Net "
                     f"{po['TEMP']:.4f} vs OI {oi_t:.4f} degC "
                     f"({pct(oi_t, po['TEMP']):+.1f} %). This isolates *whose "
-                    f"interpolator is better* from *whose inputs are richer*.", ""]
+                    f"interpolator is better* from *whose inputs are richer*: "
+                    f"**even on identical information the learned interpolator "
+                    f"wins**, and the remaining "
+                    f"{pct(oi_t, un_t) - pct(oi_t, po['TEMP']):.1f} points of the "
+                    f"full system's margin are what the extra modalities buy.", ""]
+        ssh_arm = (abl or {}).get("results", {}).get("treat_pws_ssh")
+        if ssh_arm:
+            st = ssh_arm["test"]["TEMP"]
+            out += [f"> Adding the pseudo-SSH channel (Phase 4, "
+                    f"[ssh_ablation.md](ssh_ablation.md)) takes the same "
+                    f"architecture to **{st:.4f} degC**, widening the margin over "
+                    f"OI to **{pct(oi_t, st):+.1f} %** at unchanged profile count. "
+                    f"That row is not in the table above because this comparison "
+                    f"is against the *certified* system; it is the direction of "
+                    f"travel.", ""]
         else:
             out += ["> The `profiles_only` U-Net row (the like-for-like "
                     "information comparison) still needs a free GPU: "
@@ -294,11 +322,40 @@ if cmp is not None:
                     "alone, the thermocline is genuinely the hardest layer. The "
                     "U-Net inverts that ordering by using the surface fields.", "",
                     "**Testable prediction this makes**: the `profiles_only` U-Net "
-                    "(pending a GPU) should show a *much* smaller 0-100 m advantage "
-                    "over OI than the full system does, because it loses exactly the "
-                    "modality that produces this band's gain. If it does not, this "
-                    "explanation is wrong and the advantage is coming from the "
-                    "convolutional prior instead.", ""]
+                    "should show a *much* smaller 0-100 m advantage over OI than the "
+                    "full system does, because it loses exactly the modality that "
+                    "produces this band's gain. If it does not, this explanation is "
+                    "wrong and the advantage is coming from the convolutional prior "
+                    "instead.", ""]
+            if "unet_depthwise_profiles_only" in g:
+                pb = g["unet_depthwise_profiles_only"]["by_band"]["TEMP"]
+                cb = g["unet_depthwise_pws"]["by_band"]["TEMP"]
+                ob = g["oi"]["by_band"]["TEMP"]
+                rows, lost = [], {}
+                for b in BANDS:
+                    g_po, g_full = pct(ob[b], pb[b]), pct(ob[b], cb[b])
+                    lost[b] = g_full - g_po
+                    rows.append(f"| {b} | {ob[b]:.4f} | {pb[b]:.4f} | {g_po:+.1f} % "
+                                f"| {cb[b]:.4f} | {g_full:+.1f} % | **{lost[b]:.1f}** |")
+                held = max(lost, key=lost.get) == "0-100m"
+                out += ["#### Prediction resolved", "",
+                        "| band | OI | profiles_only | gain vs OI | full system | "
+                        "gain vs OI | edge lost (pts) |",
+                        "|---|---|---|---|---|---|---|"] + rows + [""]
+                out += [("**Confirmed.** Removing SST/SSS costs the U-Net "
+                         f"**{lost['0-100m']:.1f} points** of its edge over OI at "
+                         f"0-100 m, against only {lost['100-300m']:.1f} at 100-300 m "
+                         f"and {lost['300-max']:.1f} at 300-max — roughly a "
+                         f"{lost['0-100m']/max(lost['100-300m'], 1e-9):.0f}x larger "
+                         "effect where the surface data actually lives. The 0-100 m "
+                         "gain really is the surface modality, not the convolutional "
+                         "prior."
+                         if held else
+                         "**Refuted.** The edge lost on removing SST/SSS is not "
+                         "concentrated at 0-100 m, so the surface-modality "
+                         "explanation above does not survive; the advantage is "
+                         "coming from somewhere else (most likely the convolutional "
+                         "prior). Rewrite the mechanism paragraph."), ""]
         else:
             out += [f"Largest gain: **{top}**. The plan predicted 100-300 m on the "
                     f"reasoning that OI cannot use SST/SSS — check whether the "
@@ -313,10 +370,16 @@ if cmp is not None:
             "| method | TEMP (degC) | SALT (PSU) | TEMP vs global |",
             "|---|---|---|---|"]
     for m in present:
+        if m not in na:            # rows sourced from another script (see above)
+            continue
         f, fg = na[m]["full"], g[m]["full"]
         out.append(f"| {LABEL[m]} | {f['TEMP']:.4f} | {f['SALT']:.4f} | "
                    f"{f['TEMP']/fg['TEMP']:.2f}x |")
     out.append("")
+    if any(m in present and m not in na for m in ORDER):
+        out += ["*(The profiles_only row is global-only — it comes from "
+                "`29_ssh_ablation.py`, which does not compute the regional box.)*",
+                ""]
     if "oi" in na and "unet_depthwise_pws" in na:
         rg = pct(na["oi"]["full"]["TEMP"], na["unet_depthwise_pws"]["full"]["TEMP"])
         gg = pct(g["oi"]["full"]["TEMP"], g["unet_depthwise_pws"]["full"]["TEMP"])
