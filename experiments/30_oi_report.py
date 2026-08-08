@@ -183,7 +183,16 @@ if cmp is not None:
     else:
         note = "PASS" if ok else "**MISMATCH — investigate before trusting this table**"
     out += [f"* Verification: the certified checkpoint reproduces its cached test "
-            f"RMSE to {worst:.1e} ({note}).", ""]
+            f"RMSE to {worst:.1e} ({note}).", "",
+            f"> **Seed discipline.** Every number below is **1 seed** "
+            f"(seed {cmp['seed']}). The repo's headline convention is 3 seeds "
+            f"(1234/1235/1236) reported as mean ± std, so these are not final "
+            f"figures. For scale, the 3-seed spread of comparable rows is small "
+            f"— the pointwise MLP varies by ±0.0003 °C and the nearest-profile "
+            f"fill by ±0.0012 °C — so the ~31 % margin is far outside seed noise, "
+            f"but the numbers themselves should be quoted as single-seed until "
+            f"seeds 1235/1236 land. OI is deterministic given its samples, so its "
+            f"only seed dependence is the profile draw itself.", ""]
 
     out += ["## 1. Headline — unobserved-only anomaly RMSE", "",
             "| method | TEMP (degC) | SALT (PSU) | skill vs floor (TEMP) |",

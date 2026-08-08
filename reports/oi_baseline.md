@@ -11,6 +11,8 @@
 * **Every method sees byte-identical observations.** `27_oi_vs_unet.py` replays the certified run's RNG (312 discarded profile draws) so the profile positions are exactly those `audit_depthwise_e40` was scored on.
 * Verification: the certified checkpoint reproduces its cached test RMSE to 1.0e-06 (PASS).
 
+> **Seed discipline.** Every number below is **1 seed** (seed 1234). The repo's headline convention is 3 seeds (1234/1235/1236) reported as mean ± std, so these are not final figures. For scale, the 3-seed spread of comparable rows is small — the pointwise MLP varies by ±0.0003 °C and the nearest-profile fill by ±0.0012 °C — so the ~31 % margin is far outside seed noise, but the numbers themselves should be quoted as single-seed until seeds 1235/1236 land. OI is deterministic given its samples, so its only seed dependence is the profile draw itself.
+
 ## 1. Headline — unobserved-only anomaly RMSE
 
 | method | TEMP (degC) | SALT (PSU) | skill vs floor (TEMP) |

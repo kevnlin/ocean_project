@@ -53,6 +53,15 @@ Optimum: **L = 500 km, gamma = 0.1** → 0.0522 PSU.
 
 These are the values `27_oi_vs_unet.py` reads from `outputs/cache/oi_tuning_val.json`. **Frozen** — changing them requires re-running this sweep and re-freezing.
 
+## Stability check — the same sweep on training months
+
+If the optimum moved between splits, the choice would be fitting noise rather than the covariance structure of the ocean.
+
+| variable | val optimum | train optimum | agree? |
+|---|---|---|---|
+| TEMP | L=500, gamma=0.1 | L=500, gamma=0.1 | yes |
+| SALT | L=500, gamma=0.1 | L=500, gamma=0.1 | yes |
+
 ---
 
 Rerun: `python experiments/26_oi_tuning.py --split val`

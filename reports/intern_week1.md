@@ -70,6 +70,10 @@ $$\hat z_g = C_{go}\,(C_{oo} + \gamma I)^{-1} d, \qquad C(r) = e^{-r^2/2L^2}$$
   and k = 40 (0.2034 / 0.2049 / 0.2054), i.e. the k-NN localisation is fully
   converged; extra near-zero-correlation neighbours only add noise to the solve.
   See [oi_tuning.md](oi_tuning.md).
+* **Stability check passes**: repeating the whole sweep on *training* months
+  returns the identical optimum (L = 500 km, γ = 0.1, k = 10) for both
+  variables. The choice reflects the covariance structure of the ocean, not
+  noise in one split.
 
 ### Results (12 pinned test months, identical samples)
 
@@ -166,7 +170,7 @@ fusion-rule comparison exists to study.
 There was no SSH anywhere in the pipeline. Built the steric-height (dynamic
 height, TEOS-10) pseudo-SSH from the T/S fields:
 [ssh.py](../src/ocean_tokenizer/ssh.py) + [28_make_ssh.py](../experiments/28_make_ssh.py),
-360 monthly fields, 12 physical unit tests (warm column stands taller than cold,
+360 monthly fields, 11 physical unit tests (warm column stands taller than cold,
 fresh taller than salty, short columns undefined, train-only statistics).
 
 The characterisation is the interesting part:
@@ -183,9 +187,10 @@ restatement of the SST channel the model already has — which is the mechanism
 the pre-registered hypothesis depends on. Hypothesis, design and launch command:
 [ssh_ablation.md](ssh_ablation.md), written **before** any model was trained.
 
-The `ssh` cfg token is strictly additive; six tests pin that every pre-existing
-config is bit-identical with the SSH code present, so `audit_depthwise_e40`
-keeps its c_in = 10.
+The `ssh` cfg token is strictly additive; 8 tests (4 of them one per
+pre-existing config) pin that every config without `ssh` is **bit-identical**
+with the SSH code present, so `audit_depthwise_e40` keeps its c_in = 10 and
+every historical number stays reproducible.
 
 ## 6. Blocked on GPU
 
