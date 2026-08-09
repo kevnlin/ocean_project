@@ -36,9 +36,27 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--seed", type=int, required=True,
                 help="sweep seed (profile sampling + torch); month split stays C.SEED")
 ap.add_argument("--densities", type=str, default="0,100,300,750,1500,3000")
+ap.add_argument("--out-suffix", default="",
+                help="appended to the cache filenames.  The default empty "
+                     "suffix reproduces the original week-2 behaviour and "
+                     "OVERWRITES density_ablation_seed<seed>.json; pass e.g. "
+                     "--out-suffix _ext when extending the sweep, then merge "
+                     "with experiments/merge_density_json.py")
+ap.add_argument("--methods", default="woa_prior,clim_floor,mlp,unet_depthwise,unet_joint",
+                help="subset to run.  The default is every method, i.e. the "
+                     "original behaviour.  Extending the sweep only needs the "
+                     "rows the density curve is fitted on "
+                     "(clim_floor,unet_depthwise).")
+ap.add_argument("--cpu-tensors", action="store_true",
+                help="hold the depthwise training stack in host memory and ship "
+                     "one batch at a time (~16 GB -> under 4 GB of GPU).  Needed "
+                     "to share a card; numerically identical, see "
+                     "tests/test_unet_hold_device.py")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 DENSITIES = [int(x) for x in args.densities.split(",")]
+METHODS = [m.strip() for m in args.methods.split(",")]
+HOLD = "cpu" if args.cpu_tensors else None
 
 if args.smoke:
     C.N_TRAIN_MONTHS, C.N_TEST_MONTHS = 6, 3
@@ -87,8 +105,10 @@ def git_commit():
 
 results = []
 depth_tables = {}
-out_json = os.path.join(C.CACHE, f"density_ablation_seed{args.seed}.json")
-out_npz = os.path.join(C.CACHE, f"density_ablation_seed{args.seed}_depth.npz")
+out_json = os.path.join(C.CACHE,
+                        f"density_ablation_seed{args.seed}{args.out_suffix}.json")
+out_npz = os.path.join(C.CACHE,
+                       f"density_ablation_seed{args.seed}{args.out_suffix}_depth.npz")
 
 def flush_outputs():
     run_cfg = {
@@ -134,19 +154,28 @@ for density in DENSITIES:
     print(f"  observed-column fraction excluded: {obs_frac:.3%}", flush=True)
 
     # floors: no training, but re-scored on this cell's unobserved mask
-    record("woa_prior", density, [B.predict_climatology(s) for s in test_samples], unobs)
-    record("clim_floor", density, [B.predict_clim_floor(s, clim, grid) for s in test_samples], unobs)
+    preds = None
+    if "woa_prior" in METHODS:
+        record("woa_prior", density,
+               [B.predict_climatology(s) for s in test_samples], unobs)
+    if "clim_floor" in METHODS:
+        record("clim_floor", density,
+               [B.predict_clim_floor(s, clim, grid) for s in test_samples], unobs)
 
-    preds = B.train_predict_mlp(train_samples, test_samples, grid, norm, CFG, rng, device)
-    record("mlp", density, preds, unobs)
+    if "mlp" in METHODS:
+        preds = B.train_predict_mlp(train_samples, test_samples, grid, norm, CFG,
+                                    rng, device)
+        record("mlp", density, preds, unobs)
 
-    preds = B.train_predict_unet(train_samples, test_samples, grid, norm, CFG, device,
-                                 unobs_loss=True)
-    record("unet_depthwise", density, preds, unobs)
+    if "unet_depthwise" in METHODS:
+        preds = B.train_predict_unet(train_samples, test_samples, grid, norm, CFG,
+                                     device, unobs_loss=True, hold_device=HOLD)
+        record("unet_depthwise", density, preds, unobs)
 
-    preds = B.train_predict_unet_joint(train_samples, test_samples, grid, norm, CFG, device,
-                                       unobs_loss=True)
-    record("unet_joint", density, preds, unobs)
+    if "unet_joint" in METHODS:
+        preds = B.train_predict_unet_joint(train_samples, test_samples, grid, norm,
+                                           CFG, device, unobs_loss=True)
+        record("unet_joint", density, preds, unobs)
 
     del train_samples, test_samples, preds
     torch.cuda.empty_cache()

@@ -10,7 +10,10 @@ import os
 # --------------------------------------------------------------------------
 # Paths
 # --------------------------------------------------------------------------
-ROOT = "/home/nvidia/ocean_project"
+# Overridable so the tree can be checked out on another machine without editing
+# source: export OCEAN_ROOT=/path/to/ocean_project.  Default = the box the
+# processed zarr stores live on.
+ROOT = os.environ.get("OCEAN_ROOT", "/home/nvidia/ocean_project")
 PROCESSED = os.path.join(ROOT, "processed")
 OUTPUTS = os.path.join(ROOT, "outputs")
 CACHE = os.path.join(OUTPUTS, "cache")
