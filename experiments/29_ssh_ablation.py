@@ -242,7 +242,8 @@ def run_arm(name, cfg):
 
     model.load_state_dict(best["state"])
     torch.save({"state_dict": best["state"], "epoch": best["epoch"], "cfg": cfg,
-                "tag": f"ssh_{name}"}, os.path.join(C.CKPT, f"ssh_{name}.pt"))
+                "tag": f"ssh_{name}_s{args.seed}", "seed": args.seed},
+               os.path.join(C.CKPT, f"ssh_{name}_s{args.seed}.pt"))
     P = predict(Xte, test_samples)
     ev = metrics.evaluate_masked(P, TEST_TRUE, TEST_UNOBS, grid.depth)
     evb = metrics.evaluate_layers(P, TEST_TRUE, TEST_UNOBS, grid.depth, BANDS)
@@ -285,7 +286,10 @@ out = {"task": "ssh_ablation", "protocol": "protocol_v1", "smoke": args.smoke,
        "device": device, "ssh_cache": os.path.basename(ssh_path),
        "hypothesis": "SSH improves TEMP, largest gain in 100-300 m",
        "results": results, "gpu_hours": round((time.time() - t0) / 3600, 3)}
-path = os.path.join(C.CACHE,
-                    f"ssh_ablation{'_smoke' if args.smoke else ''}.json")
+# Seed-suffixed: a fixed path would let seed 1235 silently overwrite the
+# seed-1234 result, which is exactly the footgun --out-suffix exists to prevent
+# in 08_density_ablation.py.
+path = os.path.join(
+    C.CACHE, f"ssh_ablation_s{args.seed}{'_smoke' if args.smoke else ''}.json")
 json.dump(out, open(path, "w"), indent=2)
 print(f"\nDONE in {(time.time()-t0)/60:.1f} min -> {path}", flush=True)

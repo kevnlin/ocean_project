@@ -1,7 +1,7 @@
 # Phase 4 — the pseudo-SSH ("satellite altimeter") modality
 
 *Status 2026-08-08: **modality built, characterised, and the ablation run —
-both pre-registered hypotheses confirmed** (§5). §3 states the hypothesis as it
+both pre-registered hypotheses confirmed at 3 seeds** (§5). §3 states the hypothesis as it
 was written before any model was trained, and has not been edited since.*
 
 The advisor's tokenization list is "argo profile, satellite altimeter,
@@ -137,35 +137,49 @@ CUDA_VISIBLE_DEVICES=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 
 ## 5. Results
 
-*Run 2026-08-08 on GPU 4 (shared card, `--cpu-tensors --fwd-batch 16
---mem-cap-gb 5.5`, 3.9 GB peak), 67.5 min for three arms. Seed 1234,
-`outputs/cache/ssh_ablation.json`. **1 seed — not yet a 3-seed headline.***
+*Run 2026-08-08/09 on GPU 4 (shared card, `--cpu-tensors --fwd-batch 16
+--mem-cap-gb 5.5`, 3.9 GB peak), ~60 min per seed for three arms.
+**Seeds 1234/1235/1236, mean ± std** —
+`outputs/cache/ssh_ablation_s{seed}.json`.*
 
 TEMP, unobserved-only anomaly RMSE (°C), 12 pinned test months:
 
 | | full column | 0–100 m | 100–300 m | 300–max | SALT full |
 |---|---|---|---|---|---|
-| control `profiles_woa_surf` | 0.1586 | 0.1582 | 0.1937 | 0.0838 | 0.0331 |
-| treatment `profiles_woa_surf_ssh` | **0.1366** | **0.1401** | **0.1631** | **0.0718** | **0.0316** |
-| **delta** (negative = SSH helps) | **−0.0220** | −0.0182 | **−0.0306** | −0.0120 | −0.0015 |
-| **relative gain** | **+13.9 %** | +11.5 % | **+15.8 %** | +14.3 % | +4.5 % |
+| control `profiles_woa_surf` | 0.1572 ± 0.0010 | 0.1566 ± 0.0012 | 0.1923 ± 0.0011 | 0.0830 ± 0.0010 | 0.0325 ± 0.0004 |
+| treatment `profiles_woa_surf_ssh` | **0.1368 ± 0.0002** | **0.1405 ± 0.0009** | **0.1632 ± 0.0007** | **0.0722 ± 0.0008** | **0.0313 ± 0.0002** |
+| **delta** (negative = SSH helps) | **−0.0204 ± 0.0012** | −0.0161 | **−0.0291** | −0.0108 | −0.0012 ± 0.0002 |
+| **relative gain** | **+13.0 %** | +10.3 ± 1.0 % | **+15.1 ± 0.8 %** | +13.0 ± 2.0 % | +3.8 % |
 
-The control arm reproduces the certified checkpoint closely (0.1586 vs 0.1580
-for `audit_depthwise_e40`), so the comparison is anchored to the established
-baseline rather than to an idiosyncratic re-training.
+The effect is larger than the seed spread by an order of magnitude: the
+per-seed TEMP deltas are −0.0220, −0.0191, −0.0200, i.e. **every seed shows the
+gain**, and the smallest of them is ~16× the control arm's own std.
+
+The control arm reproduces the certified checkpoint closely (0.1572 ± 0.0010 vs
+0.1580 for `audit_depthwise_e40`), so the comparison is anchored to the
+established baseline rather than to an idiosyncratic re-training.
+
+**An unplanned observation.** The treatment arm's seed spread (±0.0002) is
+**5× tighter** than the control's (±0.0010). Adding SSH does not only lower the
+error, it makes the training run more reproducible. That was not predicted in
+§3 and is not something this experiment was designed to test, so treat it as an
+observation to check rather than a finding — three seeds is thin evidence for a
+variance claim.
 
 ### Verdict against §3 — both hypotheses confirmed
 
-**H1 — confirmed.** Full-column TEMP improves by **13.9 %** (0.1586 → 0.1366).
+**H1 — confirmed.** Full-column TEMP improves by **13.0 %** (0.1572 → 0.1368), consistently across all three seeds.
 For scale, that single channel buys about as much as **doubling the profile
-count**: the density curve needs ~1500 → ~2800 profiles/month to achieve the
-same drop. SALT improves too, by a smaller 4.5 %, which is consistent with
+count**: on the 3-seed density curve, matching a 13 % drop from 1500 profiles
+takes roughly 1500 → 2700 profiles/month. SALT improves too, by a smaller 4.5 %, which is consistent with
 steric height being dominated by the thermal term.
 
 **H2 — confirmed, on both readings.** The 100–300 m band gains the most in
-absolute terms (−0.0306 °C, vs −0.0182 at 0–100 m and −0.0120 at 300–max) *and*
-in relative terms (+15.8 %, vs +11.5 % and +14.3 %). This is the pre-registered
-prediction and the mechanism behind it: SSH integrates the density structure of
+absolute terms (−0.0291 °C, vs −0.0161 at 0–100 m and −0.0108 at 300–max) *and*
+in relative terms (**+15.1 ± 0.8 %**, vs +10.3 ± 1.0 % and +13.0 ± 2.0 %). The
+thermocline leads at every individual seed, and its margin over the 0–100 m band
+is ~5× the seed spread, so this is not a one-draw artifact. This is the
+pre-registered prediction and the mechanism behind it: SSH integrates the density structure of
 the whole column, so it carries thermocline-displacement information that SST
 and SSS — which see only the surface — cannot.
 
@@ -174,24 +188,24 @@ correlation structure (§2: 0.708 with 100–300 m temperature vs 0.470 with SST
 computed before any model was trained) and the ablation's band ordering.
 
 **A caveat that the numbers cannot settle.** §1.2 stands: the pseudo-SSH is
-computed *from* the TEMP/SALT the model is asked to reconstruct. A 13.9 % gain
+computed *from* the TEMP/SALT the model is asked to reconstruct. A 13.0 % gain
 from a derived field is an upper bound on what a real altimeter would give,
 because real ADT carries a barotropic component we omit, plus measurement and
 representativeness error we do not simulate. The honest claim is **"a vertically
 integrated surface constraint helps, and helps most in the thermocline"** — not
-"altimetry buys 14 %". Phase 5 against CMEMS L4 ADT is what would test the
+"altimetry buys 13 %". Phase 5 against CMEMS L4 ADT is what would test the
 latter.
 
 ## 6. Next
 
-* **3 seeds** (1235/1236) before this becomes a headline row.
+* ~~3 seeds~~ **done** — seeds 1234/1235/1236, above.
 * Add the channel to the shared-latent model as a third `GridPatchEncoder`
   stream (+540 tokens/month) and re-test there — on this evidence the fusion
   core is where a thermocline constraint should pay off most.
 * The gain is large enough to change the Phase-2 story: at 1500 profiles the
-  SSH-equipped U-Net (0.1366) already beats what the profile-only system needs
-  ~2800 profiles to reach. Worth re-running the density curve *with* SSH to see
-  whether the 0.1 °C crossing moves left of 4000.
+  SSH-equipped U-Net (0.1368) already reaches what the profile-only system needs
+  ~2700 profiles for. Worth re-running the density curve *with* SSH to see
+  whether the 0.1 °C crossing moves left of the measured ~3900.
 * Route B (true CESM2-LE SSH) stays on the backlog and is now clearly worth it —
   it is the only way to separate "vertically integrated constraint" from
   "derived from the target". Ask how the original 1° regrid was done first.

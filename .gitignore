@@ -17,6 +17,11 @@
 # Pseudo-SSH archive: 360 monthly (180,360) fields, ~90 MB — regenerate with
 # experiments/28_make_ssh.py (its *_meta.json diagnostics ARE tracked).
 /outputs/cache/ssh_dyn*.npz
+# Local safety copies written by merge_density_json.py before it first edits a
+# committed cache. The pre-merge state is already in git history, so these are
+# belt-and-braces for an uncommitted tree only.
+/outputs/cache/*.bak_premerge
+/outputs/cache/*.bak_week2
 
 # --- Python ---
 __pycache__/

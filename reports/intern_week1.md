@@ -1,16 +1,17 @@
 # Intern week 1 — OI baseline, SSH modality, architecture spec
 
-*2026-08-08. Branch `intern/oi-multimodal/setup`. Execution of
+*2026-08-08/09. Branch `intern/oi-multimodal/setup`. Execution of
 [Plan_OI_MultiModal_RealData.md](../Plan_OI_MultiModal_RealData.md).*
 
 **Headline**
 
 1. **M1 answered**: the learned system beats optimal interpolation by **+30.9 %**
    (TEMP), and still by **+20.0 %** when both see *only* profiles.
-2. **SSH helps, exactly as pre-registered**: +13.9 % full-column TEMP, largest
-   gain in the 100–300 m thermocline (+15.8 %). Both hypotheses confirmed.
+2. **SSH helps, exactly as pre-registered**: +13.0 % full-column TEMP, largest
+   gain in the 100–300 m thermocline (+15.1 ± 0.8 %). Both hypotheses confirmed
+   at 3 seeds.
 3. **The advisor's density question is measured, not extrapolated**: TEMP
-   crosses 0.1 °C at **≈4050 profiles/month**.
+   crosses 0.1 °C at **≈3900 profiles/month** (3 seeds).
 4. The architecture / normalization / tokenization spec is written.
 
 Every card on this box is held by other people's jobs (~73 GB of 80 GB each), so
@@ -50,11 +51,16 @@ python experiments/30_oi_report.py        # -> reports/oi_{tuning,baseline}.md +
 # Phase 4.1 — CPU, 13 min
 python experiments/28_make_ssh.py         # -> outputs/cache/ssh_dyn.npz (47 MB, gitignored)
 
-# Phase 2 — CPU, seconds
+# Phase 4.2 + Phase 2 — GPU, ~2 h per queue on a shared card
+bash experiments/run_seeds_queue.sh ssh 4       # seeds 1235,1236
+bash experiments/run_seeds_queue.sh density 5   # seeds 1235,1236
+python experiments/merge_density_json.py --seeds 1234,1235,1236
+
+# Phase 2 fit — CPU, seconds
 python experiments/31_density_powerlaw.py # -> reports/fig_density_powerlaw.png
 
 # whole suite
-python -m pytest tests/ -q                # 155 passed (114 before, +41 new)
+python -m pytest tests/ -q                # 160 passed (114 before, +46 new)
 ```
 
 ## 2. Milestone M1 — optimal interpolation
@@ -101,7 +107,7 @@ average hiding a regional failure.
 
 **Like-for-like, the learned interpolator still wins.** A `profiles_only` U-Net
 — the same information OI gets, nothing more — scores **0.1829 °C vs OI's
-0.2287 (+20.0 %)**. So two thirds of the full system's margin is a better
+0.2287 (+20.0 %)** on OI's exact profile draws (0.1814 ± 0.0021 over 3 seeds). So two thirds of the full system's margin is a better
 interpolator and one third is the extra modalities. That row is the one the
 plan asked for and it is the honest form of the M1 claim.
 
@@ -148,8 +154,9 @@ better* from *whose inputs are richer*). It needs training, hence a GPU.
 
 ## 3. Phase 2 — measured: TEMP crosses 0.1 °C at ≈4050 profiles/month
 
-Measured (seed 1234): **4000 → 0.1006 °C**, **6000 → 0.0817 °C**. The crossing
-is just past 4000, so **the plan's "≈4000" estimate was right**.
+Measured, 3 seeds: **4000 → 0.0991 ± 0.0012 °C**, **6000 → 0.0829 ± 0.0016**.
+4000 profiles is already *below* target, putting the crossing at **≈3900** — so
+**the plan's "≈4000" estimate was right**.
 
 It was right for a reason I initially argued against, and the correction is
 worth recording. Before running, I fitted the whole 100–3000 curve (α = 0.269),
@@ -157,16 +164,16 @@ predicted 0.1122 at 4000 and a crossing at 6143, and called that the
 *conservative* reading against the plan's tail-slope α = 0.410. The reasoning
 was that returns must eventually flatten against an irreducible error floor.
 True in the limit, but false anywhere on the measured range: local α keeps
-rising — 0.151, 0.254, 0.340, 0.410, 0.382, **0.513** — so the steepest segment
-of the entire curve is the last one, 4000 → 6000. My global fit was not
+rising — 0.151, 0.254, 0.340, 0.410, 0.432, **0.441** — so the last two segments
+are the steepest of the entire curve. My global fit was not
 conservative, it was biased by a low-density regime the question was not about.
 
 Lesson for the next extrapolation: with monotonic local slopes, use the tail
 slope; a global fit over a saturating regime is not the safe choice. Full
 write-up in [density_4000_6000.md](density_4000_6000.md) §3.
 
-Also worth noting for planning: Phase 4's SSH channel buys ~14 % at 1500
-profiles, which on this curve would otherwise cost ~1500 → ~2800 profiles. A
+Also worth noting for planning: Phase 4's SSH channel buys ~13 % at 1500
+profiles, which on this curve would otherwise cost ~1500 → ~2700 profiles. A
 derived satellite field is a great deal cheaper than doubling the float array.
 
 I also removed a footgun: `08_density_ablation.py` wrote to a fixed cache path,
@@ -214,25 +221,29 @@ the pre-registered hypothesis depends on.
 
 ### The ablation: both hypotheses confirmed
 
-| TEMP (°C) | full | 0–100 m | 100–300 m | 300–max | SALT |
+| TEMP (°C), 3 seeds | full | 0–100 m | 100–300 m | 300–max | SALT |
 |---|---|---|---|---|---|
-| control `profiles_woa_surf` | 0.1586 | 0.1582 | 0.1937 | 0.0838 | 0.0331 |
-| + SSH `profiles_woa_surf_ssh` | **0.1366** | 0.1401 | **0.1631** | 0.0718 | 0.0316 |
-| relative gain | **+13.9 %** | +11.5 % | **+15.8 %** | +14.3 % | +4.5 % |
+| control `profiles_woa_surf` | 0.1572 ± 0.0010 | 0.1566 | 0.1923 | 0.0830 | 0.0325 |
+| + SSH `profiles_woa_surf_ssh` | **0.1368 ± 0.0002** | 0.1405 | **0.1632** | 0.0722 | 0.0313 |
+| relative gain | **+13.0 %** | +10.3 ± 1.0 % | **+15.1 ± 0.8 %** | +13.0 ± 2.0 % | +3.8 % |
 
-**H1 confirmed** (+13.9 % full column). **H2 confirmed** — the 100–300 m band
-gains most, on both the absolute (−0.0306 °C) and relative (+15.8 %) reading,
+**H1 confirmed** (+13.0 % full column; every seed shows the gain, the smallest
+being ~16× the control arm's own seed spread). **H2 confirmed** — the 100–300 m
+band gains most, on both the absolute (−0.0291 °C) and relative (+15.1 %) reading,
 which is exactly what the pre-registered mechanism predicts: SSH integrates the
 whole column's density structure, so it carries thermocline displacement that
 surface temperature and salinity cannot. Two independent lines of evidence now
 agree — the modality's own correlation structure (computed before any training)
 and the ablation's band ordering.
 
-The control arm lands at 0.1586 against the certified 0.1580, so the comparison
-is anchored to the established baseline rather than to an idiosyncratic retrain.
+The control arm lands at 0.1572 ± 0.0010 against the certified 0.1580, so the
+comparison is anchored to the established baseline rather than to an
+idiosyncratic retrain. Unplanned observation worth checking later: the SSH arm's
+seed spread (±0.0002) is 5× tighter than the control's, so the channel appears
+to stabilise training as well as improve it.
 
 **The caveat stands and matters**: the pseudo-SSH is derived *from* the TEMP/SALT
-being reconstructed. 13.9 % is an upper bound on what a real altimeter gives.
+being reconstructed. 13.0 % is an upper bound on what a real altimeter gives.
 The defensible claim is "a vertically integrated surface constraint helps, most
 in the thermocline" — not "altimetry buys 14 %". §3 of
 [ssh_ablation.md](ssh_ablation.md) is unedited since before the run.
@@ -268,7 +279,6 @@ Still outstanding:
 
 | item | note |
 |---|---|
-| Seeds 1235/1236 for the SSH ablation and for density 4000/6000 | everything above is **1 seed**; the repo convention is 3 for headline numbers |
 | `mlp` / `unet_joint` rows at 4000/6000 | only `clim_floor` and `unet_depthwise` were run — the curve is fitted on those |
 | Density sweep *with* the SSH channel | does the 0.1 °C crossing move left of 4000? |
 

@@ -13,6 +13,7 @@ Writes
 Run:  python experiments/30_oi_report.py
 """
 import argparse
+import glob
 import json
 import os
 import sys
@@ -155,12 +156,28 @@ if cmp is not None:
     # this script scored OI on.  Global only -- it does not compute the regional
     # box -- so the row is injected into the global tables and omitted from the
     # North Atlantic one rather than silently reusing a global number there.
-    abl = load(os.path.join(C.CACHE, f"ssh_ablation{SFX}.json"))
+    # Read the ablation run for THIS seed, so the identical-sample property
+    # holds; other seeds are collected separately for a spread footnote rather
+    # than averaged into an otherwise single-seed table.
+    abl = load(os.path.join(C.CACHE, f"ssh_ablation_s{args.seed}{SFX}.json"))
     po = (abl or {}).get("results", {}).get("profiles_only")
     if po:
         g["unet_depthwise_profiles_only"] = {
             "full": po["test"], "by_band": po["test_by_band"]}
     present = [m for m in ORDER if m in g]
+
+    def across_seeds(arm, var="TEMP"):
+        """(values, seeds) of one ablation arm over every seed on disk."""
+        vals, seeds = [], []
+        for p in sorted(glob.glob(os.path.join(C.CACHE, "ssh_ablation_s*.json"))):
+            if p.endswith("_smoke.json"):
+                continue
+            d = load(p)
+            r = (d or {}).get("results", {}).get(arm)
+            if r:
+                vals.append(r["test"][var])
+                seeds.append(d.get("seed"))
+        return vals, seeds
 
     def pct(a, b):
         """improvement of b over a, in %"""
@@ -238,6 +255,12 @@ if cmp is not None:
                     f"wins**, and the remaining "
                     f"{pct(oi_t, un_t) - pct(oi_t, po['TEMP']):.1f} points of the "
                     f"full system's margin are what the extra modalities buy.", ""]
+            pv, ps = across_seeds("profiles_only")
+            if len(pv) > 1:
+                out += [f"> Across {len(pv)} seeds {ps} the profiles_only row is "
+                        f"{np.mean(pv):.4f} +/- {np.std(pv):.4f} degC; the table "
+                        f"uses seed {cmp['seed']} so that it shares OI's exact "
+                        f"profile draws.", ""]
         ssh_arm = (abl or {}).get("results", {}).get("treat_pws_ssh")
         if ssh_arm:
             st = ssh_arm["test"]["TEMP"]
@@ -248,6 +271,10 @@ if cmp is not None:
                     f"That row is not in the table above because this comparison "
                     f"is against the *certified* system; it is the direction of "
                     f"travel.", ""]
+            sv, ss = across_seeds("treat_pws_ssh")
+            if len(sv) > 1:
+                out += [f"> ({len(sv)} seeds {ss}: "
+                        f"{np.mean(sv):.4f} +/- {np.std(sv):.4f} degC.)", ""]
         else:
             out += ["> The `profiles_only` U-Net row (the like-for-like "
                     "information comparison) still needs a free GPU: "

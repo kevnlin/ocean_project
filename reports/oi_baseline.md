@@ -30,7 +30,11 @@ The full system (depthwise U-Net, profiles+WOA+SST/SSS) **beats** optimal interp
 
 Like-for-like (both see profiles only): U-Net 0.1829 vs OI 0.2287 degC (+20.0 %). This isolates *whose interpolator is better* from *whose inputs are richer*: **even on identical information the learned interpolator wins**, and the remaining 10.9 points of the full system's margin are what the extra modalities buy.
 
+> Across 3 seeds [1234, 1235, 1236] the profiles_only row is 0.1814 +/- 0.0021 degC; the table uses seed 1234 so that it shares OI's exact profile draws.
+
 > Adding the pseudo-SSH channel (Phase 4, [ssh_ablation.md](ssh_ablation.md)) takes the same architecture to **0.1366 degC**, widening the margin over OI to **+40.3 %** at unchanged profile count. That row is not in the table above because this comparison is against the *certified* system; it is the direction of travel.
+
+> (3 seeds [1234, 1235, 1236]: 0.1368 +/- 0.0002 degC.)
 
 ### Context: where OI sits among the existing protocol_v1 rows
 
