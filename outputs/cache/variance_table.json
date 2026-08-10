@@ -1,0 +1,982 @@
+{
+  "protocol": "protocol_v1",
+  "seed": 1234,
+  "scoring_set": "12 pinned test months, unobserved ocean cells only",
+  "target_definition": "anomaly = field - train-only monthly climatology",
+  "var0_note": "second moment about zero; sqrt(var0) == the climatology-floor RMSE",
+  "models": {
+    "unet_ssh": "depthwise U-Net + pseudo-SSH (best)",
+    "unet_certified": "depthwise U-Net, protocol_v1 certified",
+    "oi": "optimal interpolation, L=500km gamma=0.1 k=10"
+  },
+  "rows": [
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 0,
+      "depth_m": 5.0,
+      "target_var0": 0.392281174659729,
+      "target_varm": 0.34742027521133423,
+      "target_std": 0.6263235383248253,
+      "n_cells": 490091,
+      "rmse": {
+        "unet_ssh": 0.0494428314268589,
+        "unet_certified": 0.04899327829480171,
+        "oi": 0.18763647973537445
+      },
+      "explained_var": {
+        "unet_ssh": 0.9937682618044945,
+        "unet_certified": 0.9938810693116895,
+        "oi": 0.9102494567626828
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 1,
+      "depth_m": 15.0,
+      "target_var0": 0.38942527770996094,
+      "target_varm": 0.34460195899009705,
+      "target_std": 0.6240394840953263,
+      "n_cells": 490091,
+      "rmse": {
+        "unet_ssh": 0.051517385989427567,
+        "unet_certified": 0.05179570987820625,
+        "oi": 0.18622151017189026
+      },
+      "explained_var": {
+        "unet_ssh": 0.9931847232034066,
+        "unet_certified": 0.9931108848979613,
+        "oi": 0.9109496665069403
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 2,
+      "depth_m": 25.0,
+      "target_var0": 0.3825146555900574,
+      "target_varm": 0.3390209674835205,
+      "target_std": 0.6184776920714743,
+      "n_cells": 490091,
+      "rmse": {
+        "unet_ssh": 0.07909515500068665,
+        "unet_certified": 0.07956474274396896,
+        "oi": 0.19010448455810547
+      },
+      "explained_var": {
+        "unet_ssh": 0.9836449572502465,
+        "unet_certified": 0.9834501810704518,
+        "oi": 0.9055207048384728
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 3,
+      "depth_m": 35.0,
+      "target_var0": 0.38538628816604614,
+      "target_varm": 0.34491896629333496,
+      "target_std": 0.6207948841332749,
+      "n_cells": 484985,
+      "rmse": {
+        "unet_ssh": 0.12612326443195343,
+        "unet_certified": 0.1297532171010971,
+        "oi": 0.21234114468097687
+      },
+      "explained_var": {
+        "unet_ssh": 0.9587243284999315,
+        "unet_certified": 0.9563142284376486,
+        "oi": 0.8830037209185793
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 4,
+      "depth_m": 45.0,
+      "target_var0": 0.4182749390602112,
+      "target_varm": 0.3799099028110504,
+      "target_std": 0.6467417870063842,
+      "n_cells": 481609,
+      "rmse": {
+        "unet_ssh": 0.15793369710445404,
+        "unet_certified": 0.1746329516172409,
+        "oi": 0.2502906620502472
+      },
+      "explained_var": {
+        "unet_ssh": 0.9403668488073323,
+        "unet_certified": 0.9270894214722255,
+        "oi": 0.8502290965595403
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 5,
+      "depth_m": 55.0,
+      "target_var0": 0.45134297013282776,
+      "target_varm": 0.4138939678668976,
+      "target_std": 0.6718206383647556,
+      "n_cells": 478987,
+      "rmse": {
+        "unet_ssh": 0.17764008045196533,
+        "unet_certified": 0.20442348718643188,
+        "oi": 0.2875549793243408
+      },
+      "explained_var": {
+        "unet_ssh": 0.9300842147298894,
+        "unet_certified": 0.9074119574718024,
+        "oi": 0.8167959365582065
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 6,
+      "depth_m": 65.0,
+      "target_var0": 0.46904754638671875,
+      "target_varm": 0.4339372217655182,
+      "target_std": 0.6848704595664196,
+      "n_cells": 477289,
+      "rmse": {
+        "unet_ssh": 0.18783602118492126,
+        "unet_certified": 0.22393159568309784,
+        "oi": 0.3120085597038269
+      },
+      "explained_var": {
+        "unet_ssh": 0.9247786900786968,
+        "unet_certified": 0.8930910950681432,
+        "oi": 0.7924531487726956
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 7,
+      "depth_m": 85.0,
+      "target_var0": 0.4798695743083954,
+      "target_varm": 0.45067641139030457,
+      "target_std": 0.6927261899974588,
+      "n_cells": 473950,
+      "rmse": {
+        "unet_ssh": 0.1983022391796112,
+        "unet_certified": 0.23079778254032135,
+        "oi": 0.3353981673717499
+      },
+      "explained_var": {
+        "unet_ssh": 0.9180531957661151,
+        "unet_certified": 0.888995636986778,
+        "oi": 0.7655781139313622
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 8,
+      "depth_m": 105.0,
+      "target_var0": 0.5162071585655212,
+      "target_varm": 0.49014371633529663,
+      "target_std": 0.718475579658433,
+      "n_cells": 471238,
+      "rmse": {
+        "unet_ssh": 0.19803445041179657,
+        "unet_certified": 0.2332150936126709,
+        "oi": 0.3492371439933777
+      },
+      "explained_var": {
+        "unet_ssh": 0.9240273155860846,
+        "unet_certified": 0.894636719025927,
+        "oi": 0.7637255107356862
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 9,
+      "depth_m": 125.0,
+      "target_var0": 0.5050349235534668,
+      "target_varm": 0.4797642230987549,
+      "target_std": 0.7106580918792572,
+      "n_cells": 468831,
+      "rmse": {
+        "unet_ssh": 0.1887313425540924,
+        "unet_certified": 0.22622546553611755,
+        "oi": 0.32517528533935547
+      },
+      "explained_var": {
+        "unet_ssh": 0.9294711751582478,
+        "unet_certified": 0.8986645103729841,
+        "oi": 0.7906303875946968
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 10,
+      "depth_m": 145.0,
+      "target_var0": 0.43118831515312195,
+      "target_varm": 0.40780508518218994,
+      "target_std": 0.6566493091088439,
+      "n_cells": 465974,
+      "rmse": {
+        "unet_ssh": 0.1725158393383026,
+        "unet_certified": 0.20657600462436676,
+        "oi": 0.2823181748390198
+      },
+      "explained_var": {
+        "unet_ssh": 0.9309774551473405,
+        "unet_certified": 0.9010324626459039,
+        "oi": 0.8151537297198527
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 11,
+      "depth_m": 165.09840393066406,
+      "target_var0": 0.3434523642063141,
+      "target_varm": 0.3220449686050415,
+      "target_std": 0.5860480903529284,
+      "n_cells": 463982,
+      "rmse": {
+        "unet_ssh": 0.1625080406665802,
+        "unet_certified": 0.18894062936306,
+        "oi": 0.24825546145439148
+      },
+      "explained_var": {
+        "unet_ssh": 0.9231076386901012,
+        "unet_certified": 0.8960596427786858,
+        "oi": 0.8205551029344179
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 12,
+      "depth_m": 186.29127502441406,
+      "target_var0": 0.26465022563934326,
+      "target_varm": 0.2437918335199356,
+      "target_std": 0.5144416639808087,
+      "n_cells": 461841,
+      "rmse": {
+        "unet_ssh": 0.15005581080913544,
+        "unet_certified": 0.17378659546375275,
+        "oi": 0.21923542022705078
+      },
+      "explained_var": {
+        "unet_ssh": 0.9149188469301661,
+        "unet_certified": 0.8858803891441225,
+        "oi": 0.818386062713463
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 13,
+      "depth_m": 222.57827758789062,
+      "target_var0": 0.18370608985424042,
+      "target_varm": 0.16262991726398468,
+      "target_std": 0.42860948409273497,
+      "n_cells": 458147,
+      "rmse": {
+        "unet_ssh": 0.13439029455184937,
+        "unet_certified": 0.15440663695335388,
+        "oi": 0.18767304718494415
+      },
+      "explained_var": {
+        "unet_ssh": 0.9016867035596755,
+        "unet_certified": 0.8702198193094114,
+        "oi": 0.8082743328344306
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 14,
+      "depth_m": 267.6542053222656,
+      "target_var0": 0.1345631182193756,
+      "target_varm": 0.11453015357255936,
+      "target_std": 0.3668284588460601,
+      "n_cells": 453406,
+      "rmse": {
+        "unet_ssh": 0.11785588413476944,
+        "unet_certified": 0.13394643366336823,
+        "oi": 0.16180293262004852
+      },
+      "explained_var": {
+        "unet_ssh": 0.8967769949969234,
+        "unet_certified": 0.8666674247107949,
+        "oi": 0.8054430563821589
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 15,
+      "depth_m": 326.86798095703125,
+      "target_var0": 0.09784548729658127,
+      "target_varm": 0.08184553682804108,
+      "target_std": 0.3128026331356264,
+      "n_cells": 449200,
+      "rmse": {
+        "unet_ssh": 0.10082416981458664,
+        "unet_certified": 0.11566589027643204,
+        "oi": 0.1361493617296219
+      },
+      "explained_var": {
+        "unet_ssh": 0.8961064684773072,
+        "unet_certified": 0.8632681123771452,
+        "oi": 0.8105518280756613
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 16,
+      "depth_m": 408.7846374511719,
+      "target_var0": 0.0643584206700325,
+      "target_varm": 0.05594674497842789,
+      "target_std": 0.253689614824952,
+      "n_cells": 444670,
+      "rmse": {
+        "unet_ssh": 0.08466332405805588,
+        "unet_certified": 0.09906188398599625,
+        "oi": 0.11298496276140213
+      },
+      "explained_var": {
+        "unet_ssh": 0.888625631798684,
+        "unet_certified": 0.8475217888088362,
+        "oi": 0.801648305267697
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 17,
+      "depth_m": 527.72802734375,
+      "target_var0": 0.03910412639379501,
+      "target_varm": 0.03651650995016098,
+      "target_std": 0.19774763309277563,
+      "n_cells": 438786,
+      "rmse": {
+        "unet_ssh": 0.06883546710014343,
+        "unet_certified": 0.08212453126907349,
+        "oi": 0.0879095271229744
+      },
+      "explained_var": {
+        "unet_ssh": 0.8788280939157664,
+        "unet_certified": 0.8275261651866176,
+        "oi": 0.8023716248981014
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 18,
+      "depth_m": 707.5632934570312,
+      "target_var0": 0.017682597041130066,
+      "target_varm": 0.01710720919072628,
+      "target_std": 0.13297592654736445,
+      "n_cells": 432332,
+      "rmse": {
+        "unet_ssh": 0.04768087714910507,
+        "unet_certified": 0.05730448663234711,
+        "oi": 0.0647617056965828
+      },
+      "explained_var": {
+        "unet_ssh": 0.8714291774890349,
+        "unet_certified": 0.8142917479509002,
+        "oi": 0.7628132047020415
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "level",
+      "level": 19,
+      "depth_m": 984.7058715820312,
+      "target_var0": 0.006817036308348179,
+      "target_varm": 0.006695892196148634,
+      "target_std": 0.08256534568660255,
+      "n_cells": 425368,
+      "rmse": {
+        "unet_ssh": 0.0335477851331234,
+        "unet_certified": 0.037602391093969345,
+        "oi": 0.04006809741258621
+      },
+      "explained_var": {
+        "unet_ssh": 0.8349056926746923,
+        "unet_certified": 0.7925873133091125,
+        "oi": 0.7644940766563832
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "band",
+      "band": "0-100m",
+      "target_var0": 0.4205791652202606,
+      "target_varm": 0.38146859407424927,
+      "target_std": 0.6485207515725774,
+      "n_cells": 3867093,
+      "rmse": {
+        "unet_ssh": 0.1400827318429947,
+        "unet_certified": 0.1589013934135437,
+        "oi": 0.250873863697052
+      },
+      "explained_var": {
+        "unet_ssh": 0.9533425015232994,
+        "unet_certified": 0.9399645657303487,
+        "oi": 0.850354699683409
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "band",
+      "band": "100-300m",
+      "target_var0": 0.3415263593196869,
+      "target_varm": 0.318968802690506,
+      "target_std": 0.5844025661474177,
+      "n_cells": 3243419,
+      "rmse": {
+        "unet_ssh": 0.1630934625864029,
+        "unet_certified": 0.1916087120771408,
+        "oi": 0.2622045874595642
+      },
+      "explained_var": {
+        "unet_ssh": 0.9221158870682544,
+        "unet_certified": 0.8925005419289043,
+        "oi": 0.7986941745234797
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "band",
+      "band": "300-max",
+      "target_var0": 0.045779451727867126,
+      "target_varm": 0.04198210686445236,
+      "target_std": 0.2139613323193402,
+      "n_cells": 2190356,
+      "rmse": {
+        "unet_ssh": 0.07180830091238022,
+        "unet_certified": 0.08372420072555542,
+        "oi": 0.09529341012239456
+      },
+      "explained_var": {
+        "unet_ssh": 0.8873636121599925,
+        "unet_certified": 0.8468801717241605,
+        "oi": 0.8016395201337208
+      }
+    },
+    {
+      "var": "TEMP",
+      "kind": "full",
+      "target_var0": 0.3047462999820709,
+      "target_varm": 0.28251156210899353,
+      "target_std": 0.5520383138714838,
+      "n_cells": 9300868,
+      "rmse": {
+        "unet_ssh": 0.13656149804592133,
+        "unet_certified": 0.15796197950839996,
+        "oi": 0.22865194082260132
+      },
+      "explained_var": {
+        "unet_ssh": 0.9388046950868859,
+        "unet_certified": 0.9181221003448437,
+        "oi": 0.8284418546016202
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 0,
+      "depth_m": 5.0,
+      "target_var0": 0.042565323412418365,
+      "target_varm": 0.041676703840494156,
+      "target_std": 0.20631365299567153,
+      "n_cells": 490039,
+      "rmse": {
+        "unet_ssh": 0.016318408772349358,
+        "unet_certified": 0.01609424501657486,
+        "oi": 0.09216596931219101
+      },
+      "explained_var": {
+        "unet_ssh": 0.9937439576746221,
+        "unet_certified": 0.9939146539509677,
+        "oi": 0.8004345975020254
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 1,
+      "depth_m": 15.0,
+      "target_var0": 0.04183414578437805,
+      "target_varm": 0.04084693267941475,
+      "target_std": 0.20453397220114328,
+      "n_cells": 490039,
+      "rmse": {
+        "unet_ssh": 0.023148905485868454,
+        "unet_certified": 0.025079647079110146,
+        "oi": 0.08828757703304291
+      },
+      "explained_var": {
+        "unet_ssh": 0.9871905637094716,
+        "unet_certified": 0.9849647056054482,
+        "oi": 0.8136762180219722
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 2,
+      "depth_m": 25.0,
+      "target_var0": 0.03857768326997757,
+      "target_varm": 0.0375111922621727,
+      "target_std": 0.19641202424998722,
+      "n_cells": 490038,
+      "rmse": {
+        "unet_ssh": 0.041386812925338745,
+        "unet_certified": 0.044281940907239914,
+        "oi": 0.08275602757930756
+      },
+      "explained_var": {
+        "unet_ssh": 0.9555995036785945,
+        "unet_certified": 0.9491703460576049,
+        "oi": 0.8224735256189712
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 3,
+      "depth_m": 35.0,
+      "target_var0": 0.033520154654979706,
+      "target_varm": 0.03234612196683884,
+      "target_std": 0.18308510222019625,
+      "n_cells": 484870,
+      "rmse": {
+        "unet_ssh": 0.04124849662184715,
+        "unet_certified": 0.04336456581950188,
+        "oi": 0.0707111731171608
+      },
+      "explained_var": {
+        "unet_ssh": 0.9492413298484059,
+        "unet_certified": 0.9438998540409613,
+        "oi": 0.8508339220069117
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 4,
+      "depth_m": 45.0,
+      "target_var0": 0.03078819252550602,
+      "target_varm": 0.029597599059343338,
+      "target_std": 0.17546564485820584,
+      "n_cells": 481599,
+      "rmse": {
+        "unet_ssh": 0.04384439066052437,
+        "unet_certified": 0.04467812925577164,
+        "oi": 0.06515838205814362
+      },
+      "explained_var": {
+        "unet_ssh": 0.9375627331549213,
+        "unet_certified": 0.9351655595845139,
+        "oi": 0.8621025008558786
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 5,
+      "depth_m": 55.0,
+      "target_var0": 0.027392398566007614,
+      "target_varm": 0.02635117620229721,
+      "target_std": 0.16550649100868406,
+      "n_cells": 478965,
+      "rmse": {
+        "unet_ssh": 0.04364518076181412,
+        "unet_certified": 0.044000621885061264,
+        "oi": 0.06060095131397247
+      },
+      "explained_var": {
+        "unet_ssh": 0.9304587439051321,
+        "unet_certified": 0.9293214604187796,
+        "oi": 0.865930860661622
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 6,
+      "depth_m": 65.0,
+      "target_var0": 0.02445770427584648,
+      "target_varm": 0.02352263033390045,
+      "target_std": 0.1563895913283441,
+      "n_cells": 477163,
+      "rmse": {
+        "unet_ssh": 0.04269174113869667,
+        "unet_certified": 0.04401350021362305,
+        "oi": 0.056720901280641556
+      },
+      "explained_var": {
+        "unet_ssh": 0.9254801374283766,
+        "unet_certified": 0.9207943566899821,
+        "oi": 0.8684561475679656
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 7,
+      "depth_m": 85.0,
+      "target_var0": 0.020542433485388756,
+      "target_varm": 0.019772594794631004,
+      "target_std": 0.14332631818821256,
+      "n_cells": 473939,
+      "rmse": {
+        "unet_ssh": 0.04154106229543686,
+        "unet_certified": 0.042047008872032166,
+        "oi": 0.052412696182727814
+      },
+      "explained_var": {
+        "unet_ssh": 0.9159953538191676,
+        "unet_certified": 0.9139366348031627,
+        "oi": 0.866272380869732
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 8,
+      "depth_m": 105.0,
+      "target_var0": 0.016483349725604057,
+      "target_varm": 0.016074594110250473,
+      "target_std": 0.12838749832286653,
+      "n_cells": 471191,
+      "rmse": {
+        "unet_ssh": 0.039554327726364136,
+        "unet_certified": 0.039942797273397446,
+        "oi": 0.049014974385499954
+      },
+      "explained_var": {
+        "unet_ssh": 0.9050833193538104,
+        "unet_certified": 0.9032097795300973,
+        "oi": 0.8542488175034353
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 9,
+      "depth_m": 125.0,
+      "target_var0": 0.013630134053528309,
+      "target_varm": 0.01348777674138546,
+      "target_std": 0.11674816509705113,
+      "n_cells": 468808,
+      "rmse": {
+        "unet_ssh": 0.037198204547166824,
+        "unet_certified": 0.037711359560489655,
+        "oi": 0.04473188519477844
+      },
+      "explained_var": {
+        "unet_ssh": 0.8984818185867604,
+        "unet_certified": 0.8956615808534623,
+        "oi": 0.8531972213023926
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 10,
+      "depth_m": 145.0,
+      "target_var0": 0.011229251511394978,
+      "target_varm": 0.011185204610228539,
+      "target_std": 0.10596816272539114,
+      "n_cells": 465974,
+      "rmse": {
+        "unet_ssh": 0.03466470539569855,
+        "unet_certified": 0.03511945530772209,
+        "oi": 0.04172917827963829
+      },
+      "explained_var": {
+        "unet_ssh": 0.8929900359831467,
+        "unet_certified": 0.8901639935787785,
+        "oi": 0.8449296181382336
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 11,
+      "depth_m": 165.09840393066406,
+      "target_var0": 0.009316815994679928,
+      "target_varm": 0.009303220547735691,
+      "target_std": 0.09652365510422783,
+      "n_cells": 463982,
+      "rmse": {
+        "unet_ssh": 0.03274204954504967,
+        "unet_certified": 0.03346279263496399,
+        "oi": 0.03956437483429909
+      },
+      "explained_var": {
+        "unet_ssh": 0.8849347449791171,
+        "unet_certified": 0.8798131795701447,
+        "oi": 0.831987692262812
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 12,
+      "depth_m": 186.29127502441406,
+      "target_var0": 0.007424349896609783,
+      "target_varm": 0.007421983405947685,
+      "target_std": 0.08616466733301872,
+      "n_cells": 461807,
+      "rmse": {
+        "unet_ssh": 0.030415307730436325,
+        "unet_certified": 0.031513143330812454,
+        "oi": 0.037269510328769684
+      },
+      "explained_var": {
+        "unet_ssh": 0.8753977173463271,
+        "unet_certified": 0.8662403824687999,
+        "oi": 0.8129107033626549
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 13,
+      "depth_m": 222.57827758789062,
+      "target_var0": 0.004944923799484968,
+      "target_varm": 0.004943388514220715,
+      "target_std": 0.07032015215772054,
+      "n_cells": 458135,
+      "rmse": {
+        "unet_ssh": 0.026594320312142372,
+        "unet_certified": 0.02809165231883526,
+        "oi": 0.03325404226779938
+      },
+      "explained_var": {
+        "unet_ssh": 0.8569729481092324,
+        "unet_certified": 0.840413935178432,
+        "oi": 0.7763704008414116
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 14,
+      "depth_m": 267.6542053222656,
+      "target_var0": 0.0030437896493822336,
+      "target_varm": 0.003033172804862261,
+      "target_std": 0.05517055056261659,
+      "n_cells": 453383,
+      "rmse": {
+        "unet_ssh": 0.021761644631624222,
+        "unet_certified": 0.02309240959584713,
+        "oi": 0.02746341936290264
+      },
+      "explained_var": {
+        "unet_ssh": 0.8444146174262683,
+        "unet_certified": 0.8248041282844224,
+        "oi": 0.7522038346980594
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 15,
+      "depth_m": 326.86798095703125,
+      "target_var0": 0.0017545509617775679,
+      "target_varm": 0.0017487334553152323,
+      "target_std": 0.04188736040594546,
+      "n_cells": 449200,
+      "rmse": {
+        "unet_ssh": 0.016955256462097168,
+        "unet_certified": 0.017952019348740578,
+        "oi": 0.021036913618445396
+      },
+      "explained_var": {
+        "unet_ssh": 0.8361513983017992,
+        "unet_certified": 0.8163205254687768,
+        "oi": 0.747769233136679
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 16,
+      "depth_m": 408.7846374511719,
+      "target_var0": 0.0010115414625033736,
+      "target_varm": 0.0010096566984429955,
+      "target_std": 0.03180473962326014,
+      "n_cells": 444670,
+      "rmse": {
+        "unet_ssh": 0.013013416901230812,
+        "unet_certified": 0.013901489786803722,
+        "oi": 0.0162718053907156
+      },
+      "explained_var": {
+        "unet_ssh": 0.8325832151001176,
+        "unet_certified": 0.8089535372931254,
+        "oi": 0.7382493348141543
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 17,
+      "depth_m": 527.72802734375,
+      "target_var0": 0.00058043870376423,
+      "target_varm": 0.0005662018666043878,
+      "target_std": 0.024092295527081475,
+      "n_cells": 438763,
+      "rmse": {
+        "unet_ssh": 0.009392080828547478,
+        "unet_certified": 0.010096965357661247,
+        "oi": 0.01165869552642107
+      },
+      "explained_var": {
+        "unet_ssh": 0.8480267051147578,
+        "unet_certified": 0.8243592152407153,
+        "oi": 0.7658233668838829
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 18,
+      "depth_m": 707.5632934570312,
+      "target_var0": 0.00029608813929371536,
+      "target_varm": 0.0002887367154471576,
+      "target_std": 0.01720721183962455,
+      "n_cells": 432332,
+      "rmse": {
+        "unet_ssh": 0.006923118606209755,
+        "unet_certified": 0.0073691061697900295,
+        "oi": 0.008477420546114445
+      },
+      "explained_var": {
+        "unet_ssh": 0.8381239743342025,
+        "unet_certified": 0.8165960788866016,
+        "oi": 0.757279507084907
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "level",
+      "level": 19,
+      "depth_m": 984.7058715820312,
+      "target_var0": 0.00018942363385576755,
+      "target_varm": 0.00018818744865711778,
+      "target_std": 0.013763125875169766,
+      "n_cells": 425368,
+      "rmse": {
+        "unet_ssh": 0.005106481723487377,
+        "unet_certified": 0.005537263583391905,
+        "oi": 0.005742939189076424
+      },
+      "explained_var": {
+        "unet_ssh": 0.8623394818190124,
+        "unet_certified": 0.8381337778827297,
+        "oi": 0.8258857680106448
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "band",
+      "band": "0-100m",
+      "target_var0": 0.03255276754498482,
+      "target_varm": 0.031550124287605286,
+      "target_std": 0.180423855254744,
+      "n_cells": 3866652,
+      "rmse": {
+        "unet_ssh": 0.03799895569682121,
+        "unet_certified": 0.03925638645887375,
+        "oi": 0.07264166325330734
+      },
+      "explained_var": {
+        "unet_ssh": 0.9556436904464845,
+        "unet_certified": 0.9526595127225713,
+        "oi": 0.8378997658827363
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "band",
+      "band": "100-300m",
+      "target_var0": 0.009492291137576103,
+      "target_varm": 0.009459441527724266,
+      "target_std": 0.09742838979258614,
+      "n_cells": 3243280,
+      "rmse": {
+        "unet_ssh": 0.032421451061964035,
+        "unet_certified": 0.03319895640015602,
+        "oi": 0.03964604437351227
+      },
+      "explained_var": {
+        "unet_ssh": 0.8892627213252812,
+        "unet_certified": 0.8838878106365262,
+        "oi": 0.8344120706280959
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "band",
+      "band": "300-max",
+      "target_var0": 0.0007766876369714737,
+      "target_varm": 0.0007750209770165384,
+      "target_std": 0.027869116185689737,
+      "n_cells": 2190333,
+      "rmse": {
+        "unet_ssh": 0.011204129084944725,
+        "unet_certified": 0.011934037320315838,
+        "oi": 0.013868341222405434
+      },
+      "explained_var": {
+        "unet_ssh": 0.8383745246137928,
+        "unet_certified": 0.816629955231382,
+        "oi": 0.7523703492809248
+      }
+    },
+    {
+      "var": "SALT",
+      "kind": "full",
+      "target_var0": 0.01702721230685711,
+      "target_varm": 0.016787966713309288,
+      "target_std": 0.13048836080990944,
+      "n_cells": 9300265,
+      "rmse": {
+        "unet_ssh": 0.03156663477420807,
+        "unet_certified": 0.03253629058599472,
+        "oi": 0.052794937044382095
+      },
+      "explained_var": {
+        "unet_ssh": 0.9414788273611321,
+        "unet_certified": 0.9378283311432036,
+        "oi": 0.8363028940211323
+      }
+    }
+  ],
+  "inputs_not_targets": {
+    "SSH_pseudo_m": {
+      "target_var0": 0.0013643804704770446,
+      "target_std": 0.03693752117396408,
+      "std_cm": 3.693752117396408,
+      "role": "INPUT (derived steric height), never predicted"
+    },
+    "SST": {
+      "target_var0": 0.392281174659729,
+      "target_std": 0.6263235383248253,
+      "role": "INPUT (dense satellite-analogue field), never predicted"
+    },
+    "SSS": {
+      "target_var0": 0.042565323412418365,
+      "target_std": 0.20631365299567153,
+      "role": "INPUT (dense satellite-analogue field), never predicted"
+    }
+  }
+}
