@@ -234,6 +234,9 @@ def git_commit():
 
 
 # ---------------------------------------------------------------- train
+os.makedirs(C.CKPT, exist_ok=True)
+os.makedirs(C.CACHE, exist_ok=True)
+ckpt = os.path.join(C.CKPT, f"{tag}.pt")
 rng = np.random.default_rng([args.seed, 0])
 curves = {"step": [], "loss": [], "loss_lead0": [], "loss_leadN": [], "lr": [],
           "val_step": [], "val_score": [], "val_per_lead": []}
@@ -316,6 +319,15 @@ for step in range(1, args.steps + 1):
                               for k, v in model.state_dict().items()}}
             since_best = 0
             flag = "  *best*"
+            # Write it NOW.  Holding the only copy of a multi-hour run in RAM
+            # means a kill at hour 20 loses everything; tmp+rename keeps the
+            # existing file intact if we die mid-write.
+            torch.save({"state_dict": best["state"], "step": best["step"],
+                        "val_score": best["score"], "tag": tag,
+                        "variant": "d4rt", "args": vars(args),
+                        "curves": curves}, ckpt + ".tmp")
+            os.replace(ckpt + ".tmp", ckpt)
+            flag += " (saved)"
         else:
             since_best += 1
         print(f"  val step {step:6d}  score {vs:.4f}  "
@@ -331,12 +343,10 @@ if best["state"] is None:                      # no validation ran
 print(f"selected checkpoint: step {best['step']} score {best['score']}",
       flush=True)
 
-os.makedirs(C.CKPT, exist_ok=True)
-os.makedirs(C.CACHE, exist_ok=True)
-ckpt = os.path.join(C.CKPT, f"{tag}.pt")
-torch.save({"state_dict": best["state"], "step": best["step"],
-            "val_score": best["score"], "tag": tag, "variant": "d4rt",
-            "args": vars(args)}, ckpt)
+if best["score"] is None:                   # no validation ran at all
+    torch.save({"state_dict": best["state"], "step": best["step"],
+                "val_score": None, "tag": tag, "variant": "d4rt",
+                "args": vars(args)}, ckpt)
 out_json = os.path.join(C.CACHE, f"{tag}.json")
 json.dump({"tag": tag, "task": "d4rt_lead_train", "protocol": "protocol_v1",
            "git_commit": git_commit(), "smoke": args.smoke,
