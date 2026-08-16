@@ -12,6 +12,9 @@
 # --- Runtime artifacts ---
 /outputs/*.log
 /outputs/*.pid
+# Root-level run logs from long experiment jobs (same intent as /outputs/*.log);
+# the numbers they contain are persisted in outputs/cache/*.json.
+/logs_*.log
 /outputs/logs/
 /outputs/cache/synthetic_argo_example.npz
 # Pseudo-SSH archive: 360 monthly (180,360) fields, ~90 MB — regenerate with
