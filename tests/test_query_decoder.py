@@ -547,3 +547,42 @@ def test_the_error_names_the_offending_calendar_months():
     months = np.array([1, 1, 2, 3, 3])                   # month 2 is alone
     with pytest.raises(ValueError, match=r"\b2\b"):
         assert_nondegenerate_climatology(months)
+
+
+# --------------------------------------------------------------------------
+# Gate 10 — lead-0 targets exclude the supplied profile columns
+# --------------------------------------------------------------------------
+def test_observed_columns_are_dropped_from_the_query_set():
+    """A cell in a column we handed the model as input must never be scored.
+
+    Otherwise a lead-0 "reconstruction" can be a point copy of its own input.
+    """
+    from ocean_tokenizer.fullrun import drop_observed_columns
+    HW = 10                       # 10 surface cells, 3 depth levels
+    col = torch.zeros(HW, dtype=torch.bool)
+    col[[2, 7]] = True            # two observed profile columns
+    idx = torch.arange(3 * HW)    # every cell at every level
+
+    kept = drop_observed_columns(idx, col, HW)
+
+    assert kept.numel() == 3 * (HW - 2)
+    assert not col[kept % HW].any(), "an observed column survived"
+
+
+def test_every_depth_level_of_an_observed_column_is_dropped():
+    """The whole column goes, not just the surface cell (protocol_v1 rule)."""
+    from ocean_tokenizer.fullrun import drop_observed_columns
+    HW = 10
+    col = torch.zeros(HW, dtype=torch.bool)
+    col[4] = True
+    idx = torch.tensor([4, 14, 24])          # column 4 at levels 0, 1, 2
+
+    assert drop_observed_columns(idx, col, HW).numel() == 0
+
+
+def test_no_observed_columns_keeps_everything():
+    from ocean_tokenizer.fullrun import drop_observed_columns
+    HW = 10
+    idx = torch.arange(3 * HW)
+    kept = drop_observed_columns(idx, torch.zeros(HW, dtype=torch.bool), HW)
+    assert torch.equal(kept, idx)

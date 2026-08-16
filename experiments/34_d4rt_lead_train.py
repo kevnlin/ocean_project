@@ -33,7 +33,8 @@ from ocean_tokenizer import data, config as C
 from ocean_tokenizer.anomaly import Climatology, AnomNorm
 from ocean_tokenizer.fusion import build_fusion_model
 from ocean_tokenizer.fullrun import (FullRunData, VARS,
-                                       assert_nondegenerate_climatology)
+                                       assert_nondegenerate_climatology,
+                                       drop_observed_columns)
 
 TRAIN_YEARS = (1985, 2007)          # 276 months  (protocol_v1)
 VAL_YEARS = (2008, 2010)            # 36 months
@@ -278,7 +279,7 @@ for step in range(1, args.steps + 1):
     over = int(args.queries * (1.0 + 1.3 * K / max(n_ocean, 1)) + 64)
     cand = pool[rng.choice(pool.size, size=min(over, pool.size), replace=False)]
     idx_t = torch.from_numpy(cand).to(dev)
-    idx_t = idx_t[~col[idx_t % HW]][:args.queries]
+    idx_t = drop_observed_columns(idx_t, col, HW)[:args.queries]
     if idx_t.numel() == 0:
         continue
 

@@ -49,6 +49,21 @@ def assert_nondegenerate_climatology(months) -> None:
             f"meaningless. Use a month range covering >=2 years.")
 
 
+def drop_observed_columns(idx: "torch.Tensor", col: "torch.Tensor",
+                          HW: int) -> "torch.Tensor":
+    """Remove flat (depth, cell) indices lying in an observed profile column.
+
+    protocol_v1 excludes the WHOLE column of every supplied profile from
+    scoring, at every depth level — not merely the cells that were handed
+    over. Without this a lead-0 "reconstruction" can score by copying its own
+    input back out, which measures nothing.
+
+    ``idx`` are flat indices into a (D, HW) volume, so ``idx % HW`` is the
+    surface cell regardless of depth; ``col`` (HW,) marks observed columns.
+    """
+    return idx[~col[idx % HW]]
+
+
 class FullRunData:
     """GPU tensors + assembly helpers for one (grid, norm, device) context."""
 
