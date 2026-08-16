@@ -52,12 +52,30 @@ ap.add_argument("--n-profiles", type=int, default=1500)
 ap.add_argument("--chunk", type=int, default=32768)
 ap.add_argument("--tag", default="")
 ap.add_argument("--limit-months", type=int, default=0)
+ap.add_argument("--allow-partial-train", action="store_true",
+                help="evaluate a checkpoint that was trained on a SUBSET of "
+                     "the train months. Its climatology and z-stats then "
+                     "differ from this script's, so the numbers are not "
+                     "protocol_v1 results — plumbing checks only.")
 args = ap.parse_args()
 
 dev = "cuda" if torch.cuda.is_available() else "cpu"
 ck = torch.load(args.ckpt, map_location="cpu", weights_only=False)
 cargs = ck["args"]
 tag = args.tag or f"d4rt_lead_eval_s{args.seed}"
+_lim = cargs.get("limit_train") or 0
+if _lim and not args.allow_partial_train:
+    raise SystemExit(
+        f"normalisation mismatch: this checkpoint was trained on {_lim} train "
+        f"months, so its climatology and per-depth z-stats came from those "
+        f"months only, while this evaluation builds them from all 276. The "
+        f"model would be scored in a different anomaly space than it learned. "
+        f"Retrain with the full train split, or pass --allow-partial-train to "
+        f"run it anyway as a plumbing check (NOT a protocol_v1 result).")
+if _lim:
+    print(f"WARNING: checkpoint trained on {_lim} train months; normalisation "
+          f"differs from this eval. Plumbing check only, not a result.",
+          flush=True)
 print(f"d4rt-lead-eval ckpt={args.ckpt} step={ck['step']} device={dev}",
       flush=True)
 
@@ -163,15 +181,19 @@ for s in src:
         pred = torch.cat(preds, dim=0)
 
         # persistence: the lead-0 reconstruction at these same cells, reused.
-        # cells differ per lead only through target finiteness, so recompute
-        # the lead-0 prediction on THIS lead's cell set.
-        p0 = []
-        with torch.no_grad():
-            z0 = torch.zeros_like(lead_t)
-            for i in range(0, q.shape[1], args.chunk):
-                p0.append(model.decode(latent, q[:, i:i + args.chunk],
-                                       lead=z0[:, i:i + args.chunk])[0])
-        pred_pers = torch.cat(p0, dim=0)
+        # Cells differ per lead only through target finiteness, so the lead-0
+        # prediction is recomputed on THIS lead's cell set — except at lead 0,
+        # where it is the model prediction by construction.
+        if lead == 0:
+            pred_pers = pred
+        else:
+            p0 = []
+            with torch.no_grad():
+                z0 = torch.zeros_like(lead_t)
+                for i in range(0, q.shape[1], args.chunk):
+                    p0.append(model.decode(latent, q[:, i:i + args.chunk],
+                                           lead=z0[:, i:i + args.chunk])[0])
+            pred_pers = torch.cat(p0, dim=0)
 
         n_lev[lead].index_add_(0, di, torch.ones_like(di, dtype=torch.float64))
         se[lead].index_add_(0, di, (pred - y).double() ** 2)
