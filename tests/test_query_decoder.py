@@ -10,7 +10,8 @@ import pytest
 import torch
 
 from ocean_tokenizer.query_decoder import (LeadEmbedding,
-                                           IndependentQueryDecoder)
+                                           IndependentQueryDecoder,
+                                           QueryLocalRefiner)
 
 D_MODEL, N_HEADS, N_LATENT = 64, 4, 32
 
@@ -123,3 +124,97 @@ def test_deleting_queries_does_not_change_the_survivors():
         out_kept = dec(q[:, keep], latent)
 
     assert torch.equal(out_kept, out_full[:, keep])
+
+
+# --------------------------------------------------------------------------
+# Query-local refiner (spec §3.6) — helpers
+# --------------------------------------------------------------------------
+def _refiner(seed=0):
+    torch.manual_seed(seed)
+    m = QueryLocalRefiner(d_model=D_MODEL, n_heads=N_HEADS)
+    m.eval()
+    return m
+
+
+def _tokens(n_token, batch=1, seed=2, all_masked=False):
+    """Encoded observation tokens with coords, evidence mass and mask."""
+    g = torch.Generator().manual_seed(seed)
+    emb = torch.randn(batch, n_token, D_MODEL, generator=g)
+    coord = torch.stack([
+        torch.rand(batch, n_token, generator=g) * 120 - 60,      # lat
+        torch.rand(batch, n_token, generator=g) * 360,           # lon
+        torch.rand(batch, n_token, generator=g) * 985,           # depth
+        torch.full((batch, n_token), 3.0),                       # month
+    ], dim=-1)
+    tau = torch.rand(batch, n_token, generator=g) + 0.1
+    t_off = torch.zeros(batch, n_token)                          # days from t_src
+    mask = torch.zeros(batch, n_token, dtype=torch.bool) if all_masked \
+        else torch.ones(batch, n_token, dtype=torch.bool)
+    return dict(emb=emb, coord=coord, tau=tau, time_offset=t_off, mask=mask)
+
+
+def _queries(n_query, batch=1, seed=3, lead=0):
+    g = torch.Generator().manual_seed(seed)
+    q = torch.randn(batch, n_query, D_MODEL, generator=g)
+    coord = torch.stack([
+        torch.rand(batch, n_query, generator=g) * 120 - 60,
+        torch.rand(batch, n_query, generator=g) * 360,
+        torch.rand(batch, n_query, generator=g) * 985,
+        torch.full((batch, n_query), 3.0),
+    ], dim=-1)
+    return q, coord, torch.full((batch, n_query), lead, dtype=torch.long)
+
+
+# --------------------------------------------------------------------------
+# Gate 8 — masked tokens contribute nothing, and never leak NaN
+# --------------------------------------------------------------------------
+def test_masked_token_content_cannot_change_the_output():
+    """Stronger than "output is finite": a masked token must be *inert*.
+
+    Poison every masked slot - embedding, evidence mass and coordinates - and
+    the answer must be bit-identical to the clean run.
+    """
+    ref = _refiner()
+    tok = _tokens(n_token=32)
+    tok["mask"][:, 16:] = False
+    q, qcoord, lead = _queries(n_query=8)
+
+    with torch.no_grad():
+        clean = ref(q, qcoord, lead, **tok)
+
+    poisoned = {k: v.clone() for k, v in tok.items()}
+    poisoned["emb"][:, 16:] = float("nan")
+    poisoned["tau"][:, 16:] = 0.0
+    poisoned["coord"][:, 16:] = float("nan")
+    poisoned["time_offset"][:, 16:] = float("nan")
+
+    with torch.no_grad():
+        out = ref(q, qcoord, lead, **poisoned)
+
+    assert torch.isfinite(out).all()
+    assert torch.equal(out, clean)
+
+
+# --------------------------------------------------------------------------
+# Gate 9 — empty evidence must not produce NaN
+# --------------------------------------------------------------------------
+def test_zero_active_tokens_gives_finite_output():
+    ref = _refiner()
+    tok = _tokens(n_token=16, all_masked=True)
+    q, qcoord, lead = _queries(n_query=8)
+
+    with torch.no_grad():
+        out = ref(q, qcoord, lead, **tok)
+
+    assert torch.isfinite(out).all()
+
+
+def test_output_with_no_active_tokens_ignores_token_content_entirely():
+    ref = _refiner()
+    q, qcoord, lead = _queries(n_query=8)
+    a = _tokens(n_token=16, seed=11, all_masked=True)
+    b = _tokens(n_token=16, seed=99, all_masked=True)
+
+    with torch.no_grad():
+        assert torch.equal(ref(q, qcoord, lead, **a),
+                           ref(q, qcoord, lead, **b))
