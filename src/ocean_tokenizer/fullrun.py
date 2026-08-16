@@ -22,6 +22,9 @@ BANDS = [("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-max", 300.0, 1e9)]
 
 
+DAYS_PER_MONTH = 30.436875
+
+
 class FullRunData:
     """GPU tensors + assembly helpers for one (grid, norm, device) context."""
 
@@ -71,8 +74,16 @@ class FullRunData:
 
     # ---------------- observation / query assembly ----------------
     def obs_dict(self, ZAvol, surfZ, t, mo, prof_ii, prof_jj,
-                 include=("profiles", "surf", "woa")) -> dict:
-        """Observation dict for one month; prof_ii/jj are (K,) GPU int64."""
+                 include=("profiles", "surf", "woa"), context: int = 1) -> dict:
+        """Observation dict for one month; prof_ii/jj are (K,) GPU int64.
+
+        ``context`` > 1 supplies a window of surface months ending at ``t``
+        (mentor §2.1/§3.1: ``[t_src-1, t_src]`` for the gridded streams,
+        profiles at ``t_src`` only).  Each context month is a separate encoder
+        call carrying its own ``time_offset`` in days, so the query-local
+        refiner can tell a stale patch from a current one and ``check_causal``
+        can see that none of them reaches past the source month.
+        """
         dev = self.dev
         obs = {}
         if "profiles" in include:
@@ -86,9 +97,17 @@ class FullRunData:
                 lon=self.lon_t[prof_jj][None],
                 month=torch.tensor([mo], device=dev))
         if "surf" in include:
-            obs["surf"] = dict(field=surfZ[t][None], lat=self.lat_t,
-                               lon=self.lon_t,
-                               month=torch.tensor([mo], device=dev))
+            months = []
+            for back in range(context - 1, -1, -1):
+                tt = t - back
+                if tt < 0:
+                    continue
+                cm = (mo - 1 - back) % 12 + 1
+                months.append(dict(field=surfZ[tt][None], lat=self.lat_t,
+                                   lon=self.lon_t,
+                                   month=torch.tensor([cm], device=dev),
+                                   time_offset=-DAYS_PER_MONTH * back))
+            obs["surf"] = months if len(months) > 1 else months[0]
         if "woa" in include:
             assert self.woaZ is not None, "call load_woa first"
             obs["woa"] = dict(field=self.woaZ[mo - 1][None], lat=self.lat_t,
