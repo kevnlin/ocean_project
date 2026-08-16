@@ -32,7 +32,8 @@ import torch
 from ocean_tokenizer import data, config as C
 from ocean_tokenizer.anomaly import Climatology, AnomNorm
 from ocean_tokenizer.fusion import build_fusion_model
-from ocean_tokenizer.fullrun import FullRunData, VARS
+from ocean_tokenizer.fullrun import (FullRunData, VARS,
+                                       assert_nondegenerate_climatology)
 
 TRAIN_YEARS = (1985, 2007)          # 276 months  (protocol_v1)
 VAL_YEARS = (2008, 2010)            # 36 months
@@ -84,6 +85,7 @@ ts = time.time()
 ftrain = data.load_gt_fields(tr_idx, grid)
 woa = data.woa_prior(grid)
 surf_train = {v: ftrain[v] for v in C.VARS_SURF if v in ftrain}
+assert_nondegenerate_climatology(ftrain["months"])
 clim = Climatology(ftrain, surf_train)
 norm = AnomNorm(clim, ftrain, surf_train)
 rd = FullRunData(grid, norm, dev)

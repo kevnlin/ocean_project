@@ -517,3 +517,33 @@ def test_encode_accepts_several_context_months_for_one_modality():
     n_surf_one = int((tok_one.modality == MOD_SURF).sum())
     n_surf_two = int((tok_two.modality == MOD_SURF).sum())
     assert n_surf_two == 2 * n_surf_one
+
+
+# --------------------------------------------------------------------------
+# Degenerate-climatology guard
+# --------------------------------------------------------------------------
+def test_single_sample_per_calendar_month_is_rejected():
+    """A monthly climatology needs >=2 samples per calendar month.
+
+    With exactly one, clim[m] IS that month's field, every anomaly is
+    identically zero, and a model scores a perfect loss on a target that
+    carries no signal.  Caught for real: `--limit-train 8` produced
+    loss 0.0000 at step 200 on a 3-month-ahead forecast.
+    """
+    from ocean_tokenizer.fullrun import assert_nondegenerate_climatology
+    months = np.array([1, 2, 3, 4, 5, 6, 7, 8])          # each once
+    with pytest.raises(ValueError, match="degenerate"):
+        assert_nondegenerate_climatology(months)
+
+
+def test_two_samples_per_calendar_month_is_accepted():
+    from ocean_tokenizer.fullrun import assert_nondegenerate_climatology
+    months = np.array([1, 2, 3, 4, 5, 6, 7, 8] * 2)
+    assert_nondegenerate_climatology(months)             # must not raise
+
+
+def test_the_error_names_the_offending_calendar_months():
+    from ocean_tokenizer.fullrun import assert_nondegenerate_climatology
+    months = np.array([1, 1, 2, 3, 3])                   # month 2 is alone
+    with pytest.raises(ValueError, match=r"\b2\b"):
+        assert_nondegenerate_climatology(months)

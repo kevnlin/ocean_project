@@ -25,6 +25,30 @@ BANDS = [("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
 DAYS_PER_MONTH = 30.436875
 
 
+def assert_nondegenerate_climatology(months) -> None:
+    """Refuse a month set whose monthly climatology carries no signal.
+
+    ``Climatology`` averages the training months sharing each calendar month.
+    With exactly one sample for a calendar month, ``clim[m]`` *is* that
+    month's field, so ``anomaly = field - clim[m]`` is identically zero and
+    every z-score is zero.  A model then scores a perfect loss against a
+    target with no information in it.
+
+    This is not hypothetical: a tiny-overfit run with 8 training months
+    (one per calendar month) reached loss 0.0000 at step 200 on a 3-month-ahead
+    forecast, which looks like a spectacular result and means nothing.
+    """
+    m = np.asarray(months).astype(int)
+    uniq, counts = np.unique(m, return_counts=True)
+    lonely = uniq[counts < 2]
+    if lonely.size:
+        raise ValueError(
+            f"degenerate climatology: calendar month(s) "
+            f"{', '.join(str(int(x)) for x in lonely)} have a single sample, "
+            f"so their anomalies are identically zero and the loss is "
+            f"meaningless. Use a month range covering >=2 years.")
+
+
 class FullRunData:
     """GPU tensors + assembly helpers for one (grid, norm, device) context."""
 
