@@ -400,6 +400,8 @@ def test_reference_slots_are_present_even_with_nothing_available():
 # --------------------------------------------------------------------------
 # End-to-end: the `d4rt` fusion variant (spec §4 wiring)
 # --------------------------------------------------------------------------
+from ocean_tokenizer.token_api import MODALITIES
+MOD_SURF = MODALITIES["surf_grid"]
 DEPTHS = np.array([5, 15, 25, 35, 45, 55, 65, 85, 105, 125, 145, 165,
                    186, 222, 267, 327, 408, 527, 707, 985], dtype="float32")
 
@@ -476,3 +478,42 @@ def test_d4rt_variant_default_lead_is_zero_reconstruction():
         implicit = m(_obs(), q)
         explicit = m(_obs(), q, lead=torch.zeros(1, 9, dtype=torch.long))
     assert torch.equal(implicit, explicit)
+
+
+# --------------------------------------------------------------------------
+# Two-month observation context (spec §3.3, mentor §2.1/§3.1)
+# --------------------------------------------------------------------------
+def test_grid_patch_encoder_accepts_a_time_offset():
+    """Surface/SSH context at t_src-1 must be marked as a month older.
+
+    Without this the refiner's temporal term cannot tell the two context
+    months apart and the causality check reads t-1 tokens as t_src tokens.
+    """
+    from ocean_tokenizer.token_api import GridPatchEncoder
+    enc = GridPatchEncoder(2, d_model=D_MODEL, patch=(4, 6), modality="surf_grid")
+    g = np.random.default_rng(0)
+    kw = dict(field=torch.tensor(g.normal(size=(1, 2, 8, 12)).astype("float32")),
+              lat=torch.linspace(-80, 80, 8), lon=torch.linspace(0, 345, 12),
+              month=torch.full((1,), 3))
+
+    now = enc(**kw)
+    prev = enc(**kw, time_offset=-30.436875)
+
+    assert torch.allclose(now.time_offset, torch.zeros_like(now.time_offset))
+    assert torch.allclose(prev.time_offset,
+                          torch.full_like(prev.time_offset, -30.436875))
+
+
+def test_encode_accepts_several_context_months_for_one_modality():
+    """obs[key] may be a list of kwarg dicts -> one encoder call each."""
+    m = _d4rt_model()
+    one = _obs()
+    two = dict(one)
+    two["surf"] = [dict(one["surf"], time_offset=-30.436875), one["surf"]]
+
+    tok_one = m.encode(one, batch=1)
+    tok_two = m.encode(two, batch=1)
+
+    n_surf_one = int((tok_one.modality == MOD_SURF).sum())
+    n_surf_two = int((tok_two.modality == MOD_SURF).sum())
+    assert n_surf_two == 2 * n_surf_one

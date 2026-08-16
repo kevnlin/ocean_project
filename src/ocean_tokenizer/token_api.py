@@ -432,7 +432,8 @@ class GridPatchEncoder(nn.Module):
         ], dim=-1)                                                   # (B, N, 4)
         return content, coord, mask, mass, sup_h
 
-    def _meta(self, B, N, dlo, dhi, device, dtype, sup_h, strat=None):
+    def _meta(self, B, N, dlo, dhi, device, dtype, sup_h, strat=None,
+              time_offset: float = 0.0):
         """Task-4 provenance + the DFS 3-D support / error metadata.
 
         ``record_id`` identifies the raw measurement a token stands for: for a
@@ -451,7 +452,8 @@ class GridPatchEncoder(nn.Module):
             support_h=sup_h.to(dtype),
             support_t=torch.full((B, N), self.support_t, dtype=dtype,
                                  device=device),
-            time_offset=torch.zeros(B, N, dtype=dtype, device=device),
+            time_offset=torch.full((B, N), float(time_offset),
+                                   dtype=dtype, device=device),
             sigma=torch.full((B, N), self.sigma, dtype=dtype, device=device),
             strat=(torch.zeros(B, N, dtype=dtype, device=device)
                    if strat is None else strat.to(dtype)),
@@ -459,7 +461,8 @@ class GridPatchEncoder(nn.Module):
                                  device=device),
             record_id=(self.family_id * 1_000_003 + slot).contiguous())
 
-    def forward(self, field, lat, lon, month, depth=None) -> TokenBatch:
+    def forward(self, field, lat, lon, month, depth=None,
+                time_offset: float = 0.0) -> TokenBatch:
         month = torch.as_tensor(month, device=field.device)
         if month.ndim == 0:
             month = month[None].expand(field.shape[0])
@@ -510,7 +513,8 @@ class GridPatchEncoder(nn.Module):
                               self.modality_id, support_mass=mass,
                               **self._meta(field.shape[0], N, dlo, dhi,
                                            field.device, field.dtype,
-                                           sup_h, strat))
+                                           sup_h, strat,
+                                           time_offset=time_offset))
 
 
 # --------------------------------------------------------------------------
@@ -866,7 +870,15 @@ class SharedLatentModel(nn.Module):
         self.modality_emb = nn.Embedding(len(MODALITIES), d_model)
 
     def encode(self, obs: dict, batch: int, device=None) -> TokenBatch:
-        parts = [self.encoders[k](**kw) for k, kw in obs.items()]
+        """``obs[key]`` is that encoder's kwargs, or a *list* of kwarg dicts
+        when one modality supplies several context months (the [t_src-1,
+        t_src] surface/SSH window).  Each entry becomes its own encoder call;
+        tokens carry their own time via ``time_offset``, so nothing further
+        downstream needs to know how wide the window was."""
+        parts = []
+        for k, kw in obs.items():
+            for one in (kw if isinstance(kw, (list, tuple)) else [kw]):
+                parts.append(self.encoders[k](**one))
         tb = TokenBatch.cat(parts) if parts else TokenBatch.empty(
             batch, self.d_model, device=device)
         emb = tb.emb + self.modality_emb(tb.modality) * tb.mask.unsqueeze(-1)
