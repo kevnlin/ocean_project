@@ -17,6 +17,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .token_api import coord_features, N_COORD_FEATS
+
 
 class LeadEmbedding(nn.Module):
     """Forecast lead ``t_tgt - t_src`` (whole months) -> additive query bias.
@@ -229,3 +231,113 @@ class QueryLocalRefiner(nn.Module):
         a = F.scaled_dot_product_attention(qh, kh, vh, attn_mask=bias)
         a = self.wo(a.transpose(1, 2).reshape(B, Q, -1))
         return q + self.gate * a
+
+
+class ChannelExpertHead(nn.Module):
+    """Temperature/salinity output experts (mentor §2.4).
+
+    Temperature is read from the shared physical-state query after the shared
+    local refiner, via the temperature component of the shared head.  Salinity
+    gets a learned variable embedding, its **own** local refiner and a scalar
+    head, so the salinity path can specialise without dragging the shared
+    physical state with it.
+    """
+
+    def __init__(self, d_model: int, n_heads: int):
+        super().__init__()
+        self.shared_refiner = QueryLocalRefiner(d_model, n_heads)
+        self.salt_refiner = QueryLocalRefiner(d_model, n_heads)
+        self.salt_embed = nn.Parameter(torch.zeros(1, 1, d_model))
+        hidden = 2 * d_model
+        self.shared_head = nn.Sequential(
+            nn.Linear(d_model, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, 2))
+        self.salt_head = nn.Sequential(
+            nn.Linear(d_model, hidden), nn.SiLU(),
+            nn.Linear(hidden, 1))
+
+    def forward(self, q, query_coord, lead, emb, coord, tau, time_offset,
+                mask):
+        kw = dict(emb=emb, coord=coord, tau=tau, time_offset=time_offset,
+                  mask=mask)
+        h = self.shared_refiner(q, query_coord, lead, **kw)
+        temp = self.shared_head(h)[..., :1]
+        s = self.salt_refiner(h + self.salt_embed, query_coord, lead, **kw)
+        salt = self.salt_head(s)
+        return torch.cat([temp, salt], dim=-1)
+
+
+def check_causal(time_offset: torch.Tensor, support_t: torch.Tensor | None,
+                 mask: torch.Tensor, tol_days: float = 1e-6) -> None:
+    """Raise if any active token carries information from after ``t_src``.
+
+    ``time_offset`` is the signed offset in days from the analysis time
+    (= ``t_src``), so a causal observation has ``time_offset <= 0``.
+
+    Two separate failures are possible and are reported separately, because a
+    check that only looked at centres would pass a token whose *centre* sits
+    before ``t_src`` but whose temporal support still straddles it — the leak
+    hidden in the support geometry that mentor §3.3 warns about.  Masked
+    slots are exempt: padding carries junk coordinates by construction.
+    """
+    if mask is None or not mask.any():
+        return
+    m = mask
+    centre = time_offset[m]
+    if centre.numel() and float(centre.max()) > tol_days:
+        raise ValueError(
+            f"non-causal token centre: max time_offset "
+            f"{float(centre.max()):+.3f} d > 0 (t_src). An observation from "
+            f"after the source month cannot be an input.")
+    if support_t is None:
+        return
+    reach = (time_offset + support_t.abs() / 2.0)[m]
+    if reach.numel() and float(reach.max()) > tol_days:
+        raise ValueError(
+            f"non-causal token support: centre is legal but support reaches "
+            f"{float(reach.max()):+.3f} d past t_src. The leak is in the "
+            f"support geometry, not the centre.")
+
+
+DEFAULT_CHUNK = 128           # mentor §2.4: memory only, never couples queries
+
+
+class D4RTQueryDecoder(nn.Module):
+    """The full §2.3 + §2.4 query path.
+
+        coord_features(query) + lead_embed(t_tgt - t_src)
+          -> independent-query cross-attention into the shared latent
+          -> query-local refiner over the observation tokens
+          -> temperature / salinity channel experts
+
+    ``coord_features`` is used unmodified at 68 dims, so the target time never
+    widens the coordinate contract that the encoders share.
+    """
+
+    def __init__(self, d_model: int = 64, n_blocks: int = 2, n_heads: int = 4,
+                 max_lead: int = 3, mlp_ratio: float = 2.0):
+        super().__init__()
+        self.q_proj = nn.Linear(N_COORD_FEATS, d_model)
+        self.lead_embed = LeadEmbedding(max_lead, d_model)
+        self.decoder = IndependentQueryDecoder(d_model, n_blocks, n_heads,
+                                               mlp_ratio)
+        self.experts = ChannelExpertHead(d_model, n_heads)
+
+    def forward(self, latent, query_coord, lead, emb, coord, tau,
+                time_offset, mask, chunk: int | None = None):
+        if chunk is None:
+            return self._decode(latent, query_coord, lead, emb, coord, tau,
+                                time_offset, mask)
+        outs = [self._decode(latent, query_coord[:, i:i + chunk],
+                             lead[:, i:i + chunk], emb, coord, tau,
+                             time_offset, mask)
+                for i in range(0, query_coord.shape[1], chunk)]
+        return torch.cat(outs, dim=1)
+
+    def _decode(self, latent, query_coord, lead, emb, coord, tau,
+                time_offset, mask):
+        q = self.q_proj(coord_features(query_coord)) + self.lead_embed(lead)
+        h = self.decoder(q, latent)
+        return self.experts(h, query_coord, lead, emb=emb, coord=coord,
+                            tau=tau, time_offset=time_offset, mask=mask)

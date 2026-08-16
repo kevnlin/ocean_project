@@ -11,7 +11,10 @@ import torch
 
 from ocean_tokenizer.query_decoder import (LeadEmbedding,
                                            IndependentQueryDecoder,
-                                           QueryLocalRefiner)
+                                           QueryLocalRefiner,
+                                           ChannelExpertHead,
+                                           check_causal,
+                                           D4RTQueryDecoder)
 
 D_MODEL, N_HEADS, N_LATENT = 64, 4, 32
 
@@ -218,3 +221,145 @@ def test_output_with_no_active_tokens_ignores_token_content_entirely():
     with torch.no_grad():
         assert torch.equal(ref(q, qcoord, lead, **a),
                            ref(q, qcoord, lead, **b))
+
+
+# --------------------------------------------------------------------------
+# Channel experts (spec §3.7)
+# --------------------------------------------------------------------------
+def _experts(seed=0):
+    torch.manual_seed(seed)
+    m = ChannelExpertHead(d_model=D_MODEL, n_heads=N_HEADS)
+    m.eval()
+    return m
+
+
+def test_channel_expert_head_returns_temp_and_salt():
+    exp = _experts()
+    tok = _tokens(n_token=32)
+    q, qcoord, lead = _queries(n_query=8)
+    with torch.no_grad():
+        out = exp(q, qcoord, lead, **tok)
+    assert out.shape == (1, 8, 2)
+    assert torch.isfinite(out).all()
+
+
+def test_salinity_expert_is_separate_from_temperature():
+    """Perturbing the salinity refiner must move SALT and leave TEMP alone."""
+    exp = _experts()
+    tok = _tokens(n_token=32)
+    q, qcoord, lead = _queries(n_query=8)
+
+    with torch.no_grad():
+        before = exp(q, qcoord, lead, **tok)
+        for p in exp.salt_refiner.parameters():
+            p.add_(0.5)
+        after = exp(q, qcoord, lead, **tok)
+
+    assert torch.equal(after[..., 0], before[..., 0]), "TEMP must not move"
+    assert not torch.equal(after[..., 1], before[..., 1]), "SALT must move"
+
+
+# --------------------------------------------------------------------------
+# Gates 3 & 4 — causality, checked on centres and on support independently
+# --------------------------------------------------------------------------
+def _causal_batch(n=8, centre_days=-15.0, support_days=10.0):
+    """Tokens at t_src or earlier, with a temporal support half-width."""
+    return dict(
+        time_offset=torch.full((1, n), centre_days),
+        support_t=torch.full((1, n), support_days),
+        mask=torch.ones(1, n, dtype=torch.bool),
+    )
+
+
+def test_causal_batch_passes():
+    check_causal(**_causal_batch())        # must not raise
+
+
+def test_token_centre_after_t_src_raises():
+    """Gate 3: a token observed after the source month is a leak."""
+    bad = _causal_batch(centre_days=+20.0, support_days=0.0)
+    with pytest.raises(ValueError, match="centre"):
+        check_causal(**bad)
+
+
+def test_support_reaching_past_t_src_raises_even_when_centre_is_legal():
+    """Gate 4: the leak can hide inside the support geometry.
+
+    Centre is 5 days *before* t_src, which passes gate 3, but the support
+    half-width of 10 days reaches 5 days *after* it.
+    """
+    sneaky = _causal_batch(centre_days=-5.0, support_days=20.0)
+    check_causal(**{**sneaky, "support_t": torch.zeros(1, 8)})   # centre ok
+    with pytest.raises(ValueError, match="support"):
+        check_causal(**sneaky)
+
+
+def test_masked_tokens_are_exempt_from_causality():
+    """Padding slots carry junk times and must not trip the check."""
+    b = _causal_batch(centre_days=+999.0, support_days=999.0)
+    b["mask"][:] = False
+    check_causal(**b)
+
+
+# --------------------------------------------------------------------------
+# Composed decoder — gate 5 and chunk independence
+# --------------------------------------------------------------------------
+def _full(seed=0, max_lead=3):
+    torch.manual_seed(seed)
+    m = D4RTQueryDecoder(d_model=D_MODEL, n_blocks=2, n_heads=N_HEADS,
+                         max_lead=max_lead)
+    m.eval()
+    return m
+
+
+def _full_inputs(n_query=64, n_token=32, lead=0, seed=5):
+    g = torch.Generator().manual_seed(seed)
+    latent = torch.randn(1, N_LATENT, D_MODEL, generator=g)
+    tok = _tokens(n_token=n_token, seed=seed)
+    qcoord = torch.stack([
+        torch.rand(1, n_query, generator=g) * 120 - 60,
+        torch.rand(1, n_query, generator=g) * 360,
+        torch.rand(1, n_query, generator=g) * 985,
+        torch.full((1, n_query), 3.0),
+    ], dim=-1)
+    lead_t = torch.full((1, n_query), lead, dtype=torch.long)
+    return latent, qcoord, lead_t, tok
+
+
+def test_lead_zero_output_is_untouched_by_the_forecasting_weights():
+    """Gate 5: reconstruction must be isolated from the lead machinery."""
+    m = _full()
+    latent, qcoord, lead, tok = _full_inputs(lead=0)
+
+    with torch.no_grad():
+        before = m(latent, qcoord, lead, **tok)
+        # move every *forecast* row of the lead table
+        m.lead_embed.emb.weight[1:] += 3.0
+        after = m(latent, qcoord, lead, **tok)
+
+    assert torch.equal(after, before)
+
+
+def test_nonzero_lead_does_respond_to_those_weights():
+    """The companion to gate 5 - otherwise the isolation is vacuous."""
+    m = _full()
+    latent, qcoord, lead, tok = _full_inputs(lead=2)
+
+    with torch.no_grad():
+        before = m(latent, qcoord, lead, **tok)
+        m.lead_embed.emb.weight[1:] += 3.0
+        after = m(latent, qcoord, lead, **tok)
+
+    assert not torch.equal(after, before)
+
+
+def test_chunked_decode_matches_unchunked():
+    """Chunking is a memory device only; it must not couple queries."""
+    m = _full()
+    latent, qcoord, lead, tok = _full_inputs(n_query=300)
+
+    with torch.no_grad():
+        whole = m(latent, qcoord, lead, **tok)
+        chunked = m(latent, qcoord, lead, chunk=128, **tok)
+
+    assert torch.equal(whole, chunked)
