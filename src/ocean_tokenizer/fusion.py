@@ -60,6 +60,8 @@ import torch.nn.functional as F
 from . import dfs
 from .token_api import (TokenBatch, SharedLatentModel, MODALITIES,
                         coord_features, N_COORD_FEATS)
+from .query_decoder import (D4RTQueryDecoder, ReferenceSlots, check_causal,
+                            DEFAULT_CHUNK)
 
 _LOG_EPS = 1e-12          # inside log(w + eps): keeps masked/zero-mass finite
 _NULL_BIAS = math.log(_LOG_EPS)
@@ -368,6 +370,15 @@ class DFSAttention(AttnFusionModel):
         self.last_evidence = None          # diagnostics of the last fuse()
 
     # ---- helpers -------------------------------------------------------
+    def _extra_kv(self, tokens: TokenBatch):
+        """Optional extra fusion keys, appended after the background key.
+
+        ``None`` for plain DFS-Attention; :class:`D4RTFusion` returns its
+        availability-conditioned reference slots here so the hook keeps the
+        fuse body in one place.
+        """
+        return None
+
     def _split(self, tokens: TokenBatch):
         bg_ids = self._bg_ids.to(tokens.modality.device)
         is_bg = (tokens.modality[..., None] == bg_ids).any(-1)
@@ -409,6 +420,12 @@ class DFSAttention(AttnFusionModel):
         kv_mask = torch.cat([kv_mask, one], dim=1)
         bias = torch.cat([torch.log(nu + _LOG_EPS),
                           self.log_lambda_bg.expand(B, 1)], dim=1)
+        extra = self._extra_kv(tokens)
+        if extra is not None:
+            e_kv, e_mask, e_bias = extra
+            kv = torch.cat([kv, e_kv], dim=1)
+            kv_mask = torch.cat([kv_mask, e_mask], dim=1)
+            bias = torch.cat([bias, e_bias], dim=1)
         z = z_bg + self.fuse_attn(self.fuse_ln_q(z), self.fuse_ln_kv(kv),
                                   key_bias=bias, key_mask=kv_mask)
         for blk in self.blocks:
@@ -439,6 +456,93 @@ class DFSAttention(AttnFusionModel):
         return self.decode(self.fuse(tokens, target), query_coord, query_scale)
 
 
+# --------------------------------------------------------------------------
+# Variant E — DFS-Attention backbone + D4RT causal space-time query decoder
+# --------------------------------------------------------------------------
+class D4RTFusion(DFSAttention):
+    """DFS-Attention fusion with the mentor §2.3/§2.4 query path.
+
+    The fusion stage is unchanged except for the availability-conditioned
+    reference slots (§2.3).  What changes is the way out: instead of one
+    cross-attention layer into the latent, a query carries a target time and
+    passes through an independent-query decoder, a query-local refiner over
+    the observation tokens, and temperature/salinity experts.
+
+    ``fuse`` caches the encoded tokens because the local refiner needs them at
+    decode time; the existing "fuse once per month, decode in chunks" loop in
+    ``fullrun.eval_packs`` therefore keeps working unchanged.  This mirrors
+    the ``last_evidence`` caching DFS-Attention already does.
+    """
+
+    def __init__(self, encoders, d_model: int = 64, n_latent: int = 32,
+                 n_heads: int = 4, n_self_blocks: int = 2, c_out: int = 2,
+                 mlp_ratio: float = 2.0, anchor_grid=None,
+                 n_ref_slots: int = 8, n_dec_blocks: int = 2,
+                 max_lead: int = 3, query_chunk: int = DEFAULT_CHUNK,
+                 causal_check: bool = True, **kw):
+        super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
+                         c_out, mlp_ratio, anchor_grid=anchor_grid, **kw)
+        self.ref_slots = ReferenceSlots(n_ref_slots, d_model, len(MODALITIES))
+        self.qdec = D4RTQueryDecoder(d_model, n_dec_blocks, n_heads, max_lead)
+        self.query_chunk = int(query_chunk)
+        self.causal_check = bool(causal_check)
+        self._tokens = None
+
+    # ---- fusion: reference slots + token cache -------------------------
+    def _extra_kv(self, tokens: TokenBatch):
+        B = tokens.emb.shape[0]
+        avail = self._availability(tokens)
+        kv = self.ref_slots(avail)
+        n = kv.shape[1]
+        mask = torch.ones(B, n, dtype=torch.bool, device=kv.device)
+        # neutral prior: the reference is what the latent falls back on, so it
+        # must not out-shout real evidence when any exists
+        bias = self.log_lambda_bg.expand(B, n)
+        return kv, mask, bias
+
+    def _availability(self, tokens: TokenBatch) -> torch.Tensor:
+        """(B, M) 1.0 where that modality has at least one live token."""
+        B = tokens.emb.shape[0]
+        M = len(MODALITIES)
+        oh = F.one_hot(tokens.modality.clamp(min=0), M).to(tokens.emb.dtype)
+        oh = oh * tokens.mask[..., None].to(tokens.emb.dtype)
+        return (oh.sum(1) > 0).to(tokens.emb.dtype).view(B, M)
+
+    def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
+        if self.causal_check and tokens.time_offset is not None:
+            check_causal(tokens.time_offset, tokens.support_t, tokens.mask)
+        self._tokens = tokens
+        return super().fuse(tokens, target)
+
+    # ---- D4RT decode ----------------------------------------------------
+    def decode(self, latent, query_coord, query_scale=None, lead=None,
+               chunk: int | None = None):
+        tokens = self._tokens
+        if tokens is None:
+            raise RuntimeError(
+                "decode() needs the encoded tokens for the query-local "
+                "refiner; call fuse() first (the eval loop already does).")
+        if lead is None:
+            lead = torch.zeros(query_coord.shape[:2], dtype=torch.long,
+                               device=query_coord.device)
+        obs_mask, _ = self._split(tokens)
+        tau = self.last_evidence["tau"]
+        t_off = tokens.time_offset
+        if t_off is None:
+            t_off = torch.zeros_like(tau)
+        return self.qdec(latent, query_coord, lead, emb=tokens.emb,
+                         coord=tokens.coord, tau=tau, time_offset=t_off,
+                         mask=obs_mask,
+                         chunk=self.query_chunk if chunk is None else chunk)
+
+    def forward(self, obs: dict, query_coord: torch.Tensor, target=None,
+                query_scale=None, lead=None, chunk=None) -> torch.Tensor:
+        tokens = self.encode(obs, batch=query_coord.shape[0],
+                             device=query_coord.device)
+        latent = self.fuse(tokens, target)
+        return self.decode(latent, query_coord, query_scale, lead, chunk)
+
+
 class _nullctx:
     def __enter__(self):
         return None
@@ -453,7 +557,8 @@ class _nullctx:
 VARIANTS = {"perceiver": StandardPerceiver,
             "resampler": FixedBudgetResampler,
             "mbca": MBCA,
-            "dfs": DFSAttention}
+            "dfs": DFSAttention,
+            "d4rt": D4RTFusion}
 
 
 def build_fusion_model(variant: str, grid, d_model: int = 128,

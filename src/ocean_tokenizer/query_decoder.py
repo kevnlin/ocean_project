@@ -269,35 +269,44 @@ class ChannelExpertHead(nn.Module):
 
 
 def check_causal(time_offset: torch.Tensor, support_t: torch.Tensor | None,
-                 mask: torch.Tensor, tol_days: float = 1e-6) -> None:
+                 mask: torch.Tensor, cutoff_days: float = _DAYS_PER_MONTH / 2,
+                 tol_days: float = 1e-3) -> None:
     """Raise if any active token carries information from after ``t_src``.
 
-    ``time_offset`` is the signed offset in days from the analysis time
-    (= ``t_src``), so a causal observation has ``time_offset <= 0``.
+    ``time_offset`` is the signed offset in days from the analysis time, which
+    is the *centre* of the source month.  The causal cutoff is therefore the
+    **end** of that month, ``+DAYS_PER_MONTH/2``, not zero: this is a monthly
+    product, and an observation representing month ``t_src`` legitimately has
+    a ~30-day support straddling the month centre.  Setting the cutoff at zero
+    would flag every ordinary monthly token as a leak.  What must never happen
+    is support reaching into ``t_src + 1``.
 
-    Two separate failures are possible and are reported separately, because a
-    check that only looked at centres would pass a token whose *centre* sits
-    before ``t_src`` but whose temporal support still straddles it — the leak
-    hidden in the support geometry that mentor §3.3 warns about.  Masked
+    Two failures are possible and are reported separately, because a check
+    that only looked at centres would pass a token whose *centre* is inside
+    the source month but whose support still reaches into the next one — the
+    leak hidden in the support geometry that mentor §3.3 warns about.  Masked
     slots are exempt: padding carries junk coordinates by construction.
     """
     if mask is None or not mask.any():
         return
     m = mask
+    lim = cutoff_days + tol_days
     centre = time_offset[m]
-    if centre.numel() and float(centre.max()) > tol_days:
+    if centre.numel() and float(centre.max()) > lim:
         raise ValueError(
             f"non-causal token centre: max time_offset "
-            f"{float(centre.max()):+.3f} d > 0 (t_src). An observation from "
-            f"after the source month cannot be an input.")
+            f"{float(centre.max()):+.3f} d is past the end of the source "
+            f"month ({cutoff_days:+.3f} d). An observation from after t_src "
+            f"cannot be an input.")
     if support_t is None:
         return
     reach = (time_offset + support_t.abs() / 2.0)[m]
-    if reach.numel() and float(reach.max()) > tol_days:
+    if reach.numel() and float(reach.max()) > lim:
         raise ValueError(
             f"non-causal token support: centre is legal but support reaches "
-            f"{float(reach.max()):+.3f} d past t_src. The leak is in the "
-            f"support geometry, not the centre.")
+            f"{float(reach.max()):+.3f} d, past the end of the source month "
+            f"({cutoff_days:+.3f} d). The leak is in the support geometry, "
+            f"not the centre.")
 
 
 DEFAULT_CHUNK = 128           # mentor §2.4: memory only, never couples queries
@@ -341,3 +350,25 @@ class D4RTQueryDecoder(nn.Module):
         h = self.decoder(q, latent)
         return self.experts(h, query_coord, lead, emb=emb, coord=coord,
                             tau=tau, time_offset=time_offset, mask=mask)
+
+
+class ReferenceSlots(nn.Module):
+    """Learned, availability-conditioned key/value slots (mentor §2.3).
+
+    Eight slots accompany the transported observation slots into fusion, so
+    the latent always has well-defined key mass to read even when a modality
+    is dropped.  Conditioning on *which* modalities are present lets the
+    fallback differ between "no profiles this month" and "no SSH this month"
+    instead of collapsing to one generic null, which is the single-token
+    behaviour this generalises.
+    """
+
+    def __init__(self, n_slots: int, d_model: int, n_modalities: int):
+        super().__init__()
+        self.base = nn.Parameter(torch.randn(n_slots, d_model) * 0.02)
+        self.avail_proj = nn.Linear(n_modalities, d_model)
+
+    def forward(self, availability: torch.Tensor) -> torch.Tensor:
+        """``availability`` (B, M) in {0,1} -> (B, n_slots, d_model)."""
+        cond = self.avail_proj(availability.to(self.base.dtype))
+        return self.base[None] + cond[:, None, :]

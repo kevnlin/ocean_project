@@ -5,6 +5,8 @@ matter most are the two invariance ones (1, 2): the whole point of the
 independent-query decoder is that a query's prediction cannot depend on which
 other queries happened to be in the batch.
 """
+import itertools
+
 import numpy as np
 import pytest
 import torch
@@ -14,7 +16,8 @@ from ocean_tokenizer.query_decoder import (LeadEmbedding,
                                            QueryLocalRefiner,
                                            ChannelExpertHead,
                                            check_causal,
-                                           D4RTQueryDecoder)
+                                           D4RTQueryDecoder,
+                                           ReferenceSlots)
 
 D_MODEL, N_HEADS, N_LATENT = 64, 4, 32
 
@@ -262,8 +265,12 @@ def test_salinity_expert_is_separate_from_temperature():
 # --------------------------------------------------------------------------
 # Gates 3 & 4 — causality, checked on centres and on support independently
 # --------------------------------------------------------------------------
-def _causal_batch(n=8, centre_days=-15.0, support_days=10.0):
-    """Tokens at t_src or earlier, with a temporal support half-width."""
+def _causal_batch(n=8, centre_days=0.0, support_days=30.0):
+    """Monthly tokens: centre at the month centre, ~30-day support.
+
+    The causal cutoff is the END of the source month (+15.2 d), not the month
+    centre, so an ordinary monthly token sits exactly at the limit.
+    """
     return dict(
         time_offset=torch.full((1, n), centre_days),
         support_t=torch.full((1, n), support_days),
@@ -276,8 +283,8 @@ def test_causal_batch_passes():
 
 
 def test_token_centre_after_t_src_raises():
-    """Gate 3: a token observed after the source month is a leak."""
-    bad = _causal_batch(centre_days=+20.0, support_days=0.0)
+    """Gate 3: a token centred in the NEXT month is a leak."""
+    bad = _causal_batch(centre_days=+30.44, support_days=0.0)
     with pytest.raises(ValueError, match="centre"):
         check_causal(**bad)
 
@@ -285,10 +292,10 @@ def test_token_centre_after_t_src_raises():
 def test_support_reaching_past_t_src_raises_even_when_centre_is_legal():
     """Gate 4: the leak can hide inside the support geometry.
 
-    Centre is 5 days *before* t_src, which passes gate 3, but the support
-    half-width of 10 days reaches 5 days *after* it.
+    Centre sits inside the source month, which passes gate 3, but a 91-day
+    (seasonal) support reaches 45 days out — into t_src+1.
     """
-    sneaky = _causal_batch(centre_days=-5.0, support_days=20.0)
+    sneaky = _causal_batch(centre_days=0.0, support_days=91.0)
     check_causal(**{**sneaky, "support_t": torch.zeros(1, 8)})   # centre ok
     with pytest.raises(ValueError, match="support"):
         check_causal(**sneaky)
@@ -363,3 +370,109 @@ def test_chunked_decode_matches_unchunked():
         chunked = m(latent, qcoord, lead, chunk=128, **tok)
 
     assert torch.equal(whole, chunked)
+
+
+# --------------------------------------------------------------------------
+# Reference slots (spec §3.4) — always-present key mass, availability-aware
+# --------------------------------------------------------------------------
+def test_reference_slots_have_the_specified_shape():
+    slots = ReferenceSlots(n_slots=8, d_model=D_MODEL, n_modalities=3)
+    out = slots(torch.ones(2, 3))
+    assert out.shape == (2, 8, D_MODEL)
+
+
+def test_reference_slots_respond_to_which_modalities_are_available():
+    """A dropped modality must change the reference the latent falls back on."""
+    torch.manual_seed(0)
+    slots = ReferenceSlots(n_slots=8, d_model=D_MODEL, n_modalities=3)
+    full = slots(torch.tensor([[1.0, 1.0, 1.0]]))
+    no_profiles = slots(torch.tensor([[0.0, 1.0, 1.0]]))
+    assert not torch.equal(full, no_profiles)
+
+
+def test_reference_slots_are_present_even_with_nothing_available():
+    slots = ReferenceSlots(n_slots=8, d_model=D_MODEL, n_modalities=3)
+    out = slots(torch.zeros(1, 3))
+    assert out.shape == (1, 8, D_MODEL)
+    assert torch.isfinite(out).all()
+
+
+# --------------------------------------------------------------------------
+# End-to-end: the `d4rt` fusion variant (spec §4 wiring)
+# --------------------------------------------------------------------------
+DEPTHS = np.array([5, 15, 25, 35, 45, 55, 65, 85, 105, 125, 145, 165,
+                   186, 222, 267, 327, 408, 527, 707, 985], dtype="float32")
+
+
+class _Grid:
+    depth = DEPTHS.astype("float64")
+
+
+def _obs(P=7, B=1, H=8, W=12, month=3, seed=0):
+    from ocean_tokenizer.fusion import build_fusion_model  # noqa: F401
+    rng = np.random.default_rng(seed)
+    prof = dict(prof=torch.tensor(rng.normal(size=(B, P, 2, len(DEPTHS))
+                                             ).astype("float32")),
+                lat=torch.tensor(rng.uniform(-80, 80, (B, P)).astype("float32")),
+                lon=torch.tensor(rng.uniform(0, 360, (B, P)).astype("float32")),
+                month=torch.full((B,), month))
+    f = rng.normal(size=(B, 2, H, W)).astype("float32")
+    surf = dict(field=torch.tensor(f), lat=torch.linspace(-80, 80, H),
+                lon=torch.linspace(0, 345, W), month=torch.full((B,), month))
+    return {"profiles": prof, "surf": surf}
+
+
+def _d4rt_model(seed=0):
+    from ocean_tokenizer.fusion import build_fusion_model
+    m = build_fusion_model("d4rt", _Grid(), d_model=D_MODEL, n_latent=N_LATENT,
+                           n_heads=N_HEADS, n_self_blocks=2, patch=(4, 6),
+                           seed=seed)
+    m.eval()
+    return m
+
+
+def _qcoord(Q=9, B=1, seed=2):
+    rng = np.random.default_rng(seed)
+    q = np.stack([rng.uniform(-80, 80, Q), rng.uniform(0, 360, Q),
+                  rng.uniform(0, 985, Q), np.full(Q, 3.0)], -1).astype("float32")
+    return torch.tensor(np.repeat(q[None], B, axis=0))
+
+
+def test_d4rt_variant_forward_shape_and_finiteness():
+    m = _d4rt_model()
+    q = _qcoord()
+    lead = torch.zeros(1, 9, dtype=torch.long)
+    with torch.no_grad():
+        out = m(_obs(), q, lead=lead)
+    assert out.shape == (1, 9, 2) and torch.isfinite(out).all()
+
+
+def test_d4rt_variant_accepts_every_lead_in_range():
+    m = _d4rt_model()
+    q = _qcoord()
+    for l in range(4):
+        with torch.no_grad():
+            out = m(_obs(), q, lead=torch.full((1, 9), l, dtype=torch.long))
+        assert torch.isfinite(out).all(), l
+
+
+def test_d4rt_variant_survives_every_modality_subset():
+    m = _d4rt_model()
+    q = _qcoord()
+    lead = torch.zeros(1, 9, dtype=torch.long)
+    full = _obs()
+    for r in range(len(full) + 1):
+        for keys in itertools.combinations(full, r):
+            with torch.no_grad():
+                out = m({k: full[k] for k in keys}, q, lead=lead)
+            assert torch.isfinite(out).all(), keys
+
+
+def test_d4rt_variant_default_lead_is_zero_reconstruction():
+    """Omitting `lead` must mean reconstruction, so existing callers work."""
+    m = _d4rt_model()
+    q = _qcoord()
+    with torch.no_grad():
+        implicit = m(_obs(), q)
+        explicit = m(_obs(), q, lead=torch.zeros(1, 9, dtype=torch.long))
+    assert torch.equal(implicit, explicit)
