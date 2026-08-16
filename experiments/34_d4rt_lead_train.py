@@ -46,6 +46,10 @@ ap.add_argument("--seed", type=int, default=1234)
 ap.add_argument("--steps", type=int, default=50_000)
 ap.add_argument("--queries", type=int, default=8192)
 ap.add_argument("--lr", type=float, default=3e-4)
+ap.add_argument("--weight-decay", type=float, default=0.01,
+                help="AdamW decoupled weight decay. Mentor §6.2 names AdamW "
+                     "at 3e-4 but does not give a decay; 0.01 is the torch "
+                     "AdamW default and is recorded in the run JSON.")
 ap.add_argument("--lr-min", type=float, default=1e-5)
 ap.add_argument("--warmup", type=int, default=500)
 # mentor §2.3 dimensions, verbatim
@@ -209,7 +213,9 @@ model = build_fusion_model("d4rt", grid, d_model=args.d_model,
                            n_ref_slots=args.n_ref_slots,
                            max_lead=MAX_LEAD, seed=args.seed).to(dev)
 n_params = sum(p.numel() for p in model.parameters())
-opt = torch.optim.Adam(model.parameters(), lr=args.lr)
+# mentor §6.2: "AdamW at 3e-4"
+opt = torch.optim.AdamW(model.parameters(), lr=args.lr,
+                        weight_decay=args.weight_decay)
 
 
 def _lr_lambda(step):
@@ -353,6 +359,15 @@ json.dump({"tag": tag, "task": "d4rt_lead_train", "protocol": "protocol_v1",
            "seed": args.seed, "device": dev, "n_params": n_params,
            "max_lead": MAX_LEAD, "context_months": CONTEXT,
            "recon_frac": RECON_FRAC, "args": vars(args),
+           "optimizer": "AdamW", "weight_decay": args.weight_decay,
+           "batch_size": 1,
+           "deviations_from_mentor_6_2": [
+               "batch size 1, not 2: the repo's fullrun observation path is "
+               "batch-1 throughout and restructuring it interacts with the "
+               "DFS evidence solve; recorded rather than silently changed",
+               "loss is plain masked MSE, not cBottle: §2.6 is out of scope "
+               "for this §2.3/§2.4 build",
+           ],
            "eligible_source_months": int(eligible.size),
            "curves": curves, "ckpt": ckpt,
            "selection": {"rule": "mean over lead 0..3 x {TEMP,SALT} of "

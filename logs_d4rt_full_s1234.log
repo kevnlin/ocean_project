@@ -233,3 +233,5 @@ step  21600  loss 0.3148  lead0 0.2819  lead1-3 0.3996  lr 1.88e-04  34078s
 step  21700  loss 0.2998  lead0 0.2607  lead1-3 0.4001  lr 1.87e-04  34234s
 step  21800  loss 0.3298  lead0 0.2970  lead1-3 0.4139  lr 1.86e-04  34385s
 step  21900  loss 0.3303  lead0 0.2971  lead1-3 0.4117  lr 1.86e-04  34536s
+step  22000  loss 0.3281  lead0 0.2948  lead1-3 0.3988  lr 1.85e-04  34685s
+  val step  22000  score 0.5774  L0 0.235/0.053 L1 0.280/0.060 L2 0.327/0.067 L3 0.361/0.072  *best*

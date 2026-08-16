@@ -304,6 +304,40 @@ Following mentor §3, adapted to the pieces in scope:
 10. **Lead-0 target exclusion** (mentor §3.5) — profile columns supplied as
     inputs are excluded from lead-0 targets, so a point-copy cannot score.
 
+## 5a. Training configuration (mentor §6.2)
+
+Taken from mentor §6.2, which gives the training defaults alongside the
+selection rule. An earlier launch used this repository's `18_full_train.py`
+conventions instead (50k steps, 8192 queries, Adam, validation every 2000)
+without checking them against §6.2 — that run was discarded.
+
+| Setting | Value | Source |
+|---|---|---|
+| steps | 5000 | §6.2 `--steps 5000` |
+| validation interval | 500 | §6.2 `--validation-interval 500` |
+| queries per sample | 512 | §6.2 |
+| optimizer | AdamW, lr 3e-4 | §6.2 |
+| weight decay | 0.01 | not given in §6.2; torch AdamW default, recorded in the run JSON |
+| selection | mean over lead 0..3 × {TEMP,SALT} of RMSE / val climatology RMSE | §6.2 |
+
+§7 of the mentor document shows selected steps of 2500–4500, so 5000 steps
+with validation every 500 gives ten selection points and brackets where its
+design converges.
+
+**Two recorded deviations**, both emitted into the run JSON as
+`deviations_from_mentor_6_2` rather than left implicit:
+
+1. **Batch size 1, not 2.** `fullrun`'s observation path is batch-1
+   throughout and widening it interacts with the DFS evidence solve. This is
+   real restructuring, not a flag, and is deferred rather than rushed ahead of
+   a first result.
+2. **Plain masked MSE, not cBottle loss.** §2.6 is outside this §2.3/§2.4
+   build.
+
+Checkpoints are written on every validation improvement (tmp + `os.replace`).
+An earlier run held its only copy in RAM and lost 9.5 hours of training when
+it was stopped.
+
 ## 6. Acceptance
 
 Deliverable is code + tests + a smoke run proving the loop closes. The full
