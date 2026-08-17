@@ -143,3 +143,46 @@ def test_permuting_queries_permutes_predictions():
         s2 = dict(s); s2["query"] = s["query"][perm]
         b = m(s2)
     assert torch.allclose(b, a[perm], atol=1e-5)
+
+
+# --------------------------------------------------------------------------
+# `count` must be a DIFFERENT mechanism, not `uniform` in disguise
+# --------------------------------------------------------------------------
+def test_count_uses_a_different_resampler_than_uniform():
+    """Regression guard.
+
+    `count` originally fed unit masses to the conservative transport, which
+    made it numerically identical to `uniform` — validation scores agreed to
+    four decimals across three seeds. The doc calls count_oi_expert_cbottle a
+    mandatory fairness row "required to separate an OI-residual gain from a
+    DFS gain", which it cannot do if it is a copy of another row.
+    """
+    from ocean_tokenizer.batched_dfs import (ConservativeResampler,
+                                             PerceiverResampler)
+    assert isinstance(build_row("count_expertlocal_cbottle").resampler,
+                      PerceiverResampler)
+    assert isinstance(build_row("uniform_expertlocal_cbottle").resampler,
+                      ConservativeResampler)
+
+
+def test_count_and_uniform_give_different_predictions():
+    torch.manual_seed(0)
+    c = build_row("count_expertlocal_cbottle").eval()
+    torch.manual_seed(0)
+    u = build_row("uniform_expertlocal_cbottle").eval()
+    s = _sample()
+    with torch.no_grad():
+        assert not torch.allclose(c(s), u(s), atol=1e-6)
+
+
+def test_the_perceiver_resampler_does_not_conserve_mass():
+    """The conventional control normalises over TOKENS, so multiplicity feeds
+    through — that is precisely what the conservative transport removes."""
+    from ocean_tokenizer.batched_dfs import PerceiverResampler
+    torch.manual_seed(0)
+    r = PerceiverResampler(d_model=32, n_slots=32)
+    emb = torch.randn(1, 20, 32)
+    omega = torch.rand(1, 20).double()
+    mask = torch.ones(1, 20, dtype=torch.bool)
+    _, _, mass = r(emb, omega, mask)
+    assert not torch.allclose(mass.sum(dim=1), (omega * mask).sum(dim=1))

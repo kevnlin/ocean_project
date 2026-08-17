@@ -28,8 +28,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from .batched_dfs import (RandomFourierBasis, integrate_support, dfs_omega,
-                          ConservativeResampler, N_FEATURES, LENGTH_SCALES,
-                          BASIS_SEED)
+                          ConservativeResampler, PerceiverResampler,
+                          N_FEATURES, LENGTH_SCALES, BASIS_SEED)
 from .godas_obs import N_MODALITIES, N_CHANNELS
 from .objective_interpolation import ObjectiveInterpolation, OISettings
 from .oi_residual import OIResidual
@@ -123,7 +123,12 @@ class GodasRowModel(nn.Module):
         self.mass_mode = mass_mode
         self.encoder = _TokenEncoder(d_model)
         self.basis = RandomFourierBasis(N_FEATURES, LENGTH_SCALES, BASIS_SEED)
-        self.resampler = ConservativeResampler(d_model, n_slots)
+        # `count` is a DIFFERENT transport, not the conservative one fed unit
+        # masses — otherwise it would be a copy of `uniform` and could not
+        # separate an OI-residual gain from a DFS gain (doc §2.4)
+        self.resampler = (PerceiverResampler(d_model, n_slots)
+                          if mass_mode == "count"
+                          else ConservativeResampler(d_model, n_slots))
         self.ref_slots = ReferenceSlots(n_ref_slots, d_model, N_MODALITIES)
         self.fusion = _MassBiasedFusion(d_model, n_heads, n_latents,
                                         n_latent_blocks)
@@ -137,23 +142,26 @@ class GodasRowModel(nn.Module):
     def observation_mass(self, s: dict) -> torch.Tensor:
         """(N,) mass per token.  Masked tokens always carry exactly zero."""
         mask = s["mask"]
+        dev = s["coord"].device
         if self.mass_mode == "dfs":
             psi, lam = integrate_support(
                 self.basis, s["coord"][:, None, :],
-                torch.ones(s["coord"].shape[0], 1, dtype=torch.float64),
+                torch.ones(s["coord"].shape[0], 1, dtype=torch.float64,
+                           device=dev),
                 s["noise_density"])
             w = dfs_omega(psi, lam, mask & s["support_mask"])
         else:
             # `uniform` and `count` both report unit mass; for `count` it is
             # diagnostic only and does not drive the transport (doc §2.2)
-            w = torch.ones(mask.shape[0], dtype=torch.float64)
+            w = torch.ones(mask.shape[0], dtype=torch.float64, device=dev)
         return w * mask.to(w.dtype)
 
     # ---- §2.5 frozen background ----------------------------------------
     def oi_background(self, s: dict) -> torch.Tensor:
         live = s["mask"] & s["value_mask"].all(dim=-1)
         return self.oi(s["query"], torch.zeros(s["query"].shape[0],
-                                               dtype=s["query"].dtype),
+                                               dtype=s["query"].dtype,
+                                               device=s["query"].device),
                        s["coord"][live], s["value"][live].to(s["query"].dtype),
                        s["noise_density"][live]).to(torch.float32)
 
@@ -163,26 +171,24 @@ class GodasRowModel(nn.Module):
         mask = s["mask"][None]
         mass = self.observation_mass(s)[None]
 
-        if self.mass_mode == "count":
-            # conventional fixed-query resampler: unit masses, no correction
-            slots, slot_mask, slot_mass = self.resampler(
-                emb, torch.ones_like(mass), mask)
-        else:
-            slots, slot_mask, slot_mass = self.resampler(emb, mass, mask)
+        slots, slot_mask, slot_mass = self.resampler(emb, mass, mask)
 
+        dev = emb.device
         ref = self.ref_slots(s["modality_available"].to(emb.dtype)[None])
         kv = torch.cat([slots, ref], dim=1)
         kv_mask = torch.cat(
-            [slot_mask, torch.ones(1, ref.shape[1], dtype=torch.bool)], dim=1)
+            [slot_mask, torch.ones(1, ref.shape[1], dtype=torch.bool,
+                                   device=dev)], dim=1)
         # reference slots sit at unit mass: always present, never shouting over
         # real evidence when any exists
         kv_mass = torch.cat(
-            [slot_mass, torch.ones(1, ref.shape[1], dtype=slot_mass.dtype)],
-            dim=1).to(kv.dtype)
+            [slot_mass, torch.ones(1, ref.shape[1], dtype=slot_mass.dtype,
+                                   device=dev)], dim=1).to(kv.dtype)
         latent = self.fusion(kv, kv_mass, kv_mask)
 
         q = s["query"].to(emb.dtype)[None]
-        lead = torch.zeros(q.shape[:2], dtype=torch.long)
+        lead = torch.full(q.shape[:2], int(s.get("lead", 0)), dtype=torch.long,
+                          device=dev)
         h = self.decoder(self.q_proj(q), latent)
         # evidence and coordinates are carried in float64 for the DFS solve;
         # cast at the boundary into the float32 network rather than letting

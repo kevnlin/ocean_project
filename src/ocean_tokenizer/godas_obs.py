@@ -61,6 +61,7 @@ class ObsConfig:
     target_dropout: float = 0.2
     train: bool = False
     n_queries: int = 512
+    max_lead: int = 3
 
 
 def _patch_boxes(ny: int, nx: int, p: int):
@@ -70,12 +71,20 @@ def _patch_boxes(ny: int, nx: int, p: int):
 
 
 def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
-                 rng: np.random.Generator | None = None) -> dict:
+                 rng: np.random.Generator | None = None,
+                 lead: int = 0) -> dict:
     """Assemble one training/evaluation sample from z-scored GODAS fields.
 
     ``fields`` holds z-space ``TEMP``/``SALT`` (T, Z, Y, X) and ``SSH``
     (T, Y, X).  Returns the token arrays plus the five masks.
+
+    ``lead`` is ``t_tgt - t_src`` in whole months.  Observations never move:
+    the encoder window still stops at ``t_src``, so a positive lead is a
+    genuine causal forecast request and not a relabelling of the inputs.
     """
+    if not 0 <= lead <= (cfg.max_lead if cfg else 3):
+        raise ValueError(f"lead must be in 0..{cfg.max_lead if cfg else 3}, "
+                         f"got {lead}")
     cfg = cfg or ObsConfig()
     rng = rng or np.random.default_rng(0)
     T, Z, Y, X = fields["TEMP"].shape
@@ -151,14 +160,16 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
     if cfg.train and cfg.target_dropout > 0 and rng.random() < cfg.target_dropout:
         tgt_mask_channels[rng.integers(0, N_CHANNELS)] = False
 
-    fin = np.isfinite(fields["TEMP"][t_src]) & np.isfinite(fields["SALT"][t_src])
+    t_tgt = min(t_src + lead, T - 1)
+    fin = np.isfinite(fields["TEMP"][t_tgt]) & np.isfinite(fields["SALT"][t_tgt])
     idx = np.flatnonzero(fin.reshape(-1))
     take = rng.choice(idx, size=min(cfg.n_queries, idx.size), replace=False)
     zi, yi, xi = np.unravel_index(take, (Z, Y, X))
     qcoord = np.stack([xi / max(X - 1, 1), yi / max(Y - 1, 1),
-                       zi / max(Z - 1, 1), np.zeros(take.size)], axis=-1)
-    target = np.stack([fields["TEMP"][t_src][zi, yi, xi],
-                       fields["SALT"][t_src][zi, yi, xi]], axis=-1)
+                       zi / max(Z - 1, 1),
+                       np.full(take.size, float(lead))], axis=-1)
+    target = np.stack([fields["TEMP"][t_tgt][zi, yi, xi],
+                       fields["SALT"][t_tgt][zi, yi, xi]], axis=-1)
     tmask = np.isfinite(target) & tgt_mask_channels[None, :]
 
     return dict(
@@ -174,4 +185,5 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
         target=torch.as_tensor(np.nan_to_num(target), dtype=torch.float32),
         target_mask=torch.as_tensor(tmask),
         t_src=int(t_src),
+        lead=int(lead),
     )

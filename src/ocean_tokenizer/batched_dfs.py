@@ -166,3 +166,44 @@ class ConservativeResampler(nn.Module):
         slots = torch.einsum("bns,bnd->bsd", w, v)
         slots = slots / slot_mass.to(v.dtype).clamp(min=1e-12).unsqueeze(-1)
         return slots, slot_mass > 0, slot_mass
+
+
+class PerceiverResampler(nn.Module):
+    """Conventional fixed-query Perceiver resampler — the `count` control.
+
+    Doc §2.2: "`count` uses a conventional fixed-query Perceiver resampler; its
+    reported unit ``omega`` is diagnostic only and does not drive its global
+    resampler."
+
+    The distinction from :class:`ConservativeResampler` is the normalisation
+    axis, and it is the whole point of the control.  Here the softmax runs over
+    **tokens**, so each slot forms a weighted average of whatever it attends to
+    and token multiplicity feeds straight through — duplicate a token and its
+    content gets more of the slot.  The conservative transport instead
+    normalises over **slots**, so each token distributes exactly its own mass
+    and nothing is created.  Passing unit masses to the conservative transport
+    would make `count` a copy of `uniform` rather than a separate mechanism.
+    """
+
+    def __init__(self, d_model: int, n_slots: int = 32, temperature: float = 1.0):
+        super().__init__()
+        self.n_slots = int(n_slots)
+        self.slot_query = nn.Parameter(torch.randn(n_slots, d_model) * 0.02)
+        self.key = nn.Linear(d_model, d_model)
+        self.value = nn.Linear(d_model, d_model)
+        self.temperature = float(temperature)
+
+    def forward(self, emb: torch.Tensor, omega: torch.Tensor,
+                mask: torch.Tensor):
+        B, N, d = emb.shape
+        k = self.key(emb)
+        logits = torch.einsum("bnd,sd->bsn", k, self.slot_query) / self.temperature
+        logits = logits.masked_fill(~mask[:, None, :], float("-inf"))
+        attn = torch.softmax(logits, dim=-1)                    # over TOKENS
+        attn = torch.nan_to_num(attn)
+        slots = torch.einsum("bsn,bnd->bsd", attn, self.value(emb))
+        # reported mass is the token count each slot drew on: diagnostic only
+        slot_mass = attn.sum(dim=-1).to(omega.dtype) * mask.sum(dim=1,
+                                                               keepdim=True)
+        live = mask.any(dim=1, keepdim=True).expand(-1, self.n_slots)
+        return slots, live, slot_mass * live.to(slot_mass.dtype)
