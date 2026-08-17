@@ -70,6 +70,7 @@ class ObsConfig:
     n_queries: int = 512
     max_lead: int = 3
     force_available: tuple | None = None   # §9 audit: pin the input streams
+    pin_first_profile: tuple | None = None  # §9 audit: fix the attacked column
 
 
 def _patch_boxes(ny: int, nx: int, p: int):
@@ -115,6 +116,11 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
     if avail[MOD_PROFILE]:
         ys = rng.integers(0, Y, cfg.n_profiles)
         xs = rng.integers(0, X, cfg.n_profiles)
+        if cfg.pin_first_profile is not None:
+            # the duplicate audit attacks the FIRST column; leaving it random
+            # means every month attacks different water, and that variance
+            # swamps the effect being measured
+            ys[0], xs[0] = int(cfg.pin_first_profile[0]), int(cfg.pin_first_profile[1])
         zz = np.arange(Z)
         for y, x in zip(ys, xs):
             t = np.stack([fields["TEMP"][t_src, :, y, x],
@@ -216,6 +222,15 @@ def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,
     """
     if k < 1:
         raise ValueError(f"k must be >= 1, got {k}")
+    # tokens 0..depths-1 are the first profile column only because profiles are
+    # built first and dropout is off. Assert it rather than trust it: with
+    # profiles withheld this would silently attack the surface stream instead.
+    head = s["modality"][:depths]
+    if int(head.numel()) < depths or not bool((head == MOD_PROFILE).all()):
+        raise ValueError(
+            f"duplicate attack expects the first {depths} tokens to be the "
+            f"leading profile column, found modalities "
+            f"{sorted(set(int(x) for x in head))}. Profiles must be available.")
     out = {kk: (v.clone() if torch.is_tensor(v) else v) for kk, v in s.items()}
     out["value"][:depths, 0] = torch.where(
         out["value_mask"][:depths, 0],

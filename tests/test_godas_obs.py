@@ -206,3 +206,52 @@ def test_duplicate_copies_are_exact():
         lo = n + c * 16
         assert torch.equal(a["coord"][lo:lo + 16], a["coord"][:16])
         assert torch.equal(a["value"][lo:lo + 16], a["value"][:16])
+
+
+# --------------------------------------------------------------------------
+# §9 audit: a controlled attack needs a fixed target and a real baseline
+# --------------------------------------------------------------------------
+def test_pinning_places_the_first_profile_at_a_fixed_cell():
+    """Without this the attack hits different water every month, and the
+    between-month variance swamps the effect being measured."""
+    from ocean_tokenizer.godas_obs import MOD_PROFILE
+    seen = set()
+    for seed in range(6):
+        s = build_sample(_fields(), t_src=3,
+                         cfg=ObsConfig(pin_first_profile=(20, 13)),
+                         rng=np.random.default_rng(seed))
+        prof = s["coord"][s["modality"] == MOD_PROFILE]
+        seen.add((round(float(prof[0, 0]), 6), round(float(prof[0, 1]), 6)))
+    assert len(seen) == 1, f"attack location drifted across seeds: {seen}"
+
+
+def test_unpinned_first_profile_still_varies():
+    from ocean_tokenizer.godas_obs import MOD_PROFILE
+    seen = set()
+    for seed in range(6):
+        s = build_sample(_fields(), t_src=3, cfg=ObsConfig(),
+                         rng=np.random.default_rng(seed))
+        prof = s["coord"][s["modality"] == MOD_PROFILE]
+        seen.add((round(float(prof[0, 0]), 6), round(float(prof[0, 1]), 6)))
+    assert len(seen) > 1
+
+
+def test_a_zero_bias_attack_leaves_values_untouched():
+    """The unbiased baseline must be a true no-op, or the control is not one."""
+    from ocean_tokenizer.godas_obs import duplicate_profile_attack
+    s = build_sample(_fields(), t_src=3, cfg=ObsConfig(),
+                     rng=np.random.default_rng(0))
+    a = duplicate_profile_attack(s, k=1, temp_bias=0.0)
+    assert torch.equal(a["value"], s["value"])
+
+
+def test_attacking_non_profile_tokens_raises():
+    """Tokens 0..15 are the first profile column only because profiles are
+    built first and dropout is off. If that ever stops holding, the attack
+    would silently hit the surface stream instead."""
+    from ocean_tokenizer.godas_obs import duplicate_profile_attack
+    s = build_sample(_fields(), t_src=3,
+                     cfg=ObsConfig(force_available=(False, True, True)),
+                     rng=np.random.default_rng(0))
+    with pytest.raises(ValueError, match="profile"):
+        duplicate_profile_attack(s, k=8, temp_bias=2.0)

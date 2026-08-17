@@ -172,46 +172,82 @@ def evaluate_missing(model, split: str, n_queries: int, seed: int) -> dict:
     return out
 
 
-def duplicate_attack(model, split: str, n_queries: int, seed: int,
-                     n_months: int, k_values=(1, 8)) -> dict:
-    """§9 duplicate attack: bias one profile, then feed k exact copies.
+PIN_CELL = (19, 13)          # fixed attacked column, near the box centre
 
-    The copies carry no new information, so any movement between k=1 and k=8
-    is the model responding to multiplicity rather than to evidence.
+
+def duplicate_attack(model, split: str, n_queries: int, seed: int,
+                     n_months: int, k: int = 8, bias: float = 2.0) -> dict:
+    """§9 duplicate attack, with the control that makes it interpretable.
+
+    Three conditions per source month, all on the SAME pinned profile column:
+
+      A  k=1, unbiased    reference prediction
+      B  k=1, biased      one biased profile
+      C  k=k, biased      k bit-exact copies of it
+
+    ``B - A`` is how much the model responds to a biased profile at all — its
+    profile sensitivity.  ``C - B`` is what duplication adds on top.  Reporting
+    ``C - B`` alone confounds the two: DFS assigns profiles far less mass than
+    the controls do, so it would show a smaller duplicate response merely by
+    caring less about profiles.  ``(C-B)/(B-A)`` divides that confound out.
+
+    Per-month values are returned, not just means, so spread is visible and a
+    block bootstrap is possible later.
     """
     months = list(elig[split])[:n_months]
-    preds, masses = {}, {}
     model.eval()
-    for k in k_values:
-        rng = np.random.default_rng([seed, 11])
-        acc, mass = [], []
-        for t in months:
-            base = make_sample(t, False, n_queries, rng)
-            s = duplicate_profile_attack(base, k=k, temp_bias=2.0,
-                                         depths=len(Z["TEMP"][0]))
-            with torch.no_grad():
-                acc.append(model(s))
-                w = model.observation_mass(s)
-                # mass carried by the copied group (the leading profile block
-                # and its copies), which is what should NOT scale with k
-                grp = torch.zeros_like(w, dtype=torch.bool)
-                d = len(Z["TEMP"][0])
-                grp[:d] = True
-                grp[base["coord"].shape[0]:] = True
-                mass.append(float(w[grp].sum()))
-        preds[k] = torch.stack(acc)
-        masses[k] = float(np.mean(mass))
+    per_month = []
+    d = len(Z["TEMP"][0])
+    for t in months:
+        rng = np.random.default_rng([seed, 11, int(t)])
+        base = to_device(build_sample(
+            Z, int(t), ObsConfig(train=False, n_queries=n_queries,
+                                 pin_first_profile=PIN_CELL), rng), dev)
+        outs, mass = {}, {}
+        with torch.no_grad():
+            for tag, kk, bb in (("A", 1, 0.0), ("B", 1, bias), ("C", k, bias)):
+                s_ = duplicate_profile_attack(base, k=kk, temp_bias=bb, depths=d)
+                outs[tag] = model(s_)
+                if tag in ("A", "C"):
+                    w = model.observation_mass(s_)
+                    grp = torch.zeros_like(w, dtype=torch.bool)
+                    grp[:d] = True
+                    grp[base["coord"].shape[0]:] = True
+                    mass[tag] = float(w[grp].sum())
+        sens = (outs["B"] - outs["A"]).abs().mean(dim=0)
+        dup = (outs["C"] - outs["B"]).abs().mean(dim=0)
+        per_month.append({
+            "t": int(t),
+            "profile_sensitivity": {c: float(sens[i]) for i, c in enumerate(CHANNELS)},
+            "duplicate_shift": {c: float(dup[i]) for i, c in enumerate(CHANNELS)},
+            "duplicate_over_sensitivity": {
+                c: float(dup[i] / sens[i].clamp(min=1e-9))
+                for i, c in enumerate(CHANNELS)},
+            "copied_group_mass_k1": mass["A"],
+            "copied_group_mass_k": mass["C"],
+        })
     model.train()
-    lo, hi = k_values[0], k_values[-1]
-    shift = (preds[hi] - preds[lo]).abs().mean(dim=(0, 1))
-    base_shift = preds[lo].abs().mean(dim=(0, 1)).clamp(min=1e-9)
+    col = lambda key, c: [m[key][c] for m in per_month]
     return {
-        "months": [int(x) for x in months],
-        "copied_group_mass": {str(k): masses[k] for k in k_values},
-        "mass_growth": masses[hi] / max(masses[lo], 1e-12),
-        "incremental_shift": {c: float(shift[i]) for i, c in enumerate(CHANNELS)},
-        "relative_shift": {c: float(shift[i] / base_shift[i])
-                           for i, c in enumerate(CHANNELS)},
+        "k": k, "bias": bias, "pin_cell": list(PIN_CELL),
+        "months": [m["t"] for m in per_month],
+        "profile_sensitivity": {c: float(np.mean(col("profile_sensitivity", c)))
+                                for c in CHANNELS},
+        "duplicate_shift": {c: float(np.mean(col("duplicate_shift", c)))
+                            for c in CHANNELS},
+        "duplicate_over_sensitivity": {
+            c: float(np.mean(col("duplicate_over_sensitivity", c)))
+            for c in CHANNELS},
+        "duplicate_over_sensitivity_std": {
+            c: float(np.std(col("duplicate_over_sensitivity", c), ddof=1))
+            for c in CHANNELS},
+        "copied_group_mass": {
+            "1": float(np.mean([m["copied_group_mass_k1"] for m in per_month])),
+            str(k): float(np.mean([m["copied_group_mass_k"] for m in per_month]))},
+        "mass_growth": float(np.mean([m["copied_group_mass_k"]
+                                      / max(m["copied_group_mass_k1"], 1e-12)
+                                      for m in per_month])),
+        "per_month": per_month,
     }
 
 
@@ -350,9 +386,10 @@ for row in configs:
         rec["duplicate_attack"] = duplicate_attack(
             model, "holdout", args.eval_queries, args.seed, args.audit_months)
         da = rec["duplicate_attack"]
-        print(f"  duplicate k1->k8: mass {da['copied_group_mass']['1']:.4f} -> "
-              f"{da['copied_group_mass']['8']:.4f} ({da['mass_growth']:.3f}x)  "
-              f"shift {da['incremental_shift']}", flush=True)
+        rr = {c: round(v, 4) for c, v in da["duplicate_over_sensitivity"].items()}
+        print(f"  duplicate: sensitivity {da['profile_sensitivity']}  "
+              f"dup-shift {da['duplicate_shift']}  ratio {rr}  "
+              f"mass {da['mass_growth']:.3f}x", flush=True)
     if not args.validation_only:
         rec["holdout"] = evaluate(model, "holdout", args.eval_queries, args.seed)
         print(f"  holdout {rec['holdout']}", flush=True)
