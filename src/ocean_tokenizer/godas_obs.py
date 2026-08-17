@@ -62,6 +62,7 @@ class ObsConfig:
     train: bool = False
     n_queries: int = 512
     max_lead: int = 3
+    force_available: tuple | None = None   # §9 audit: pin the input streams
 
 
 def _patch_boxes(ny: int, nx: int, p: int):
@@ -91,7 +92,11 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
 
     # which streams survive (training-time modality dropout, at least one)
     avail = np.ones(N_MODALITIES, dtype=bool)
-    if cfg.train and cfg.modality_dropout > 0:
+    if cfg.force_available is not None:
+        # the missing-input audit controls availability exactly; it must not
+        # be at the mercy of the training-time dropout dice
+        avail = np.asarray(cfg.force_available, dtype=bool)
+    elif cfg.train and cfg.modality_dropout > 0:
         while True:
             avail = rng.random(N_MODALITIES) >= cfg.modality_dropout
             if avail.any():
@@ -187,3 +192,30 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
         t_src=int(t_src),
         lead=int(lead),
     )
+
+
+def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,
+                             depths: int = 16) -> dict:
+    """§9 duplicate attack: bias the first profile column, then copy it k times.
+
+    The bias makes the attack *observable* — an unbiased duplicate moves
+    nothing, so the amplification would be unmeasurable.  The copies are
+    bit-exact, which is the point: they carry no new information, so any
+    change in the prediction between k=1 and k=8 is the model being fooled by
+    multiplicity rather than informed by evidence.
+    """
+    if k < 1:
+        raise ValueError(f"k must be >= 1, got {k}")
+    out = {kk: (v.clone() if torch.is_tensor(v) else v) for kk, v in s.items()}
+    out["value"][:depths, 0] = torch.where(
+        out["value_mask"][:depths, 0],
+        out["value"][:depths, 0] + temp_bias,
+        out["value"][:depths, 0])
+    if k == 1:
+        return out
+    per_token = ("coord", "value", "value_mask", "mask", "support_mask",
+                 "modality", "noise_density")
+    block = {kk: out[kk][:depths] for kk in per_token}
+    for kk in per_token:
+        out[kk] = torch.cat([out[kk]] + [block[kk]] * (k - 1), dim=0)
+    return out

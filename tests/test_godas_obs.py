@@ -147,3 +147,62 @@ def test_target_channel_withholding_leaves_at_least_one_channel():
         s = _sample(seed=seed, target_dropout=0.9, train=True)
         per_channel = s["target_mask"].any(dim=0)
         assert int(per_channel.sum()) >= 1
+
+
+# --------------------------------------------------------------------------
+# §9 audit helpers: forced modality availability and the duplicate attack
+# --------------------------------------------------------------------------
+def test_forcing_modalities_keeps_only_those_streams():
+    from ocean_tokenizer.godas_obs import MOD_PROFILE, MOD_SURF, MOD_SSH
+    s = build_sample(_fields(), t_src=3,
+                     cfg=ObsConfig(force_available=(True, False, False)),
+                     rng=np.random.default_rng(0))
+    assert int((s["mask"] & (s["modality"] == MOD_PROFILE)).sum()) > 0
+    assert int((s["mask"] & (s["modality"] == MOD_SURF)).sum()) == 0
+    assert int((s["mask"] & (s["modality"] == MOD_SSH)).sum()) == 0
+    assert list(s["modality_available"]) == [True, False, False]
+
+
+def test_forcing_overrides_training_dropout():
+    """The audit must control availability exactly, not roll dice."""
+    for seed in range(10):
+        s = build_sample(_fields(), t_src=3,
+                         cfg=ObsConfig(train=True, modality_dropout=0.9,
+                                       force_available=(True, True, False)),
+                         rng=np.random.default_rng(seed))
+        assert list(s["modality_available"]) == [True, True, False]
+
+
+def test_duplicate_attack_adds_k_minus_one_copies():
+    from ocean_tokenizer.godas_obs import duplicate_profile_attack, MOD_PROFILE
+    s = build_sample(_fields(), t_src=3, cfg=ObsConfig(),
+                     rng=np.random.default_rng(0))
+    n0 = int((s["mask"] & (s["modality"] == MOD_PROFILE)).sum())
+    a1 = duplicate_profile_attack(s, k=1, temp_bias=2.0)
+    a8 = duplicate_profile_attack(s, k=8, temp_bias=2.0)
+    live = lambda x: int((x["mask"] & (x["modality"] == MOD_PROFILE)).sum())
+    assert live(a1) == n0
+    assert live(a8) == n0 + 7 * 16, "7 extra copies of a 16-depth column"
+
+
+def test_duplicate_attack_biases_the_targeted_profile_only():
+    from ocean_tokenizer.godas_obs import duplicate_profile_attack
+    s = build_sample(_fields(), t_src=3, cfg=ObsConfig(),
+                     rng=np.random.default_rng(0))
+    a = duplicate_profile_attack(s, k=1, temp_bias=2.0)
+    d = a["value"][:16, 0] - s["value"][:16, 0]
+    assert torch.allclose(d[s["value_mask"][:16, 0]],
+                          torch.full_like(d[s["value_mask"][:16, 0]], 2.0))
+    assert torch.equal(a["value"][16:s["value"].shape[0]], s["value"][16:])
+
+
+def test_duplicate_copies_are_exact():
+    from ocean_tokenizer.godas_obs import duplicate_profile_attack
+    s = build_sample(_fields(), t_src=3, cfg=ObsConfig(),
+                     rng=np.random.default_rng(0))
+    a = duplicate_profile_attack(s, k=4, temp_bias=2.0)
+    n = s["coord"].shape[0]
+    for c in range(3):
+        lo = n + c * 16
+        assert torch.equal(a["coord"][lo:lo + 16], a["coord"][:16])
+        assert torch.equal(a["value"][lo:lo + 16], a["value"][:16])

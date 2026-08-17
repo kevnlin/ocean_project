@@ -30,7 +30,8 @@ import numpy as np
 import torch
 
 from ocean_tokenizer.godas import load_godas, GodasNorm
-from ocean_tokenizer.godas_obs import build_sample, ObsConfig, CONTEXT_MONTHS
+from ocean_tokenizer.godas_obs import (build_sample, ObsConfig, CONTEXT_MONTHS,
+                                       duplicate_profile_attack)
 from ocean_tokenizer.godas_model import ROWS, build_row
 from ocean_tokenizer.objective_interpolation import (ObjectiveInterpolation,
                                                      OISettings)
@@ -58,6 +59,11 @@ ap.add_argument("--validation-only", action="store_true")
 ap.add_argument("--test-only", action="store_true")
 ap.add_argument("--test-year", type=int, default=2025)
 ap.add_argument("--smoke", action="store_true")
+ap.add_argument("--audit", action="store_true",
+                help="§9: missing-modality cases and the duplicate attack, "
+                     "from a loaded checkpoint. Skips training.")
+ap.add_argument("--audit-months", type=int, default=6,
+                help="§9 duplicate attack uses a fixed set of source months")
 args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -125,10 +131,88 @@ def to_device(s: dict, device: str) -> dict:
             for k, v in s.items()}
 
 
-def make_sample(t, train: bool, n_queries: int, rng, lead: int = 0):
-    s = build_sample(Z, int(t), ObsConfig(train=train, n_queries=n_queries),
+def make_sample(t, train: bool, n_queries: int, rng, lead: int = 0,
+                force_available=None):
+    s = build_sample(Z, int(t),
+                     ObsConfig(train=train, n_queries=n_queries,
+                               force_available=force_available),
                      rng, lead=lead)
     return to_device(s, dev)
+
+
+# §9 input cases: which of (profiles, surface T/S, SSH) each keeps
+MISSING_CASES = {
+    "full":          (True,  True,  True),
+    "no_profiles":   (False, True,  True),
+    "no_surface_ts": (True,  False, True),
+    "no_ssh":        (True,  True,  False),
+    "profiles_only": (True,  False, False),
+}
+
+
+def evaluate_missing(model, split: str, n_queries: int, seed: int) -> dict:
+    """§9 missing-modality table: score with each input stream withheld."""
+    out = {}
+    for name, avail in MISSING_CASES.items():
+        rng = np.random.default_rng([seed, 7])
+        se = torch.zeros(len(CHANNELS), dtype=torch.float64, device=dev)
+        n = torch.zeros(len(CHANNELS), dtype=torch.float64, device=dev)
+        model.eval()
+        for t in elig[split]:
+            s = make_sample(t, False, n_queries, rng, force_available=avail)
+            with torch.no_grad():
+                pred = model(s)
+            m = s["target_mask"]
+            se += ((pred - s["target"]) ** 2 * m).sum(dim=0).double()
+            n += m.sum(dim=0).double()
+        model.train()
+        rmse = (se / n.clamp(min=1)).sqrt()
+        r = {c: float(rmse[i]) for i, c in enumerate(CHANNELS)}
+        out[name] = {**r, "score": selection_score(r, split)}
+    return out
+
+
+def duplicate_attack(model, split: str, n_queries: int, seed: int,
+                     n_months: int, k_values=(1, 8)) -> dict:
+    """§9 duplicate attack: bias one profile, then feed k exact copies.
+
+    The copies carry no new information, so any movement between k=1 and k=8
+    is the model responding to multiplicity rather than to evidence.
+    """
+    months = list(elig[split])[:n_months]
+    preds, masses = {}, {}
+    model.eval()
+    for k in k_values:
+        rng = np.random.default_rng([seed, 11])
+        acc, mass = [], []
+        for t in months:
+            base = make_sample(t, False, n_queries, rng)
+            s = duplicate_profile_attack(base, k=k, temp_bias=2.0,
+                                         depths=len(Z["TEMP"][0]))
+            with torch.no_grad():
+                acc.append(model(s))
+                w = model.observation_mass(s)
+                # mass carried by the copied group (the leading profile block
+                # and its copies), which is what should NOT scale with k
+                grp = torch.zeros_like(w, dtype=torch.bool)
+                d = len(Z["TEMP"][0])
+                grp[:d] = True
+                grp[base["coord"].shape[0]:] = True
+                mass.append(float(w[grp].sum()))
+        preds[k] = torch.stack(acc)
+        masses[k] = float(np.mean(mass))
+    model.train()
+    lo, hi = k_values[0], k_values[-1]
+    shift = (preds[hi] - preds[lo]).abs().mean(dim=(0, 1))
+    base_shift = preds[lo].abs().mean(dim=(0, 1)).clamp(min=1e-9)
+    return {
+        "months": [int(x) for x in months],
+        "copied_group_mass": {str(k): masses[k] for k in k_values},
+        "mass_growth": masses[hi] / max(masses[lo], 1e-12),
+        "incremental_shift": {c: float(shift[i]) for i, c in enumerate(CHANNELS)},
+        "relative_shift": {c: float(shift[i] / base_shift[i])
+                           for i, c in enumerate(CHANNELS)},
+    }
 
 
 def evaluate(model, split: str, n_queries: int, seed: int) -> dict:
@@ -257,6 +341,18 @@ for row in configs:
            "checkpoint": ckpt_path,
            "checkpoint_sha256": sha256(ckpt_path) if os.path.exists(ckpt_path)
            else None}
+    if args.audit:
+        rec["missing_inputs"] = evaluate_missing(model, "holdout",
+                                                 args.eval_queries, args.seed)
+        for nm, v in rec["missing_inputs"].items():
+            print(f"  {nm:14s} score {v['score']:.4f}  "
+                  f"TEMP {v['TEMP']:.4f} SALT {v['SALT']:.4f}", flush=True)
+        rec["duplicate_attack"] = duplicate_attack(
+            model, "holdout", args.eval_queries, args.seed, args.audit_months)
+        da = rec["duplicate_attack"]
+        print(f"  duplicate k1->k8: mass {da['copied_group_mass']['1']:.4f} -> "
+              f"{da['copied_group_mass']['8']:.4f} ({da['mass_growth']:.3f}x)  "
+              f"shift {da['incremental_shift']}", flush=True)
     if not args.validation_only:
         rec["holdout"] = evaluate(model, "holdout", args.eval_queries, args.seed)
         print(f"  holdout {rec['holdout']}", flush=True)
