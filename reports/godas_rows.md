@@ -54,6 +54,11 @@ Seeds 1234/1235/1236. All values below are anomaly z units.
 
 ## 3. 2025 holdout (8 source months, 3 seeds)
 
+> **Superseded — see §8 below.** The table in this section predates the SSH
+> co-location fix (commit `425b486`). The DFS rows in it are affected; the
+> controls are not. The corrected all-rows-one-code-state numbers are in §8.
+
+
 | Row | Score | TEMP | SALT |
 |---|---|---|---|
 | **`objective_interpolation`** | **0.7159 ± 0.0076** | 0.7945 ± 0.0142 | 0.9508 ± 0.0264 |
@@ -143,3 +148,72 @@ done
 Artifacts: `outputs/godas_v2_s{1234,1235,1236}/metrics_seed*.json` and the
 per-row checkpoints beside them. Wall clock ~24 min per seed on one GPU at
 0.023 s/step.
+
+
+---
+
+# 8. Corrected results after the SSH co-location fix (commit `425b486`)
+
+A bug found after the first run: SSH and surface T/S patch tokens had
+**bit-identical coordinates** (same x, y, both z=0, same t), so the purely
+geometric §2.2 estimator consolidated them as exact duplicates. Adding SSH
+*deleted* evidence from the stream it shadowed — surface omega 5.197 -> 3.499,
+with `surf` and `ssh` summing to exactly the same value. Fixed by making the
+kernel variable-group aware (profiles and surface both carry T/S and still
+compete; SSH does not consolidate with them).
+
+All six trainable rows re-run under one code state, 3 seeds.
+
+## 8.1 Holdout 2025
+
+| Row | Score | TEMP (z) | SALT (z) |
+|---|---|---|---|
+| `objective_interpolation` * | **0.7159 ± 0.0076** | 0.7945 | 0.9508 |
+| `dfs_expertlocal_cbottle` | 0.7225 ± 0.0474 | 0.8254 | 0.9266 |
+| `dfs_oi_expert_cbottle` | 0.7332 ± 0.0318 | 0.8067 | 0.9836 |
+| `uniform_expertlocal_cbottle` | 0.7346 ± 0.0390 | 0.8232 | 0.9645 |
+| `count_expertlocal_cbottle` | 0.7387 ± 0.0366 | 0.8355 | 0.9591 |
+| `count_oi_expert_cbottle` | 0.7396 ± 0.0384 | 0.8048 | 1.0045 |
+| `uniform_oi_expert_cbottle` | 0.7532 ± 0.0455 | 0.8161 | 1.0279 |
+
+\* deterministic, unaffected by the fix; carried from §3.
+
+## 8.2 DFS vs matched controls — the conclusion changes
+
+| Comparison | per seed | mean | verdict |
+|---|---|---|---|
+| `dfs_oi` − `uniform_oi` | −0.0203 / −0.0046 / −0.0349 | **−0.0200** | DFS better ×3 |
+| `dfs_expert` − `uniform_expert` | −0.0032 / −0.0200 / −0.0131 | **−0.0121** | DFS better ×3 |
+| `dfs_oi` − `count_oi` | −0.0117 / +0.0012 / −0.0085 | −0.0064 | mixed |
+| `dfs_expert` − `count_expert` | +0.0001 / −0.0198 / −0.0290 | −0.0162 | mixed |
+
+**§4's "no DFS-superiority claim is supportable" applied to the pre-fix run and
+no longer describes the evidence.** DFS now beats `uniform` — the matched
+control with an identical parameter set — in all three seeds in both variants.
+
+Three reasons that is still not a claim:
+
+1. **DFS remains last on validation** (0.6590 vs 0.6516/0.6538 for the OI rows,
+   0.6727 vs 0.6643/0.6686 for the expert rows). The validation-to-holdout
+   inversion now runs in DFS's favour, which warrants more suspicion than
+   celebration, not less.
+2. **n = 3, no bootstrap.** Three same-signed paired differences is p ≈ 0.25
+   under a sign test. §10 requires a paired 95 % temporal interval; this does
+   not meet it.
+3. **OI still wins outright** (0.7159). No learned row beats the deterministic
+   baseline on the holdout.
+
+## 8.3 Robustness, unchanged by the fix
+
+| Row | duplicate mass growth | ΔTEMP |
+|---|---|---|
+| `dfs_*` rows | **3.18×** | 0.0247 / 0.0559 |
+| `uniform_*`, `count_*` | 8.00× | 0.0451–0.1078 |
+
+SSH removal still helps **every** row (−2.5 % to −8.2 %), including `uniform`
+and `count` where unit mass makes the co-location bug impossible as a cause.
+A second mechanism is therefore still unidentified — the channel-0 collision
+(SSH occupies the TEMP value slot) and attention dilution are the open
+suspects.
+
+Artifacts: `outputs/godas_final_s{1234,1235,1236}/metrics_seed*.json`.
