@@ -205,91 +205,211 @@ Three reasons that is still not a claim:
 
 ## 8.3 Robustness, unchanged by the fix
 
-| Row | duplicate mass growth | ΔTEMP |
-|---|---|---|
-| `dfs_*` rows | **3.18×** | 0.0247 / 0.0559 |
-| `uniform_*`, `count_*` | 8.00× | 0.0451–0.1078 |
+> **Superseded by §9.** The duplicate figures once reported here compared a
+> measurement against a definition and confounded duplicate resistance with
+> profile weighting. §9 replaces them with a controlled measure.
 
-SSH removal still helps **every** row (−2.5 % to −8.2 %), including `uniform`
-and `count` where unit mass makes the co-location bug impossible as a cause.
-A second mechanism is therefore still unidentified — the channel-0 collision
-(SSH occupies the TEMP value slot) and attention dilution are the open
-suspects.
+SSH removal still helps **every** row, including `uniform` and `count` where
+unit mass makes the co-location bug impossible as a cause. A second mechanism
+is therefore still unidentified — the channel-0 collision (SSH occupies the
+TEMP value slot) and attention dilution are the open suspects.
 
 Artifacts: `outputs/godas_final_s{1234,1235,1236}/metrics_seed*.json`.
+Note these ran the audit over **6** holdout months; §9 uses all 8, so absolute
+scores there are not comparable cell-for-cell with §8.1.
 
 ---
 
 # 9. Robustness audits (mentor doc §9)
 
-Post-SSH-fix run (`425b486`), 6 trainable rows x 3 seeds, evaluated on the
-8 eligible 2025 holdout source months. Absolute selection scores (lower is
-better); the second table gives the change from `full`.
+Run `godas_v3`, commit `5700706`, 6 trainable rows × 3 seeds, evaluated on
+**all 8** eligible 2025 holdout source months (§8 used 6, so absolute scores
+below are not comparable cell-for-cell with §8.1). Lower is better throughout.
 
-## 9.1 Missing-modality — absolute score
+This supersedes the audit reported in §8.3 and in the previous §9. The earlier
+duplicate table had two defects, both fixed here:
+
+1. **It compared a measurement against a definition.** `uniform` mass *is* the
+   token count, so its "8.00× growth" is arithmetic, not an experimental
+   result — it has zero variance across every seed by construction. And the
+   mass column measured no model at all: it was identical for the two DFS rows
+   because `observation_mass` has no learned parameters.
+2. **The output shift confounded two effects.** DFS assigns the copied group
+   mass 0.62 where the controls assign 16.0, so a DFS row responds less to
+   *any* perturbation of that column, duplicated or not. Half the reported
+   advantage was simply lower profile weighting.
+
+The corrected audit runs three conditions on one **pinned** profile column
+(cell 19, 13 — previously a fresh random column each month, whose variance
+swamped the effect):
+
+| | condition | measures |
+|---|---|---|
+| A | k=1, unbiased | baseline prediction |
+| B | k=1, biased +2 z | **profile sensitivity** = ‖B−A‖ |
+| C | k=8, biased +2 z | **duplicate shift** = ‖C−B‖ |
+
+The reported statistic is **duplicate-over-sensitivity = shift / sensitivity**:
+how much extra the model moves for eight bit-exact copies, *per unit of how
+much it moves for real information in the same place*. Weighting cancels, so
+what remains is duplicate resistance alone.
+
+## 9.1 Duplicate over-sensitivity — the headline
+
+Mean over 3 seeds; sd(seed) across seeds, sd(month) across the 8 holdout
+months within a seed.
+
+| Row | TEMP | sd(seed) | SALT | sd(seed) |
+|---|---|---|---|---|
+| `dfs_oi_expert_cbottle` | **0.70** | 0.23 | **1.88** | 0.53 |
+| `uniform_oi_expert_cbottle` | 1.34 | 0.36 | 3.74 | 1.34 |
+| `count_oi_expert_cbottle` | 1.33 | 0.46 | 4.27 | 2.70 |
+| `dfs_expertlocal_cbottle` | **3.17** | 0.28 | **3.34** | 0.81 |
+| `uniform_expertlocal_cbottle` | 5.19 | 0.55 | 5.49 | 0.76 |
+| `count_expertlocal_cbottle` | 5.20 | 0.54 | 5.41 | 1.07 |
+
+**DFS is lower in 12 of 12 paired comparisons** — 2 variants × 2 channels ×
+{uniform, count} × 3 seeds, every seed individually, with no exceptions. The
+reduction is 39–48 % against `uniform` on TEMP and 39–50 % on SALT.
+
+The `oi_expert` DFS row is the only row anywhere in the build with a TEMP
+ratio **below 1**: eight redundant copies move it *less* than the single
+genuine observation does. That is the mechanism doing exactly what §2.2 says
+it should.
+
+Interpreting the two variants: the `expertlocal` rows sit 3–5× higher than the
+`oi_expert` rows across the board, because the frozen OI background anchors
+the prediction and the gated residual can only move it so far. The absolute
+level is a property of the variant; the DFS-vs-control gap is what is being
+tested, and it holds in both.
+
+## 9.2 Mass growth — reported, not headlined
+
+| Row | copied-group mass k=1 | k=8 | growth |
+|---|---|---|---|
+| `dfs_*` (both variants) | 0.624 | 2.359 | **3.84× ± 0.08** |
+| `uniform_*`, `count_*` | 16.000 | 128.000 | 8.00× ± 0.00 |
+
+DFS grows sublinearly where the controls grow exactly linearly. But the
+control column is a definition, so this is a **sanity check that the estimator
+is wired in**, not a comparative result — and the honest reading is that 3.84×
+is far weaker than the mechanism achieves in isolation.
+
+**The open problem.** The same estimator measured on an isolated duplicate
+pair gives 1.08× for eight copies; deployed here it gives 3.84×. Per-token
+leverage is ≈0.05 in the live 523-token set against ≈12.5 for a lone token,
+and consolidation only bites at high leverage. The likely cause is
+**32 random features for ~664 tokens — roughly 20 tokens per feature
+dimension**, so the whitened Gram matrix cannot resolve them as distinct.
+`N_FEATURES = 32` is fixed by doc §2.2, so this is a design question for
+review rather than something to change unilaterally.
+
+## 9.3 Missing-modality — absolute score
 
 | Row | full | no profiles | no surface T/S | no SSH | profiles only |
 |---|---|---|---|---|---|
-| `dfs_oi_expert_cbottle` | 0.7332 | 0.9192 | 0.7921 | 0.6972 | 0.7389 |
-| `uniform_oi_expert_cbottle` | 0.7532 | 0.9460 | 0.8245 | 0.6913 | 0.7310 |
-| `count_oi_expert_cbottle` | 0.7396 | 0.9220 | 0.8288 | 0.6925 | 0.7362 |
-| `dfs_expertlocal_cbottle` | 0.7225 | 0.8094 | 0.7901 | 0.7044 | 0.7351 |
+| `dfs_oi_expert_cbottle` | 0.7227 | 0.8874 | 0.7778 | 0.6975 | 0.7410 |
+| `uniform_oi_expert_cbottle` | 0.7488 | 0.9453 | 0.8225 | 0.6889 | 0.7285 |
+| `count_oi_expert_cbottle` | 0.7413 | 0.9245 | 0.8340 | 0.6920 | 0.7372 |
+| `dfs_expertlocal_cbottle` | 0.7172 | 0.8000 | 0.7788 | 0.7033 | 0.7345 |
 | `uniform_expertlocal_cbottle` | 0.7346 | 0.8474 | 0.7970 | 0.7023 | 0.7298 |
-| `count_expertlocal_cbottle` | 0.7387 | 0.8499 | 0.8074 | 0.7044 | 0.7333 |
+| `count_expertlocal_cbottle` | 0.7385 | 0.8490 | 0.8070 | 0.7045 | 0.7334 |
 
-## 9.2 Missing-modality — change from `full`
+## 9.4 Missing-modality — change from `full`
 
 Negative means **removing that stream improved the model**.
 
 | Row | no profiles | no surface T/S | no SSH | profiles only |
 |---|---|---|---|---|
-| `dfs_oi_expert_cbottle` | +25.4% | +8.0% | -4.9% | +0.8% |
-| `uniform_oi_expert_cbottle` | +25.6% | +9.5% | -8.2% | -2.9% |
-| `count_oi_expert_cbottle` | +24.7% | +12.1% | -6.4% | -0.5% |
-| `dfs_expertlocal_cbottle` | +12.0% | +9.4% | -2.5% | +1.7% |
-| `uniform_expertlocal_cbottle` | +15.4% | +8.5% | -4.4% | -0.7% |
-| `count_expertlocal_cbottle` | +15.1% | +9.3% | -4.6% | -0.7% |
+| `dfs_oi_expert_cbottle` | +22.8 % | +7.6 % | **−3.5 %** | +2.5 % |
+| `uniform_oi_expert_cbottle` | +26.2 % | +9.8 % | **−8.0 %** | −2.7 % |
+| `count_oi_expert_cbottle` | +24.7 % | +12.5 % | **−6.6 %** | −0.6 % |
+| `dfs_expertlocal_cbottle` | +11.5 % | +8.6 % | **−1.9 %** | +2.4 % |
+| `uniform_expertlocal_cbottle` | +15.4 % | +8.5 % | **−4.4 %** | −0.7 % |
+| `count_expertlocal_cbottle` | +15.0 % | +9.3 % | **−4.6 %** | −0.7 % |
 
-**Profiles dominate.** Withholding them costs +12 % to +25 %, by far the
+**Profiles dominate.** Withholding them costs +11 % to +26 %, by far the
 largest dependency, and `profiles_only` scores within a couple of percent of
 `full` — the gridded streams add little once profiles are present.
 
-**SSH is a liability.** Removing it *improves* every row, −2.5 % to −8.2 %.
-The doc expected SSH removal to cost about +2 %; the sign is opposite. Part of
-this was the co-location bug (§8), but the effect survives the fix and also
-appears in the `uniform` and `count` rows, where unit mass makes that bug
-impossible as a cause. A second mechanism is unidentified; the open suspects
-are the channel-0 collision (SSH occupies the TEMP value slot, distinguished
-only by the mask channel and modality embedding) and plain attention dilution
-from 140 extra tokens.
+**SSH is still a liability, but DFS is hurt least.** Removing SSH improves
+every row; the doc expected removal to *cost* about +2 %, so the sign is
+opposite for all six. The new detail is the ordering: the DFS rows lose the
+least by keeping SSH (−1.9 %, −3.5 %) and the controls lose the most (−4.4 %
+to −8.0 %), consistently in both variants. That is what the variable-group fix
+(§8) predicts — a mass estimator that can tell SSH from surface T/S
+down-weights the redundant stream instead of letting it dilute the pool — but
+it is a partial mitigation, not a cure. The residual is unexplained; the open
+suspects remain the channel-0 collision (SSH occupies the TEMP value slot,
+distinguished only by the mask channel and modality embedding) and plain
+attention dilution from 140 extra tokens.
 
-## 9.3 Duplicate attack
+## 9.5 Holdout scores from this run
 
-One profile column is biased by +2 normalised temperature units, then fed as
-`k` bit-exact copies. The copies carry no information, so any movement
-between k=1 and k=8 is the model responding to multiplicity rather than to
-evidence.
+Mean ± sd over 3 seeds, 8 months.
 
-| Row | copied mass k1 | k8 | growth | dTEMP | dSALT |
-|---|---|---|---|---|---|
-| `dfs_oi_expert_cbottle` | 0.783 | 2.468 | **3.18x** | 0.02466 | 0.01237 |
-| `uniform_oi_expert_cbottle` | 14.889 | 119.111 | **8.00x** | 0.04509 | 0.02883 |
-| `count_oi_expert_cbottle` | 14.889 | 119.111 | **8.00x** | 0.04606 | 0.03158 |
-| `dfs_expertlocal_cbottle` | 0.783 | 2.468 | **3.18x** | 0.05593 | 0.02462 |
-| `uniform_expertlocal_cbottle` | 14.889 | 119.111 | **8.00x** | 0.10297 | 0.05231 |
-| `count_expertlocal_cbottle` | 14.889 | 119.111 | **8.00x** | 0.10779 | 0.05305 |
+| Row | Score | TEMP (z) | SALT (z) |
+|---|---|---|---|
+| `dfs_expertlocal_cbottle` | **0.7172 ± 0.0500** | 0.8206 | 0.9180 |
+| `dfs_oi_expert_cbottle` | 0.7227 ± 0.0226 | 0.7918 | 0.9740 |
+| `uniform_expertlocal_cbottle` | 0.7346 ± 0.0390 | 0.8232 | 0.9645 |
+| `count_expertlocal_cbottle` | 0.7385 ± 0.0369 | 0.8354 | 0.9587 |
+| `count_oi_expert_cbottle` | 0.7413 ± 0.0399 | 0.8064 | 1.0073 |
+| `uniform_oi_expert_cbottle` | 0.7488 ± 0.0380 | 0.8137 | 1.0186 |
 
-**This is the clearest DFS result in the build.** Eight exact copies grow the
-copied group's evidence **3.18x** under DFS against **8.00x** for both
-controls — the controls count copies linearly, which is precisely what the
-mechanism exists to prevent — and the output shift is roughly halved.
+Paired differences (same seed, identical parameter set, mass mode the only
+difference):
 
-Set against the doc's own §9 gate: it asked for duplicate amplification to
-improve by a registered factor versus both controls *with a paired interval
-excluding parity*. The margin here is large and consistently signed, but with
-n = 3 and no bootstrap the interval does not exist, so the gate is met in
-direction and not in evidence.
+| Comparison | per seed | mean | verdict |
+|---|---|---|---|
+| `dfs_oi` − `uniform_oi` | −0.0231 / −0.0047 / −0.0505 | **−0.0261** | DFS better ×3 |
+| `dfs_expert` − `uniform_expert` | −0.0033 / −0.0199 / −0.0292 | **−0.0175** | DFS better ×3 |
+| `dfs_oi` − `count_oi` | −0.0227 / +0.0048 / −0.0380 | −0.0186 | 2 of 3 |
+| `dfs_expert` − `count_expert` | +0.0001 / −0.0191 / −0.0451 | −0.0213 | 2 of 3 |
 
-Source: `outputs/godas_final_s{1234,1235,1236}/metrics_seed*.json`, keys
-`missing_inputs` and `duplicate_attack`. Pre-fix equivalents are in
-`outputs/godas_audit_s*/`.
+Consistent with §8.2 and slightly larger with the two extra months. The
+caveats there still bind, and one is worth restating: **all six rows selected
+step 5000, in all three seeds** (one exception, `count_oi` seed 1235 at 4500).
+Validation score was still falling when the budget ran out, so every row is
+undertrained and this is a comparison between equally-undertrained models.
+5000 steps is fixed by doc §6.2.
+
+Note also that seed spread (sd up to 0.050) is roughly twice the DFS-vs-control
+effect (0.018–0.026). Only the **paired** differences are informative here; an
+unpaired reading of §9.5's first table would be noise.
+
+## 9.6 Against the doc's §9 gate
+
+The gate asks for duplicate amplification improved by a registered factor
+versus both controls, **with a paired interval excluding parity**.
+
+- **Direction and consistency: met.** 12 of 12 paired comparisons favour DFS,
+  every seed individually, both channels, both variants.
+- **Interval: not met.** n = 3 seeds gives p ≈ 0.125 at best under a sign
+  test over seeds. The audit now stores `per_month` values for all 8 months,
+  which is the sufficient statistic a paired block bootstrap needs, so §10 can
+  compute the interval without re-running training — but it has not been run,
+  and no interval is claimed here.
+
+## 9.7 Reproduce
+
+```bash
+ROWS=dfs_oi_expert_cbottle,uniform_oi_expert_cbottle,count_oi_expert_cbottle,\
+dfs_expertlocal_cbottle,uniform_expertlocal_cbottle,count_expertlocal_cbottle
+for s in 1234 1235 1236; do
+  CUDA_VISIBLE_DEVICES=$((s-1234)) .venv/bin/python experiments/14_godas_dfs_d4rt.py \
+      --configs "$ROWS" --seed $s --steps 5000 --validation-interval 500 \
+      --queries 512 --eval-queries 1024 --audit --audit-months 8 \
+      --output outputs/godas_v3_s$s
+done
+```
+
+~48 min per seed on one GPU (3 seeds in parallel on GPUs 0–2). Scores
+reproduce to ~2.4e-3 rather than bit-exactly — GPU kernel nondeterminism.
+
+Source: `outputs/godas_v3_s{1234,1235,1236}/metrics_seed*.json`, keys
+`missing_inputs` and `duplicate_attack` (the latter now carrying
+`profile_sensitivity`, `duplicate_shift`, `duplicate_over_sensitivity`,
+`duplicate_over_sensitivity_std`, `pin_cell`, and `per_month`).
+Superseded predecessors: `outputs/godas_final_s*/` (§8, 6 months),
+`outputs/godas_audit_s*/` (pre-SSH-fix).
