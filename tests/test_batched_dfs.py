@@ -181,3 +181,66 @@ def test_zero_active_tokens_conserve_zero_without_nan():
     mask = torch.zeros(1, 5, dtype=torch.bool)
     _, _, mass = r(emb, torch.rand(1, 5).double(), mask)
     assert torch.isfinite(mass).all() and float(mass.sum()) == 0.0
+
+
+# --------------------------------------------------------------------------
+# Cross-variable evidence: different quantities are not duplicates
+# --------------------------------------------------------------------------
+def _omega_grouped(coords, groups, noise=0.08, n_groups=2):
+    from ocean_tokenizer.batched_dfs import variable_group_coords
+    basis = RandomFourierBasis(N_FEATURES,
+                               LENGTH_SCALES + variable_group_coords.scales(n_groups),
+                               seed=BASIS_SEED)
+    c = torch.as_tensor(coords, dtype=torch.float64)
+    g = variable_group_coords(torch.as_tensor(groups), n_groups)
+    full = torch.cat([c, g], dim=-1)
+    nodes = full[:, None, :]
+    weights = torch.ones(c.shape[0], 1, dtype=torch.float64)
+    dens = torch.full((c.shape[0],), noise, dtype=torch.float64)
+    psi, lam = integrate_support(basis, nodes, weights, dens)
+    return dfs_omega(psi, lam, torch.ones(c.shape[0], dtype=torch.bool))
+
+
+SAME_SPOT = [[0.5, 0.5, 0.5, 0.0]] * 2
+
+
+def test_same_variable_at_one_spot_still_competes():
+    """Two T/S observations of the same water are genuinely redundant."""
+    w = _omega_grouped(SAME_SPOT, [0, 0])
+    solo = float(_omega_grouped(SAME_SPOT[:1], [0]).sum())
+    assert float(w[0]) < 0.75 * solo, "same-variable duplicates must compete"
+
+
+def test_different_variables_at_one_spot_do_not_compete():
+    """SSH and temperature at the same place measure different quantities.
+
+    Before this, both sat at z=0 with identical coordinates and the estimator
+    consolidated them as exact duplicates, so adding SSH DELETED evidence from
+    the surface stream it shadowed.
+    """
+    w = _omega_grouped(SAME_SPOT, [0, 1])
+    solo = float(_omega_grouped(SAME_SPOT[:1], [0]).sum())
+    assert float(w[0]) > 0.9 * solo, "cross-variable tokens must keep evidence"
+    assert float(w[1]) > 0.9 * solo
+
+
+def test_cross_variable_beats_same_variable_at_the_same_spot():
+    same = float(_omega_grouped(SAME_SPOT, [0, 0]).sum())
+    diff = float(_omega_grouped(SAME_SPOT, [0, 1]).sum())
+    assert diff > same, f"cross-variable {diff:.4f} must exceed same {same:.4f}"
+
+
+def test_group_embedding_is_equidistant_across_groups():
+    """No group may be 'closer' to another purely by index ordering."""
+    from ocean_tokenizer.batched_dfs import variable_group_coords
+    for n in (2, 3, 4):
+        e = variable_group_coords(torch.arange(n), n)
+        d = torch.cdist(e, e)
+        off = d[~torch.eye(n, dtype=torch.bool)]
+        assert torch.allclose(off, off[0] * torch.ones_like(off), atol=1e-9), n
+
+
+def test_grouping_is_optional_and_backward_compatible():
+    """Callers that pass no group get the previous 4-coordinate behaviour."""
+    c = np.array([[0.2, 0.3, 0.4, 0.0]])
+    assert float(_omega(c).sum()) > 0

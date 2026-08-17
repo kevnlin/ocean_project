@@ -51,6 +51,13 @@ MOD_PROFILE, MOD_SURF, MOD_SSH = 0, 1, 2
 N_MODALITIES = 3
 N_CHANNELS = 2                 # TEMP, SALT
 
+# Which observed VARIABLE each modality carries.  This is the axis that decides
+# redundancy, and it is not the modality: profile points and surface patches
+# both carry T/S, so co-located ones genuinely ARE redundant and must compete;
+# SSH is a different physical quantity and must not be consolidated with them.
+VARIABLE_GROUP = {MOD_PROFILE: 0, MOD_SURF: 0, MOD_SSH: 1}
+N_VARIABLE_GROUPS = 2
+
 
 @dataclass
 class ObsConfig:
@@ -184,6 +191,9 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
         mask=tok,
         support_mask=tok.clone(),
         modality=torch.as_tensor(modality, dtype=torch.long),
+        variable_group=torch.as_tensor(
+            np.vectorize(VARIABLE_GROUP.get)(modality).astype("int64")
+            if modality.size else np.zeros(0, dtype="int64")),
         modality_available=torch.as_tensor(avail),
         noise_density=torch.as_tensor(noise, dtype=torch.float64),
         query=torch.as_tensor(qcoord, dtype=torch.float64),
@@ -214,7 +224,7 @@ def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,
     if k == 1:
         return out
     per_token = ("coord", "value", "value_mask", "mask", "support_mask",
-                 "modality", "noise_density")
+                 "modality", "variable_group", "noise_density")
     block = {kk: out[kk][:depths] for kk in per_token}
     for kk in per_token:
         out[kk] = torch.cat([out[kk]] + [block[kk]] * (k - 1), dim=0)

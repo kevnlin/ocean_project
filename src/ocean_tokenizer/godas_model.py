@@ -29,8 +29,9 @@ import torch.nn.functional as F
 
 from .batched_dfs import (RandomFourierBasis, integrate_support, dfs_omega,
                           ConservativeResampler, PerceiverResampler,
-                          N_FEATURES, LENGTH_SCALES, BASIS_SEED)
-from .godas_obs import N_MODALITIES, N_CHANNELS
+                          variable_group_coords, N_FEATURES, LENGTH_SCALES,
+                          BASIS_SEED)
+from .godas_obs import N_MODALITIES, N_CHANNELS, N_VARIABLE_GROUPS
 from .objective_interpolation import ObjectiveInterpolation, OISettings
 from .oi_residual import OIResidual
 from .query_decoder import (IndependentQueryDecoder, ChannelExpertHead,
@@ -122,7 +123,13 @@ class GodasRowModel(nn.Module):
         assert mass_mode in ("dfs", "uniform", "count")
         self.mass_mode = mass_mode
         self.encoder = _TokenEncoder(d_model)
-        self.basis = RandomFourierBasis(N_FEATURES, LENGTH_SCALES, BASIS_SEED)
+        # the kernel spans (x, y, z, t) PLUS a variable-group axis, so tokens
+        # carrying different physical quantities are not consolidated as
+        # duplicates just because they share a location
+        self.basis = RandomFourierBasis(
+            N_FEATURES,
+            LENGTH_SCALES + variable_group_coords.scales(N_VARIABLE_GROUPS),
+            BASIS_SEED)
         # `count` is a DIFFERENT transport, not the conservative one fed unit
         # masses — otherwise it would be a copy of `uniform` and could not
         # separate an OI-residual gain from a DFS gain (doc §2.4)
@@ -144,8 +151,10 @@ class GodasRowModel(nn.Module):
         mask = s["mask"]
         dev = s["coord"].device
         if self.mass_mode == "dfs":
+            grp = variable_group_coords(s["variable_group"], N_VARIABLE_GROUPS)
+            full = torch.cat([s["coord"], grp.to(s["coord"].device)], dim=-1)
             psi, lam = integrate_support(
-                self.basis, s["coord"][:, None, :],
+                self.basis, full[:, None, :],
                 torch.ones(s["coord"].shape[0], 1, dtype=torch.float64,
                            device=dev),
                 s["noise_density"])

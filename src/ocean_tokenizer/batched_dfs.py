@@ -37,15 +37,75 @@ numerical guard, not an estimated variance.
 """
 from __future__ import annotations
 
+import math
+
 import torch
 import torch.nn as nn
 
 N_FEATURES = 32
 LENGTH_SCALES = (0.35, 0.35, 0.25, 2.0)      # (x, y, z, t)
 BASIS_SEED = 0
+# Kernel value between tokens carrying DIFFERENT observed variables at the same
+# place and time.  1.0 would call them exact duplicates, which is what a purely
+# geometric kernel does and what this constant exists to stop: SSH and surface
+# temperature sit at the same (x, y, z=0, t), so before this they consolidated
+# as one measurement and adding SSH *deleted* evidence from the surface stream
+# it shadowed (surface omega 5.197 -> 3.499, -32.7 %).
+#
+# Distinct from ``dfs.S_CROSS = 0.8``, which is between processing streams of
+# the SAME variable (real-time vs delayed-mode).  Different physical quantities
+# are far less redundant than that.  Like the doc's own support-noise densities,
+# this is a pilot heuristic, not a calibrated cross-covariance.
+S_CROSS_VARIABLE = 0.3
 LAMBDA_FLOOR = 1e-8
 NOISE_DENSITY_POINT = 0.08
 NOISE_DENSITY_PATCH = 0.35
+
+
+class _VariableGroupCoords:
+    """Embed a variable group as extra kernel coordinates.
+
+    Groups are placed on a regular simplex with unit pairwise distance, so no
+    two groups are closer than any other pair — an integer group index used
+    directly would make groups 0 and 2 twice as far apart as 0 and 1, an
+    artefact of labelling rather than physics.
+
+    Because the RFF kernel is ``exp(-0.5 |du|^2)`` over the concatenated
+    input, appending these coordinates multiplies the spatial kernel by a
+    constant cross-group factor — exactly a separable ``k_space * k_variable``.
+    """
+
+    @staticmethod
+    def scales(n_groups: int, s_cross: float = S_CROSS_VARIABLE) -> tuple:
+        """Length scale(s) giving ``k = s_cross`` between different groups."""
+        if n_groups < 2:
+            return ()
+        ell = math.sqrt(-0.5 / math.log(max(min(s_cross, 1 - 1e-12), 1e-12)))
+        return (ell,) * (n_groups - 1)
+
+    def __call__(self, group: torch.Tensor, n_groups: int) -> torch.Tensor:
+        if n_groups < 2:
+            return torch.zeros(*group.shape, 0, dtype=torch.float64,
+                               device=group.device)
+        v = self._simplex(n_groups).to(group.device)
+        return v[group.long()]
+
+    @staticmethod
+    def _simplex(n: int) -> torch.Tensor:
+        """(n, n-1) vertices of a regular simplex with unit pairwise distance.
+
+        Centre the n standard basis vectors (pairwise distance sqrt 2), scale
+        to unit distance, then drop to the n-1 dimensional subspace they span
+        via SVD.  Distances are preserved by that rotation, so every pair of
+        groups ends up exactly one unit apart.
+        """
+        v = torch.eye(n, dtype=torch.float64)
+        v = (v - v.mean(0, keepdim=True)) / math.sqrt(2.0)
+        u, sv, _ = torch.linalg.svd(v, full_matrices=False)
+        return u[:, :n - 1] * sv[:n - 1]
+
+
+variable_group_coords = _VariableGroupCoords()
 
 
 class RandomFourierBasis(nn.Module):
