@@ -155,9 +155,15 @@ class QueryLocalRefiner(nn.Module):
     fused kernel.
     """
 
-    def __init__(self, d_model: int, n_heads: int):
+    def __init__(self, d_model: int, n_heads: int, geographic: bool = True):
         super().__init__()
         assert d_model % n_heads == 0
+        # geographic=True: coords are (lat, lon, depth_m, month) and offsets are
+        # converted as documented below. geographic=False: coords are already
+        # normalised (x, y, z, t) — the GODAS box — and differences are taken
+        # directly. Converting normalised coords through the geographic path
+        # would divide an already-unit quantity by 90.
+        self.geographic = bool(geographic)
         self.h = n_heads
         self.dh = d_model // n_heads
         self.norm_q = nn.LayerNorm(d_model)
@@ -176,6 +182,12 @@ class QueryLocalRefiner(nn.Module):
 
     def _offsets(self, qcoord, lead, tcoord, time_offset):
         """-> (dx, dy, dz, dt_src, dt_tgt), each (B, Q, N)."""
+        if not self.geographic:
+            d = qcoord[:, :, None, :3] - tcoord[:, None, :, :3]
+            dx, dy, dz = d[..., 0], d[..., 1], d[..., 2]
+            t_obs = tcoord[:, None, :, 3].expand_as(dx)
+            dt_tgt = t_obs - lead.to(t_obs.dtype)[:, :, None]
+            return dx, dy, dz, t_obs, dt_tgt
         qlat, qlon, qdep = qcoord[..., 0], qcoord[..., 1], qcoord[..., 2]
         tlat, tlon, tdep = tcoord[..., 0], tcoord[..., 1], tcoord[..., 2]
         dy = (qlat[:, :, None] - tlat[:, None, :]) / 90.0
@@ -243,10 +255,10 @@ class ChannelExpertHead(nn.Module):
     physical state with it.
     """
 
-    def __init__(self, d_model: int, n_heads: int):
+    def __init__(self, d_model: int, n_heads: int, geographic: bool = True):
         super().__init__()
-        self.shared_refiner = QueryLocalRefiner(d_model, n_heads)
-        self.salt_refiner = QueryLocalRefiner(d_model, n_heads)
+        self.shared_refiner = QueryLocalRefiner(d_model, n_heads, geographic)
+        self.salt_refiner = QueryLocalRefiner(d_model, n_heads, geographic)
         self.salt_embed = nn.Parameter(torch.zeros(1, 1, d_model))
         hidden = 2 * d_model
         self.shared_head = nn.Sequential(
