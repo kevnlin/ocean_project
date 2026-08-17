@@ -217,3 +217,79 @@ A second mechanism is therefore still unidentified — the channel-0 collision
 suspects.
 
 Artifacts: `outputs/godas_final_s{1234,1235,1236}/metrics_seed*.json`.
+
+---
+
+# 9. Robustness audits (mentor doc §9)
+
+Post-SSH-fix run (`425b486`), 6 trainable rows x 3 seeds, evaluated on the
+8 eligible 2025 holdout source months. Absolute selection scores (lower is
+better); the second table gives the change from `full`.
+
+## 9.1 Missing-modality — absolute score
+
+| Row | full | no profiles | no surface T/S | no SSH | profiles only |
+|---|---|---|---|---|---|
+| `dfs_oi_expert_cbottle` | 0.7332 | 0.9192 | 0.7921 | 0.6972 | 0.7389 |
+| `uniform_oi_expert_cbottle` | 0.7532 | 0.9460 | 0.8245 | 0.6913 | 0.7310 |
+| `count_oi_expert_cbottle` | 0.7396 | 0.9220 | 0.8288 | 0.6925 | 0.7362 |
+| `dfs_expertlocal_cbottle` | 0.7225 | 0.8094 | 0.7901 | 0.7044 | 0.7351 |
+| `uniform_expertlocal_cbottle` | 0.7346 | 0.8474 | 0.7970 | 0.7023 | 0.7298 |
+| `count_expertlocal_cbottle` | 0.7387 | 0.8499 | 0.8074 | 0.7044 | 0.7333 |
+
+## 9.2 Missing-modality — change from `full`
+
+Negative means **removing that stream improved the model**.
+
+| Row | no profiles | no surface T/S | no SSH | profiles only |
+|---|---|---|---|---|
+| `dfs_oi_expert_cbottle` | +25.4% | +8.0% | -4.9% | +0.8% |
+| `uniform_oi_expert_cbottle` | +25.6% | +9.5% | -8.2% | -2.9% |
+| `count_oi_expert_cbottle` | +24.7% | +12.1% | -6.4% | -0.5% |
+| `dfs_expertlocal_cbottle` | +12.0% | +9.4% | -2.5% | +1.7% |
+| `uniform_expertlocal_cbottle` | +15.4% | +8.5% | -4.4% | -0.7% |
+| `count_expertlocal_cbottle` | +15.1% | +9.3% | -4.6% | -0.7% |
+
+**Profiles dominate.** Withholding them costs +12 % to +25 %, by far the
+largest dependency, and `profiles_only` scores within a couple of percent of
+`full` — the gridded streams add little once profiles are present.
+
+**SSH is a liability.** Removing it *improves* every row, −2.5 % to −8.2 %.
+The doc expected SSH removal to cost about +2 %; the sign is opposite. Part of
+this was the co-location bug (§8), but the effect survives the fix and also
+appears in the `uniform` and `count` rows, where unit mass makes that bug
+impossible as a cause. A second mechanism is unidentified; the open suspects
+are the channel-0 collision (SSH occupies the TEMP value slot, distinguished
+only by the mask channel and modality embedding) and plain attention dilution
+from 140 extra tokens.
+
+## 9.3 Duplicate attack
+
+One profile column is biased by +2 normalised temperature units, then fed as
+`k` bit-exact copies. The copies carry no information, so any movement
+between k=1 and k=8 is the model responding to multiplicity rather than to
+evidence.
+
+| Row | copied mass k1 | k8 | growth | dTEMP | dSALT |
+|---|---|---|---|---|---|
+| `dfs_oi_expert_cbottle` | 0.783 | 2.468 | **3.18x** | 0.02466 | 0.01237 |
+| `uniform_oi_expert_cbottle` | 14.889 | 119.111 | **8.00x** | 0.04509 | 0.02883 |
+| `count_oi_expert_cbottle` | 14.889 | 119.111 | **8.00x** | 0.04606 | 0.03158 |
+| `dfs_expertlocal_cbottle` | 0.783 | 2.468 | **3.18x** | 0.05593 | 0.02462 |
+| `uniform_expertlocal_cbottle` | 14.889 | 119.111 | **8.00x** | 0.10297 | 0.05231 |
+| `count_expertlocal_cbottle` | 14.889 | 119.111 | **8.00x** | 0.10779 | 0.05305 |
+
+**This is the clearest DFS result in the build.** Eight exact copies grow the
+copied group's evidence **3.18x** under DFS against **8.00x** for both
+controls — the controls count copies linearly, which is precisely what the
+mechanism exists to prevent — and the output shift is roughly halved.
+
+Set against the doc's own §9 gate: it asked for duplicate amplification to
+improve by a registered factor versus both controls *with a paired interval
+excluding parity*. The margin here is large and consistently signed, but with
+n = 3 and no bootstrap the interval does not exist, so the gate is met in
+direction and not in evidence.
+
+Source: `outputs/godas_final_s{1234,1235,1236}/metrics_seed*.json`, keys
+`missing_inputs` and `duplicate_attack`. Pre-fix equivalents are in
+`outputs/godas_audit_s*/`.
