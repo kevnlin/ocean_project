@@ -1,0 +1,554 @@
+{
+ "task": "godas_dfs_d4rt",
+ "git_commit": "389889aeee27a7388e6c419bf3ddb119151b8010",
+ "seed": 1235,
+ "device": "cuda",
+ "smoke": false,
+ "splits": {
+  "train": [
+   2000,
+   2018
+  ],
+  "validation": [
+   2019,
+   2021
+  ],
+  "development": [
+   2022,
+   2024
+  ],
+  "holdout": [
+   2025,
+   2025
+  ]
+ },
+ "climatology_floor_z": {
+  "validation": {
+   "TEMP": 1.1525525376047216,
+   "SALT": 1.2942605081551326
+  },
+  "holdout": {
+   "TEMP": 1.0312153319635713,
+   "SALT": 1.437650028609978
+  }
+ },
+ "eligible_source_months": {
+  "train": 224,
+  "validation": 32,
+  "development": 32,
+  "holdout": 8
+ },
+ "args": {
+  "configs": "objective_interpolation,count_expertlocal_cbottle,uniform_expertlocal_cbottle,dfs_expertlocal_cbottle,count_oi_expert_cbottle,uniform_oi_expert_cbottle,dfs_oi_expert_cbottle",
+  "seed": 1235,
+  "steps": 5000,
+  "validation_interval": 500,
+  "queries": 512,
+  "eval_queries": 1024,
+  "lr": 0.0003,
+  "weight_decay": 0.01,
+  "data": null,
+  "output": "outputs/godas_v2_s1235",
+  "load_checkpoint": null,
+  "validation_only": false,
+  "test_only": false,
+  "test_year": 2025,
+  "smoke": false
+ },
+ "results": {
+  "objective_interpolation": {
+   "row": "objective_interpolation",
+   "trainable": false,
+   "validation": {
+    "TEMP": 0.8009998296526976,
+    "SALT": 0.924681163824469
+   },
+   "validation_score": 0.7047132505630258,
+   "holdout": {
+    "TEMP": 0.796903221715199,
+    "SALT": 0.9235567758955503
+   }
+  },
+  "count_expertlocal_cbottle": {
+   "row": "count_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6628058913877,
+   "validation": {
+    "TEMP": 0.7850820817125473,
+    "SALT": 0.8340779415057594
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.8342258212439828,
+     "TEMP": 0.8997786530565621,
+     "SALT": 1.149003354950278
+    },
+    {
+     "step": 1000,
+     "score": 0.7875805445489679,
+     "TEMP": 0.8488637650534785,
+     "SALT": 1.085436021670529
+    },
+    {
+     "step": 1500,
+     "score": 0.7720212447868049,
+     "TEMP": 0.8249583643373656,
+     "SALT": 1.0720050509050485
+    },
+    {
+     "step": 2000,
+     "score": 0.7534949328232032,
+     "TEMP": 0.8144122960813736,
+     "SALT": 1.0358920253507882
+    },
+    {
+     "step": 2500,
+     "score": 0.7072377852029885,
+     "TEMP": 0.7985620603522872,
+     "SALT": 0.9339534712927328
+    },
+    {
+     "step": 3000,
+     "score": 0.7072118885279262,
+     "TEMP": 0.8081856281595367,
+     "SALT": 0.9230796380752458
+    },
+    {
+     "step": 3500,
+     "score": 0.6793461778311177,
+     "TEMP": 0.800560232225825,
+     "SALT": 0.8595116094901702
+    },
+    {
+     "step": 4000,
+     "score": 0.6839758956375471,
+     "TEMP": 0.787374621559374,
+     "SALT": 0.8863025315466051
+    },
+    {
+     "step": 4500,
+     "score": 0.6907785296250584,
+     "TEMP": 0.7710672228558685,
+     "SALT": 0.922223709112049
+    },
+    {
+     "step": 5000,
+     "score": 0.6628058913877,
+     "TEMP": 0.7850820817125473,
+     "SALT": 0.8340779415057594
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/count_expertlocal_cbottle_seed1235.pt",
+   "checkpoint_sha256": "c2bd81b0f0908c56481edbfde792aa12e846f344182316d51e89f87fd1f38577",
+   "holdout": {
+    "TEMP": 0.7965294331765556,
+    "SALT": 0.9052455202343157
+   },
+   "wall_s": 186.3
+  },
+  "uniform_expertlocal_cbottle": {
+   "row": "uniform_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6547040887312927,
+   "validation": {
+    "TEMP": 0.771601322219225,
+    "SALT": 0.8282444930686574
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.8402927381265195,
+     "TEMP": 0.9083723879564717,
+     "SALT": 1.1550573500002452
+    },
+    {
+     "step": 1000,
+     "score": 0.7807097157289065,
+     "TEMP": 0.8460556472773934,
+     "SALT": 1.0708041167131166
+    },
+    {
+     "step": 1500,
+     "score": 0.784261523916064,
+     "TEMP": 0.8356086761603506,
+     "SALT": 1.0917294878968677
+    },
+    {
+     "step": 2000,
+     "score": 0.7551347043877881,
+     "TEMP": 0.8117617252683814,
+     "SALT": 1.043113070764607
+    },
+    {
+     "step": 2500,
+     "score": 0.7082862921662867,
+     "TEMP": 0.797377136563276,
+     "SALT": 0.9379981654538508
+    },
+    {
+     "step": 3000,
+     "score": 0.6932366870836846,
+     "TEMP": 0.7970693178364633,
+     "SALT": 0.8993876118865892
+    },
+    {
+     "step": 3500,
+     "score": 0.6804258972144821,
+     "TEMP": 0.8042676383527205,
+     "SALT": 0.8581432488328545
+    },
+    {
+     "step": 4000,
+     "score": 0.6835653979875709,
+     "TEMP": 0.7870647385816516,
+     "SALT": 0.885587933282209
+    },
+    {
+     "step": 4500,
+     "score": 0.688526804216093,
+     "TEMP": 0.7723672939065592,
+     "SALT": 0.9149351539361544
+    },
+    {
+     "step": 5000,
+     "score": 0.6547040887312927,
+     "TEMP": 0.771601322219225,
+     "SALT": 0.8282444930686574
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/uniform_expertlocal_cbottle_seed1235.pt",
+   "checkpoint_sha256": "aea055bcc7b8d172390c8c4e6175836cf2f86754011344f3ab5b81c150bc45a0",
+   "holdout": {
+    "TEMP": 0.7892672962278793,
+    "SALT": 0.9163028819721186
+   },
+   "wall_s": 186.1
+  },
+  "dfs_expertlocal_cbottle": {
+   "row": "dfs_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6522017061023189,
+   "validation": {
+    "TEMP": 0.772677145358156,
+    "SALT": 0.8205589259217119
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.8366673113818002,
+     "TEMP": 0.9061078107004051,
+     "SALT": 1.1482158669227203
+    },
+    {
+     "step": 1000,
+     "score": 0.7817856168758635,
+     "TEMP": 0.8560438395001495,
+     "SALT": 1.062372854808673
+    },
+    {
+     "step": 1500,
+     "score": 0.7859636951878128,
+     "TEMP": 0.8578233968106902,
+     "SALT": 1.0711895419189856
+    },
+    {
+     "step": 2000,
+     "score": 0.7454190068611432,
+     "TEMP": 0.830243895751525,
+     "SALT": 0.9972092039492286
+    },
+    {
+     "step": 2500,
+     "score": 0.7046569292425768,
+     "TEMP": 0.7985086769975135,
+     "SALT": 0.9273328183131582
+    },
+    {
+     "step": 3000,
+     "score": 0.6874965684463089,
+     "TEMP": 0.8044071021469148,
+     "SALT": 0.8762892188501991
+    },
+    {
+     "step": 3500,
+     "score": 0.6769766781013059,
+     "TEMP": 0.8032752445942902,
+     "SALT": 0.8503292826482742
+    },
+    {
+     "step": 4000,
+     "score": 0.6766151194044825,
+     "TEMP": 0.7819869201797554,
+     "SALT": 0.873299134483062
+    },
+    {
+     "step": 4500,
+     "score": 0.6766546923848638,
+     "TEMP": 0.7712977503540578,
+     "SALT": 0.8854049884035337
+    },
+    {
+     "step": 5000,
+     "score": 0.6522017061023189,
+     "TEMP": 0.772677145358156,
+     "SALT": 0.8205589259217119
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/dfs_expertlocal_cbottle_seed1235.pt",
+   "checkpoint_sha256": "1c41498b0f58292a4adf64c0a5bf7cd50df1bf945746549af71313163ae11fed",
+   "holdout": {
+    "TEMP": 0.774610412739315,
+    "SALT": 0.8716484792474638
+   },
+   "wall_s": 183.7
+  },
+  "count_oi_expert_cbottle": {
+   "row": "count_oi_expert_cbottle",
+   "trainable": true,
+   "n_params": 233867,
+   "selected_step": 4500,
+   "validation_score": 0.649527553986756,
+   "validation": {
+    "TEMP": 0.7309549264106693,
+    "SALT": 0.8604888519616666
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.7354223774805405,
+     "TEMP": 0.8745890114097338,
+     "SALT": 0.9215353081288589
+    },
+    {
+     "step": 1000,
+     "score": 0.7163314408958454,
+     "TEMP": 0.8310994467913877,
+     "SALT": 0.9209546858800731
+    },
+    {
+     "step": 1500,
+     "score": 0.72854355457882,
+     "TEMP": 0.8498670811982745,
+     "SALT": 0.9314908571040941
+    },
+    {
+     "step": 2000,
+     "score": 0.7060252078431473,
+     "TEMP": 0.7999363925865296,
+     "SALT": 0.9292713809795702
+    },
+    {
+     "step": 2500,
+     "score": 0.6838973615092525,
+     "TEMP": 0.7707552434000975,
+     "SALT": 0.9047619986002352
+    },
+    {
+     "step": 3000,
+     "score": 0.6781692899664091,
+     "TEMP": 0.762301066534428,
+     "SALT": 0.8994283949406906
+    },
+    {
+     "step": 3500,
+     "score": 0.677522484533339,
+     "TEMP": 0.7738086238716555,
+     "SALT": 0.8848316976368716
+    },
+    {
+     "step": 4000,
+     "score": 0.6617474267287241,
+     "TEMP": 0.7444350631301032,
+     "SALT": 0.8769827107067037
+    },
+    {
+     "step": 4500,
+     "score": 0.649527553986756,
+     "TEMP": 0.7309549264106693,
+     "SALT": 0.8604888519616666
+    },
+    {
+     "step": 5000,
+     "score": 0.6517342979574612,
+     "TEMP": 0.7578605281466041,
+     "SALT": 0.8359873714454994
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/count_oi_expert_cbottle_seed1235.pt",
+   "checkpoint_sha256": "faf7c04598a66b33eb39776cd0269986fe66d954822caae1405dc2898e9907ef",
+   "holdout": {
+    "TEMP": 0.7607489329713565,
+    "SALT": 0.9388306988584579
+   },
+   "wall_s": 187.7
+  },
+  "uniform_oi_expert_cbottle": {
+   "row": "uniform_oi_expert_cbottle",
+   "trainable": true,
+   "n_params": 233867,
+   "selected_step": 5000,
+   "validation_score": 0.647432140737161,
+   "validation": {
+    "TEMP": 0.746741589049057,
+    "SALT": 0.8373371755082412
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.7338853489396491,
+     "TEMP": 0.8704827367095079,
+     "SALT": 0.9221678244515811
+    },
+    {
+     "step": 1000,
+     "score": 0.7178933323701596,
+     "TEMP": 0.8353575088176957,
+     "SALT": 0.9202160779897564
+    },
+    {
+     "step": 1500,
+     "score": 0.7105607912594356,
+     "TEMP": 0.8162942728565523,
+     "SALT": 0.9226427291045768
+    },
+    {
+     "step": 2000,
+     "score": 0.6993664920889842,
+     "TEMP": 0.793004434468545,
+     "SALT": 0.9198194075168097
+    },
+    {
+     "step": 2500,
+     "score": 0.6795039710701873,
+     "TEMP": 0.7643785024583755,
+     "SALT": 0.9005503854081691
+    },
+    {
+     "step": 3000,
+     "score": 0.678950479641975,
+     "TEMP": 0.7611954603287152,
+     "SALT": 0.9026920628917338
+    },
+    {
+     "step": 3500,
+     "score": 0.6741588358824768,
+     "TEMP": 0.7625767222435447,
+     "SALT": 0.8887377022896377
+    },
+    {
+     "step": 4000,
+     "score": 0.6685796738459849,
+     "TEMP": 0.75187221252788,
+     "SALT": 0.8863165684850685
+    },
+    {
+     "step": 4500,
+     "score": 0.6490489266450823,
+     "TEMP": 0.7322358047642823,
+     "SALT": 0.8578115508633628
+    },
+    {
+     "step": 5000,
+     "score": 0.647432140737161,
+     "TEMP": 0.746741589049057,
+     "SALT": 0.8373371755082412
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/uniform_oi_expert_cbottle_seed1235.pt",
+   "checkpoint_sha256": "7c4916afabba374072988ce7f7b4158b56b6eeb439633f1e58e3263ef0cd602b",
+   "holdout": {
+    "TEMP": 0.7748030470918946,
+    "SALT": 0.948315316080362
+   },
+   "wall_s": 190.6
+  },
+  "dfs_oi_expert_cbottle": {
+   "row": "dfs_oi_expert_cbottle",
+   "trainable": true,
+   "n_params": 233867,
+   "selected_step": 4500,
+   "validation_score": 0.6521280816368042,
+   "validation": {
+    "TEMP": 0.7501563738683985,
+    "SALT": 0.8456580797581411
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.7344778428872634,
+     "TEMP": 0.8727211787394265,
+     "SALT": 0.9211878458320449
+    },
+    {
+     "step": 1000,
+     "score": 0.7160161878988431,
+     "TEMP": 0.8317286249979519,
+     "SALT": 0.9194321103116961
+    },
+    {
+     "step": 1500,
+     "score": 0.7271385438744704,
+     "TEMP": 0.8526412448188385,
+     "SALT": 0.9247387063920978
+    },
+    {
+     "step": 2000,
+     "score": 0.6900482479828405,
+     "TEMP": 0.776166557683523,
+     "SALT": 0.9146070544501063
+    },
+    {
+     "step": 2500,
+     "score": 0.6938960536989669,
+     "TEMP": 0.7758101552291913,
+     "SALT": 0.9249674030549845
+    },
+    {
+     "step": 3000,
+     "score": 0.6717424784081906,
+     "TEMP": 0.7547459083418501,
+     "SALT": 0.8912765337713019
+    },
+    {
+     "step": 3500,
+     "score": 0.6776457193218821,
+     "TEMP": 0.7768857255914178,
+     "SALT": 0.8816952577327936
+    },
+    {
+     "step": 4000,
+     "score": 0.6645813580566682,
+     "TEMP": 0.761243190622372,
+     "SALT": 0.8654436908812346
+    },
+    {
+     "step": 4500,
+     "score": 0.6521280816368042,
+     "TEMP": 0.7501563738683985,
+     "SALT": 0.8456580797581411
+    },
+    {
+     "step": 5000,
+     "score": 0.6630268914151651,
+     "TEMP": 0.7797630840801304,
+     "SALT": 0.8406229806631148
+    }
+   ],
+   "checkpoint": "outputs/godas_v2_s1235/dfs_oi_expert_cbottle_seed1235.pt",
+   "checkpoint_sha256": "01f85f92c30a7ae2ff8b0d82133bbaa6512a14b573010053de8da83ebb2f627b",
+   "holdout": {
+    "TEMP": 0.7685066823738627,
+    "SALT": 0.909255797973137
+   },
+   "wall_s": 208.0
+  }
+ },
+ "provenance_warning": "The mentor document's result tables, checkpoint hashes and test counts are targets that were never run. These are fresh measurements and must not be compared against them."
+}

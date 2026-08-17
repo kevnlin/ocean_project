@@ -22,6 +22,48 @@ BANDS = [("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-max", 300.0, 1e9)]
 
 
+DAYS_PER_MONTH = 30.436875
+
+
+def assert_nondegenerate_climatology(months) -> None:
+    """Refuse a month set whose monthly climatology carries no signal.
+
+    ``Climatology`` averages the training months sharing each calendar month.
+    With exactly one sample for a calendar month, ``clim[m]`` *is* that
+    month's field, so ``anomaly = field - clim[m]`` is identically zero and
+    every z-score is zero.  A model then scores a perfect loss against a
+    target with no information in it.
+
+    This is not hypothetical: a tiny-overfit run with 8 training months
+    (one per calendar month) reached loss 0.0000 at step 200 on a 3-month-ahead
+    forecast, which looks like a spectacular result and means nothing.
+    """
+    m = np.asarray(months).astype(int)
+    uniq, counts = np.unique(m, return_counts=True)
+    lonely = uniq[counts < 2]
+    if lonely.size:
+        raise ValueError(
+            f"degenerate climatology: calendar month(s) "
+            f"{', '.join(str(int(x)) for x in lonely)} have a single sample, "
+            f"so their anomalies are identically zero and the loss is "
+            f"meaningless. Use a month range covering >=2 years.")
+
+
+def drop_observed_columns(idx: "torch.Tensor", col: "torch.Tensor",
+                          HW: int) -> "torch.Tensor":
+    """Remove flat (depth, cell) indices lying in an observed profile column.
+
+    protocol_v1 excludes the WHOLE column of every supplied profile from
+    scoring, at every depth level — not merely the cells that were handed
+    over. Without this a lead-0 "reconstruction" can score by copying its own
+    input back out, which measures nothing.
+
+    ``idx`` are flat indices into a (D, HW) volume, so ``idx % HW`` is the
+    surface cell regardless of depth; ``col`` (HW,) marks observed columns.
+    """
+    return idx[~col[idx % HW]]
+
+
 class FullRunData:
     """GPU tensors + assembly helpers for one (grid, norm, device) context."""
 
@@ -71,8 +113,16 @@ class FullRunData:
 
     # ---------------- observation / query assembly ----------------
     def obs_dict(self, ZAvol, surfZ, t, mo, prof_ii, prof_jj,
-                 include=("profiles", "surf", "woa")) -> dict:
-        """Observation dict for one month; prof_ii/jj are (K,) GPU int64."""
+                 include=("profiles", "surf", "woa"), context: int = 1) -> dict:
+        """Observation dict for one month; prof_ii/jj are (K,) GPU int64.
+
+        ``context`` > 1 supplies a window of surface months ending at ``t``
+        (mentor §2.1/§3.1: ``[t_src-1, t_src]`` for the gridded streams,
+        profiles at ``t_src`` only).  Each context month is a separate encoder
+        call carrying its own ``time_offset`` in days, so the query-local
+        refiner can tell a stale patch from a current one and ``check_causal``
+        can see that none of them reaches past the source month.
+        """
         dev = self.dev
         obs = {}
         if "profiles" in include:
@@ -86,9 +136,17 @@ class FullRunData:
                 lon=self.lon_t[prof_jj][None],
                 month=torch.tensor([mo], device=dev))
         if "surf" in include:
-            obs["surf"] = dict(field=surfZ[t][None], lat=self.lat_t,
-                               lon=self.lon_t,
-                               month=torch.tensor([mo], device=dev))
+            months = []
+            for back in range(context - 1, -1, -1):
+                tt = t - back
+                if tt < 0:
+                    continue
+                cm = (mo - 1 - back) % 12 + 1
+                months.append(dict(field=surfZ[tt][None], lat=self.lat_t,
+                                   lon=self.lon_t,
+                                   month=torch.tensor([cm], device=dev),
+                                   time_offset=-DAYS_PER_MONTH * back))
+            obs["surf"] = months if len(months) > 1 else months[0]
         if "woa" in include:
             assert self.woaZ is not None, "call load_woa first"
             obs["woa"] = dict(field=self.woaZ[mo - 1][None], lat=self.lat_t,

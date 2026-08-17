@@ -1,0 +1,91 @@
+{
+ "tag": "d4rt_lead_eval_m62_s1235",
+ "task": "d4rt_lead_eval",
+ "protocol": "protocol_v1",
+ "git_commit": "4383b77d205daf0036d6ef67484539d8781b72da",
+ "ckpt": "outputs/ckpt/d4rt_m62_s1235.pt",
+ "ckpt_step": 5000,
+ "seed": 1235,
+ "n_profiles": 1500,
+ "source_months": [
+  1933,
+  1935,
+  1936,
+  1938,
+  1942,
+  1946,
+  1952,
+  1953,
+  1956,
+  1965,
+  1967,
+  1976
+ ],
+ "val_end_index": 1931,
+ "max_lead": 3,
+ "context_months": 2,
+ "results": {
+  "0": {
+   "model": {
+    "TEMP": 0.3538032464314116,
+    "SALT": 0.09076251014972514
+   },
+   "persistence": {
+    "TEMP": 0.3538032464314113,
+    "SALT": 0.09076251014972508
+   },
+   "climatology": {
+    "TEMP": 0.5522386981703077,
+    "SALT": 0.13050805785867262
+   },
+   "n_queries": 9300844
+  },
+  "1": {
+   "model": {
+    "TEMP": 0.3742716649299223,
+    "SALT": 0.09080606664003504
+   },
+   "persistence": {
+    "TEMP": 0.37429123711212225,
+    "SALT": 0.09088728638220574
+   },
+   "climatology": {
+    "TEMP": 0.5612194502737651,
+    "SALT": 0.13016077405303672
+   },
+   "n_queries": 9300850
+  },
+  "2": {
+   "model": {
+    "TEMP": 0.39523055359978826,
+    "SALT": 0.09170155575823555
+   },
+   "persistence": {
+    "TEMP": 0.3958067966275322,
+    "SALT": 0.0920227091764916
+   },
+   "climatology": {
+    "TEMP": 0.5594646020661147,
+    "SALT": 0.12921041854621673
+   },
+   "n_queries": 9300853
+  },
+  "3": {
+   "model": {
+    "TEMP": 0.42340129476889304,
+    "SALT": 0.09409504647554741
+   },
+   "persistence": {
+    "TEMP": 0.4255692338244755,
+    "SALT": 0.09453697344215885
+   },
+   "climatology": {
+    "TEMP": 0.5590428582647278,
+    "SALT": 0.12991442201388267
+   },
+   "n_queries": 9300842
+  }
+ },
+ "note": "Mentor doc tables are placeholders (never run); these are fresh measurements and must not be compared to them.",
+ "wall_s": 6433.6
+}
