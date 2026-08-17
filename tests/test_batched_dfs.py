@@ -148,6 +148,9 @@ def test_resampler_conserves_total_mass():
     mask = torch.ones(2, 40, dtype=torch.bool); mask[1, 30:] = False
     _, _, slot_mass = r(emb, omega, mask)
     expect = (omega * mask).sum(dim=1)
+    # float32 tolerance, not float64: the transport plan comes from a float32
+    # network, so conservation is exact only to that precision. The doc asks
+    # for "up to floating-point tolerance", which this is.
     assert torch.allclose(slot_mass.sum(dim=1), expect, rtol=1e-5, atol=1e-6)
 
 
