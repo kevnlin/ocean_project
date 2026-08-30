@@ -3,19 +3,19 @@
   "method": "TEOS-10 steric height (baroclinic only)",
   "p_ref_dbar": 990.0,
   "years": [
-    1985,
-    2014
+    2000,
+    2005
   ],
   "smoke": false,
-  "git_commit": "06eb1b49f355d239e8f51edd9b2389b0295b0204",
-  "n_months": 360,
+  "git_commit": "0449e769d258671a3211a63243db2a7d20c2d988",
+  "n_months": 72,
   "diagnostics": {
     "coverage_frac_of_ocean": 0.8668475056020757,
-    "ssh_mean_m": 1.3950732946395874,
-    "ssh_anom_std_m": 0.028935829177498817,
-    "ssh_anom_std_cm": 2.893582820892334,
-    "corr_ssh_anom_vs_sst_anom": 0.4704763889312744,
-    "corr_ssh_anom_vs_temp100_300_anom": 0.7080573439598083
+    "ssh_mean_m": 1.3981770277023315,
+    "ssh_anom_std_m": 0.025358840823173523,
+    "ssh_anom_std_cm": 2.535884141921997,
+    "corr_ssh_anom_vs_sst_anom": 0.47153422236442566,
+    "corr_ssh_anom_vs_temp100_300_anom": 0.7410744428634644
   },
-  "cpu_hours": 0.221
+  "cpu_hours": 0.045
 }

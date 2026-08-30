@@ -51,7 +51,20 @@ import torch.nn as nn
 # --------------------------------------------------------------------------
 # Modality registry
 # --------------------------------------------------------------------------
-MODALITIES = {"surf_grid": 0, "woa_grid": 1, "profile": 2, "point": 3}
+# ``ssh_grid`` (id 4) is the pseudo-SSH / steric-height stream of ``ssh.py``.
+# It is a SEPARATE modality rather than a third channel of ``surf_grid``
+# because DFS-Attention reasons per stream: it carries its own observation
+# error (DEFAULT_SIGMA), its own provenance (SOURCE_IDS -> k_s < 1 against the
+# surface product, so the two are not treated as mutually redundant), its own
+# slot in the equal modality prior, and its own availability bit for D4RT's
+# ReferenceSlots.  Folding it into surf_grid would forfeit all of that.
+#
+# NOTE (breaking): appending an id grows ``len(MODALITIES)`` 4 -> 5, which
+# resizes ``SharedLatentModel.modality_emb`` and D4RT's
+# ``ReferenceSlots.avail_proj``.  Fusion checkpoints trained before this change
+# therefore no longer load as-is; pad those two tensors to load one.
+MODALITIES = {"surf_grid": 0, "woa_grid": 1, "profile": 2, "point": 3,
+              "ssh_grid": 4}
 
 # --------------------------------------------------------------------------
 # Coordinate featurisation — shared by every encoder and the query decoder
@@ -124,11 +137,16 @@ VAR_IDS = {"MULTI": -1, "TEMP": 0, "SALT": 1, "SST": 2, "SSS": 3}
 # actually see), so it is comparable across variables.  It is dominated by
 # representativeness error, not instrument error: a 10x12-cell surface patch
 # stands for ~1e6 km^2 of ocean, a profile band for one column.
+# ssh_grid 0.40: the steric height itself is exact (it is computed from the
+# truth), but a single vertically integrated number is a coarse constraint on
+# the 3-D column it stands for, so its *representativeness* error sits between
+# the direct surface fields (0.35) and the climatological background (0.60).
 DEFAULT_SIGMA = {"surf_grid": 0.35, "woa_grid": 0.60, "profile": 0.10,
-                 "point": 0.15}
+                 "point": 0.15, "ssh_grid": 0.40}
 # One id per processing stream.  k_s = 1 within a stream (shared retrieval /
 # processing error -> mutually redundant) and s_cross < 1 across streams.
-SOURCE_IDS = {"surf_grid": 100, "woa_grid": 200, "profile": 300, "point": 400}
+SOURCE_IDS = {"surf_grid": 100, "woa_grid": 200, "profile": 300, "point": 400,
+              "ssh_grid": 500}
 KM_PER_DEG = 111.195                       # mean great-circle km per degree
 _NO_RECORD = -1                            # record_id sentinel: never merged
 

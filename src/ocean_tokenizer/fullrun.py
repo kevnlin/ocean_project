@@ -80,6 +80,7 @@ class FullRunData:
         self.astd_t = {v: torch.tensor(norm.astd[v], dtype=torch.float32,
                                        device=device) for v in VARS}
         self.woaZ = None
+        self.sshZ = None          # (T, H, W) z-scored pseudo-SSH, per split
 
     # ---------------- z-space tensor builders ----------------
     def z_volume(self, fields) -> np.ndarray:
@@ -111,9 +112,22 @@ class FullRunData:
         self.woaZ = torch.from_numpy(arr).to(self.dev)
         return self.woaZ
 
+    def z_ssh(self, ssh_raw, months, sshnorm) -> np.ndarray:
+        """(T, H, W) z-scored pseudo-SSH anomalies (NaN preserved).
+
+        ``sshnorm`` is an ``ssh.SSHAnom`` fitted on TRAIN months only, so the
+        SSH stream follows the same train-only discipline as TEMP/SALT/SST/SSS
+        and cannot leak test-period information through its climatology.
+        """
+        out = np.empty((len(months),) + ssh_raw.shape[1:], "float32")
+        for t in range(len(months)):
+            out[t] = sshnorm.z(ssh_raw[t], int(months[t]))
+        return out
+
     # ---------------- observation / query assembly ----------------
     def obs_dict(self, ZAvol, surfZ, t, mo, prof_ii, prof_jj,
-                 include=("profiles", "surf", "woa"), context: int = 1) -> dict:
+                 include=("profiles", "surf", "woa"), context: int = 1,
+                 sshZ=None) -> dict:
         """Observation dict for one month; prof_ii/jj are (K,) GPU int64.
 
         ``context`` > 1 supplies a window of surface months ending at ``t``
@@ -153,6 +167,15 @@ class FullRunData:
                               lon=self.lon_t,
                               month=torch.tensor([mo], device=dev),
                               depth=self.depth_t)
+        if "ssh" in include:
+            # split-local (T,H,W) tensor: unlike WOA (a 12-month climatology
+            # indexed by calendar month) the pseudo-SSH is a per-month field,
+            # so it is indexed by the split row t, exactly like surfZ.
+            s = self.sshZ if sshZ is None else sshZ
+            assert s is not None, "pass sshZ= or set rd.sshZ first"
+            obs["ssh"] = dict(field=s[t][None, None], lat=self.lat_t,
+                              lon=self.lon_t,
+                              month=torch.tensor([mo], device=dev))
         return obs
 
     def level_edges(self):
@@ -225,7 +248,7 @@ class FullRunData:
 
     def make_packs(self, fields, rng, n_profiles,
                    include=("profiles", "surf", "woa"), quiet=False,
-                   subsample=0):
+                   subsample=0, sshZ=None):
         """Fixed per-month eval packs: profile draw, obs dict, and the FULL
         unobserved-only query pool (q, y, depth idx).  Returns
         (packs, per-level query counts, per-level climatology-floor SSE)."""
@@ -254,9 +277,12 @@ class FullRunData:
                 idx = idx[torch.from_numpy(np.sort(sel)).to(dev)]
             y = ZAv[t].view(2, -1)[:, idx].T.contiguous()
             q, di = self.q_from_flat(idx, mo)
+            # ``idx`` are the flat (depth, cell) indices behind q/y, so a caller
+            # can map every query back to its map cell (``idx % HW``) — needed
+            # for per-(lat,lon) error maps, which per-level SSE cannot give.
             packs.append(dict(obs=self.obs_dict(ZAv, surfZ, t, mo, ii_t, jj_t,
-                                                include=include),
-                              q=q, y=y, di=di, mo=mo, t=t))
+                                                include=include, sshZ=sshZ),
+                              q=q, y=y, di=di, idx=idx, mo=mo, t=t))
         n_level = torch.zeros(D, dtype=torch.float64, device=dev)
         se0 = torch.zeros(D, 2, dtype=torch.float64, device=dev)
         for p in packs:

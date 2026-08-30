@@ -15,6 +15,7 @@ import os
 # processed zarr stores live on.
 ROOT = os.environ.get("OCEAN_ROOT", "/home/nvidia/ocean_project")
 PROCESSED = os.path.join(ROOT, "processed")
+DATA = os.path.join(ROOT, "data")
 OUTPUTS = os.path.join(ROOT, "outputs")
 CACHE = os.path.join(OUTPUTS, "cache")
 CKPT = os.path.join(OUTPUTS, "ckpt")
@@ -22,8 +23,8 @@ REPORTS = os.path.join(ROOT, "reports")
 
 ZARR = {
     "cesm2":         os.path.join(PROCESSED, "cesm2_standard.zarr"),         # single member (curvilinear placeholder grid)
-    "woa23":         os.path.join(PROCESSED, "woa23_standard.zarr"),         # observational climatology (prior/baseline)
-    "cesm2_le_full": os.path.join(PROCESSED, "cesm2_le_full_standard.zarr"), # full LE simulation, regular 1deg (ground truth)
+    "woa23":         os.path.join(DATA, "woa23_standard.zarr"),              # observational climatology (prior/baseline) — WOA23 decav91C0 monthly 1deg, standardized from data/woa23/*.nc
+    "cesm2_le_full": os.path.join(DATA, "cesm2_le_full_standard.zarr"),      # full LE simulation, regular 1deg (ground truth) — standardized from cesm2-le-ocean-sample via experiments/standardize.py
 }
 
 # --------------------------------------------------------------------------

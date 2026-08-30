@@ -565,12 +565,18 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
                        n_latent: int = 128, n_heads: int = 4,
                        n_self_blocks: int = 4, patch=(10, 12),
                        seed: int | None = None,
-                       anchor_grid: tuple[int, int] | None = None, **kw):
-    """Wire the project's three modality encoders into a fusion variant.
+                       anchor_grid: tuple[int, int] | None = None,
+                       with_ssh: bool = False, **kw):
+    """Wire the project's modality encoders into a fusion variant.
 
     With the same ``seed``, every variant starts from identical encoder,
     trunk, and decoder weights (variant-specific extras excepted), so
     comparisons isolate the fusion rule.
+
+    ``with_ssh`` adds the pseudo-SSH / steric-height encoder (one channel, its
+    own ``ssh_grid`` modality).  It is opt-in and appended LAST so that, at a
+    fixed seed, every other encoder still draws the same initial weights as a
+    run without it — an SSH ablation stays a controlled comparison.
     """
     from .token_api import ProfileEncoder, GridPatchEncoder
     if seed is not None:
@@ -582,6 +588,9 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
         "woa": GridPatchEncoder(2, d_model=d_model, patch=patch,
                                 modality="woa_grid"),
     }
+    if with_ssh:
+        encoders["ssh"] = GridPatchEncoder(1, d_model=d_model, patch=patch,
+                                           modality="ssh_grid")
     cls = VARIANTS[variant]
     return cls(encoders, d_model=d_model, n_latent=n_latent, n_heads=n_heads,
                n_self_blocks=n_self_blocks, anchor_grid=anchor_grid, **kw)

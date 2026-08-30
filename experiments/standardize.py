@@ -18,6 +18,8 @@ Usage
     python experiments/standardize.py --datasets cesm2 woa23    # subset
     python experiments/standardize.py --datasets cesm2_le_full --max-time 36   # quick test
     python experiments/standardize.py --datasets all --out processed_rebuilt --overwrite
+    python experiments/standardize.py --datasets cesm2_le_full --out data \
+        --start-year 1985 --end-year 2014                # -> data/cesm2_le_full_standard.zarr
 
 By default existing stores are NOT overwritten (use --overwrite). The full LE
 store is ~95 GB; --max-time N limits it to the first N months for validation.
@@ -146,10 +148,22 @@ def build_woa23():
 # --------------------------------------------------------------------------
 # 3. CESM2-LE full regridded 1deg (dask-streamed; ~95 GB at full length)
 # --------------------------------------------------------------------------
-def build_cesm2_le(max_time=None):
+def build_cesm2_le(max_time=None, start_year=None, end_year=None):
+    """``start_year``/``end_year`` (inclusive) subset by calendar year before
+    ``max_time`` (a raw month count from 1850-01) is applied, so a caller can
+    ask for e.g. just the 1985-2014 window the current experiment config
+    (``config.TRAIN_YEARS`` / ``TEST_YEARS``) actually uses instead of
+    materialising the full 1850-2100 / ~95 GB range."""
     tchunk = 189
     temp = xr.open_dataset(RAW["cesm2_le_full"]["TEMP"], chunks={"time": tchunk, "z_t": 8})
     salt = xr.open_dataset(RAW["cesm2_le_full"]["SALT"], chunks={"time": tchunk, "z_t": 8})
+    if start_year is not None or end_year is not None:
+        years = np.array([t.year for t in temp.time.values])
+        lo = start_year if start_year is not None else int(years.min())
+        hi = end_year if end_year is not None else int(years.max())
+        idx = np.where((years >= lo) & (years <= hi))[0]
+        temp = temp.isel(time=idx)
+        salt = salt.isel(time=idx)
     if max_time:
         temp = temp.isel(time=slice(0, max_time))
         salt = salt.isel(time=slice(0, max_time))
@@ -173,6 +187,7 @@ def build_cesm2_le(max_time=None):
     SST = prep(temp.TEMP.isel(z_t=0).astype("float32"))   # shallowest (5 m)
     SSS = prep(salt.SALT.isel(z_t=0).astype("float32"))
 
+    time_range = f"{str(time[0])[:7]} to {str(time[-1])[:7]}" if len(time) else "empty"
     ds = xr.Dataset(
         {
             "TEMP": TEMP, "SALT": SALT, "SST": SST, "SSS": SSS,
@@ -182,7 +197,7 @@ def build_cesm2_le(max_time=None):
         attrs={
             "source": "CESM2 Large Ensemble – 1°×1° regridded (jaisonk)",
             "grid": "regular 1°×1° (y_regr=180, x_regr=360)",
-            "time_range": "1850-01 to 2100-12",
+            "time_range": time_range,
             "depth_units": "m", "temp_units": "degC", "salt_units": "PSU",
             "SST_note": "shallowest depth level (z_t=5 m)",
         },
@@ -221,6 +236,10 @@ def main():
     ap.add_argument("--overwrite", action="store_true")
     ap.add_argument("--max-time", type=int, default=None,
                     help="limit CESM2-LE full to first N months (validation)")
+    ap.add_argument("--start-year", type=int, default=None,
+                    help="CESM2-LE full: first calendar year to include (inclusive)")
+    ap.add_argument("--end-year", type=int, default=None,
+                    help="CESM2-LE full: last calendar year to include (inclusive)")
     args = ap.parse_args()
     sel = ["cesm2", "woa23", "cesm2_le_full"] if "all" in args.datasets else args.datasets
     os.makedirs(args.out, exist_ok=True)
@@ -232,8 +251,14 @@ def main():
         print("[woa23]"); ds, ch = build_woa23()
         write_zarr(ds, ch, os.path.join(args.out, "woa23_standard.zarr"), args.overwrite)
     if "cesm2_le_full" in sel:
-        print(f"[cesm2_le_full]{' (max_time=%d)' % args.max_time if args.max_time else ' (FULL ~95GB)'}")
-        ds, ch, handles = build_cesm2_le(args.max_time)
+        if args.start_year or args.end_year:
+            tag = f" (years {args.start_year or 1850}-{args.end_year or 2100})"
+        elif args.max_time:
+            tag = f" (max_time={args.max_time})"
+        else:
+            tag = " (FULL ~95GB)"
+        print(f"[cesm2_le_full]{tag}")
+        ds, ch, handles = build_cesm2_le(args.max_time, args.start_year, args.end_year)
         write_zarr(ds, ch, os.path.join(args.out, "cesm2_le_full_standard.zarr"), args.overwrite)
         for h in handles:
             h.close()
