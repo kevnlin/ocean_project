@@ -8,7 +8,7 @@ Floor: TEMP 0.5870 degC · SALT 0.1126 PSU
 
 ## TEMP (degC)
 
-| profiles | D4RT (aug-trained) | D4RT + pseudo-SSH | D4RT (fixed-1000-trained) | Perceiver control |
+| profiles | **D4RT (aug-trained) — our model** | D4RT + pseudo-SSH | D4RT (fixed-1000-trained) | Perceiver control |
 |---|---|---|---|---|
 | 1500 (100%) | 0.2884 | 0.2939 | 0.3008 | 0.5867 |
 | 1125 (75%) | 0.3001 | 0.3051 | 0.3099 | 0.5867 |
@@ -19,7 +19,7 @@ Floor: TEMP 0.5870 degC · SALT 0.1126 PSU
 
 ## SALT (PSU)
 
-| profiles | D4RT (aug-trained) | D4RT + pseudo-SSH | D4RT (fixed-1000-trained) | Perceiver control |
+| profiles | **D4RT (aug-trained) — our model** | D4RT + pseudo-SSH | D4RT (fixed-1000-trained) | Perceiver control |
 |---|---|---|---|---|
 | 1500 (100%) | 0.0686 | 0.0710 | 0.0732 | 0.1125 |
 | 1125 (75%) | 0.0712 | 0.0737 | 0.0750 | 0.1125 |

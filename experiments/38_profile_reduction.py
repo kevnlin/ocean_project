@@ -320,9 +320,13 @@ L = ["# Eval-only Argo-profile reduction (mentor stress test)\n",
      f"{int(n_level.sum()):,} targets, unobserved columns only, physical "
      "full-column RMSE.\n",
      f"Floor: TEMP {FLOOR['TEMP']:.4f} degC · SALT {FLOOR['SALT']:.4f} PSU\n"]
+# "our model" = the aug-trained D4RT the project actually ships; bolded so the
+# table says explicitly which column is ours vs the controls/ablations
+_disp = lambda k: (f"**{labels[k]} — our model**" if k == "d4rt_aug"
+                   else labels[k])
 for v in VARS:
     L += [f"## {v} ({UNITS[v]})\n",
-          "| profiles | " + " | ".join(labels[k] for k in results) + " |",
+          "| profiles | " + " | ".join(_disp(k) for k in results) + " |",
           "|---" * (len(results) + 1) + "|"]
     for n in sorted(COUNTS, reverse=True):
         pct = f" ({100*n/args.n_full:.0f}%)" if n in frac_counts else " (budget)"
