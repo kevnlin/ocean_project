@@ -1,0 +1,95 @@
+{
+ "task": "godas_dfs_d4rt",
+ "git_commit": "cc08855cce44d8e0a15d00dac798542551cc2417",
+ "seed": 1234,
+ "device": "cuda",
+ "smoke": true,
+ "splits": {
+  "train": [
+   2000,
+   2018
+  ],
+  "validation": [
+   2019,
+   2021
+  ],
+  "development": [
+   2022,
+   2024
+  ],
+  "holdout": [
+   2025,
+   2025
+  ]
+ },
+ "climatology_floor_z": {
+  "validation": {
+   "TEMP": 1.1525525376047216,
+   "SALT": 1.2942605081551326
+  },
+  "holdout": {
+   "TEMP": 1.0312153319635713,
+   "SALT": 1.437650028609978
+  }
+ },
+ "eligible_source_months": {
+  "train": 224,
+  "validation": 32,
+  "development": 32,
+  "holdout": 8
+ },
+ "args": {
+  "configs": "dfs_expertlocal_cbottle",
+  "seed": 1234,
+  "steps": 20,
+  "validation_interval": 10,
+  "queries": 64,
+  "eval_queries": 64,
+  "lr": 0.0003,
+  "weight_decay": 0.01,
+  "data": "data/godas_gulfstream",
+  "output": null,
+  "load_checkpoint": null,
+  "validation_only": false,
+  "test_only": false,
+  "test_year": 2025,
+  "smoke": true,
+  "audit": false,
+  "audit_months": 6
+ },
+ "results": {
+  "dfs_expertlocal_cbottle": {
+   "row": "dfs_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 10,
+   "validation_score": 1.0241707539042555,
+   "validation": {
+    "TEMP": 1.1350359213136019,
+    "SALT": 1.3764973217453658
+   },
+   "history": [
+    {
+     "step": 10,
+     "score": 1.0241707539042555,
+     "TEMP": 1.1350359213136019,
+     "SALT": 1.3764973217453658
+    },
+    {
+     "step": 20,
+     "score": 1.0435194025192978,
+     "TEMP": 1.2155508554752505,
+     "SALT": 1.336167345714582
+    }
+   ],
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas/dfs_expertlocal_cbottle_seed1234.pt",
+   "checkpoint_sha256": "fe6ec2ef9337117847af9469ca3ab9435c838a66fb9d427b1bf118e5b321d67a",
+   "holdout": {
+    "TEMP": 0.8138602475043677,
+    "SALT": 1.260665445038295
+   },
+   "wall_s": 10.9
+  }
+ },
+ "provenance_warning": "The mentor document's result tables, checkpoint hashes and test counts are targets that were never run. These are fresh measurements and must not be compared against them."
+}

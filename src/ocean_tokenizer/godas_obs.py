@@ -43,7 +43,7 @@ import torch
 
 from .batched_dfs import (NOISE_AREA_POINT_KM2, NOISE_AREA_PATCH_KM2,
                           profile_support_area_km2, patch_support_area_km2,
-                          BOX_DEPTH_M)
+                          BOX_DEPTH_M, GODAS_LEVELS_M, level_thickness_m)
 
 N_PROFILE_COLS = 24
 PATCH = 4
@@ -124,10 +124,17 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
     # identity cannot be memorised or leak into a held-out-float evaluation.
     coord, value, vmask, modality, noise, support = [], [], [], [], [], []
     support_dz, prov = [], []
-    # one layer thickness under the uniform-level convention the z coordinate
-    # already assumes (z = level index / (Z-1)); true GODAS level edges would
-    # be more physical and are a small follow-up once the data is present
-    dz_level = BOX_DEPTH_M / max(Z - 1, 1)
+    # TRUE level depths and thicknesses.  The GODAS levels are non-uniform
+    # (15 m at the surface, 365 m at depth), so both the z COORDINATE and the
+    # vertical SUPPORT must come from the real levels: using the level index as
+    # a depth put level 12 at 759 m instead of 262 m, and a uniform thickness
+    # over-weighted the surface ~4x.  ``fields['depth']`` is preferred when the
+    # caller has real data; the module constant is the fallback.
+    lev = np.asarray(fields.get("depth", GODAS_LEVELS_M), dtype="float64")
+    if lev.size != Z:                      # synthetic fields of another depth
+        lev = np.linspace(5.0, BOX_DEPTH_M, Z)
+    dz_all = level_thickness_m(lev)
+    z_norm = lev / BOX_DEPTH_M             # -> to_physical gives true metres
 
     # ---- profile point tokens: 24 columns x Z depths, at t_src -----------
     if avail[MOD_PROFILE]:
@@ -144,14 +151,14 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
                           fields["SALT"][t_src, :, y, x]], axis=-1)   # (Z,2)
             coord.append(np.stack([np.full(Z, x / max(X - 1, 1)),
                                    np.full(Z, y / max(Y - 1, 1)),
-                                   zz / max(Z - 1, 1),
+                                   z_norm,
                                    np.zeros(Z)], axis=-1))
             value.append(t)
             vmask.append(np.isfinite(t))
             modality.append(np.full(Z, MOD_PROFILE))
             noise.append(np.full(Z, NOISE_AREA_POINT_KM2))
             support.append(np.full(Z, profile_support_area_km2()))
-            support_dz.append(np.full(Z, dz_level))
+            support_dz.append(dz_all.copy())
             # every level of one column comes from one platform
             prov.append(np.full(Z, col))
 
@@ -184,7 +191,8 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
                 # edge patches are genuinely smaller, so they genuinely carry
                 # less support — hy/hx, not the nominal 4x4
                 support.append(np.array([patch_support_area_km2(hy, hx)]))
-                support_dz.append(np.array([dz_level]))
+                # a surface/SSH patch represents the top layer
+                support_dz.append(np.array([dz_all[0]]))
                 # a gridded product is one processing stream per context month
                 prov.append(np.array([prov_base + mod * cfg.context + back]))
 

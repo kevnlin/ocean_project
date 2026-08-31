@@ -104,6 +104,24 @@ def to_physical(coord: torch.Tensor, extent=BOX_EXTENT) -> torch.Tensor:
     return coord * sc
 
 
+#: The GODAS analysis levels actually delivered by 13_download_godas.py
+#: (every second level to 1000 m).  They are strongly NON-uniform — 15 m at the
+#: surface to 365 m at depth, a 24x ratio — so treating the level index as a
+#: depth coordinate misplaces level 12 at 759 m instead of its true 262 m, and
+#: treating thickness as uniform gives the surface 4x too much support and the
+#: deep levels 5x too little.  Both matter now that support is physical.
+GODAS_LEVELS_M = (5., 25., 45., 65., 85., 105., 125., 145., 165., 185., 205.,
+                  225., 262., 366., 584., 949.)
+
+
+def level_thickness_m(levels=GODAS_LEVELS_M) -> np.ndarray:
+    """Represented thickness of each level: midpoint edges, top edge at 0."""
+    d = np.asarray(levels, dtype="float64")
+    edges = np.concatenate([[0.0], 0.5 * (d[1:] + d[:-1]),
+                            [d[-1] + 0.5 * (d[-1] - d[-2])]])
+    return np.diff(edges)
+
+
 def cell_area_km2(ny: int = GRID_NY, nx: int = GRID_NX) -> float:
     """Area of one analysis grid cell, in km²."""
     x_km, y_km, _, _ = BOX_EXTENT

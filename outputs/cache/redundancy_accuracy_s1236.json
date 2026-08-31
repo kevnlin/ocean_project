@@ -1,0 +1,91 @@
+{
+  "task": "phase2_redundancy_accuracy",
+  "git_commit": "cc08855cce44d8e0a15d00dac798542551cc2417",
+  "split": "development",
+  "months": 35,
+  "seed": 1236,
+  "dup_k": 4,
+  "dup_frac": 0.5,
+  "rho": 0.0,
+  "rows": [
+    "dfs_expertlocal_cbottle",
+    "uniform_expertlocal_cbottle",
+    "count_expertlocal_cbottle"
+  ],
+  "missing_rows": [],
+  "results": {
+    "dfs_expertlocal_cbottle": {
+      "clean": {
+        "TEMP": 0.7715928769512002,
+        "SALT": 0.934846591727908
+      },
+      "duplicated": {
+        "TEMP": 0.7755333949178248,
+        "SALT": 0.9316300621473557
+      },
+      "dual_stream": {
+        "TEMP": 0.7755333949178248,
+        "SALT": 0.9316300621473557
+      },
+      "clustered": {
+        "TEMP": 0.7932155404958445,
+        "SALT": 0.9524676430222817
+      }
+    },
+    "uniform_expertlocal_cbottle": {
+      "clean": {
+        "TEMP": 0.764919099612768,
+        "SALT": 0.8964046064043689
+      },
+      "duplicated": {
+        "TEMP": 0.7958339515927104,
+        "SALT": 0.9024681250940508
+      },
+      "dual_stream": {
+        "TEMP": 0.7958339515927104,
+        "SALT": 0.9024681250940508
+      },
+      "clustered": {
+        "TEMP": 0.8024178398968188,
+        "SALT": 0.9332119235578793
+      }
+    },
+    "count_expertlocal_cbottle": {
+      "clean": {
+        "TEMP": 0.7759398627383759,
+        "SALT": 0.9054653138977478
+      },
+      "duplicated": {
+        "TEMP": 0.8116177694742183,
+        "SALT": 0.9067428794173176
+      },
+      "dual_stream": {
+        "TEMP": 0.8116177694742183,
+        "SALT": 0.9067428794173176
+      },
+      "clustered": {
+        "TEMP": 0.8168852641313157,
+        "SALT": 0.9446042674158769
+      }
+    }
+  },
+  "dfs_advantage_pct": {
+    "clean": {
+      "TEMP": -0.8724814613480869,
+      "SALT": -4.288463607715758
+    },
+    "duplicated": {
+      "TEMP": 2.550853307308379,
+      "SALT": -3.23135368911403
+    },
+    "dual_stream": {
+      "TEMP": 2.550853307308379,
+      "SALT": -3.23135368911403
+    },
+    "clustered": {
+      "TEMP": 1.1468213869917925,
+      "SALT": -2.0633812083100906
+    }
+  },
+  "figure": "/home/nvidia/ocean_project/reports/fig_redundancy_accuracy.png"
+}

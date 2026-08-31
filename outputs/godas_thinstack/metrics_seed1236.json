@@ -1,0 +1,303 @@
+{
+ "task": "godas_dfs_d4rt",
+ "git_commit": "cc08855cce44d8e0a15d00dac798542551cc2417",
+ "seed": 1236,
+ "device": "cuda",
+ "smoke": false,
+ "splits": {
+  "train": [
+   2000,
+   2018
+  ],
+  "validation": [
+   2019,
+   2021
+  ],
+  "development": [
+   2022,
+   2024
+  ],
+  "holdout": [
+   2025,
+   2025
+  ]
+ },
+ "climatology_floor_z": {
+  "validation": {
+   "TEMP": 1.1525525376047216,
+   "SALT": 1.2942605081551326
+  },
+  "holdout": {
+   "TEMP": 1.0312153319635713,
+   "SALT": 1.437650028609978
+  }
+ },
+ "eligible_source_months": {
+  "train": 224,
+  "validation": 32,
+  "development": 32,
+  "holdout": 8
+ },
+ "args": {
+  "configs": "dfs_expertlocal_cbottle,uniform_expertlocal_cbottle,count_expertlocal_cbottle",
+  "seed": 1236,
+  "steps": 5000,
+  "validation_interval": 500,
+  "queries": 512,
+  "eval_queries": 1024,
+  "lr": 0.0003,
+  "weight_decay": 0.01,
+  "data": "/home/nvidia/ocean_project/data/godas_gulfstream",
+  "output": "/home/nvidia/ocean_project/outputs/godas_thinstack",
+  "load_checkpoint": null,
+  "validation_only": false,
+  "test_only": false,
+  "test_year": 2025,
+  "smoke": false,
+  "audit": false,
+  "audit_months": 6
+ },
+ "results": {
+  "dfs_expertlocal_cbottle": {
+   "row": "dfs_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6874867630572243,
+   "validation": {
+    "TEMP": 0.7976071282121475,
+    "SALT": 0.8838998777771117
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.856801038096411,
+     "TEMP": 0.9346472420515204,
+     "SALT": 1.1682840467125912
+    },
+    {
+     "step": 1000,
+     "score": 0.7981866731055288,
+     "TEMP": 0.8644641322836988,
+     "SALT": 1.09537175381493
+    },
+    {
+     "step": 1500,
+     "score": 0.788940411090344,
+     "TEMP": 0.8426406254001509,
+     "SALT": 1.0959443482997286
+    },
+    {
+     "step": 2000,
+     "score": 0.7611385202865597,
+     "TEMP": 0.8367036095263588,
+     "SALT": 1.0306455500640572
+    },
+    {
+     "step": 2500,
+     "score": 0.7303501946384935,
+     "TEMP": 0.8251060725381197,
+     "SALT": 0.9639727926907163
+    },
+    {
+     "step": 3000,
+     "score": 0.7286170500696976,
+     "TEMP": 0.8296261566728664,
+     "SALT": 0.954410676654697
+    },
+    {
+     "step": 3500,
+     "score": 0.7038230023280841,
+     "TEMP": 0.8165082981815941,
+     "SALT": 0.9049614808097457
+    },
+    {
+     "step": 4000,
+     "score": 0.7024720586705815,
+     "TEMP": 0.8227780409309567,
+     "SALT": 0.8944239182401327
+    },
+    {
+     "step": 4500,
+     "score": 0.71479865681267,
+     "TEMP": 0.8254729018476111,
+     "SALT": 0.9233053786988195
+    },
+    {
+     "step": 5000,
+     "score": 0.6874867630572243,
+     "TEMP": 0.7976071282121475,
+     "SALT": 0.8838998777771117
+    }
+   ],
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/dfs_expertlocal_cbottle_seed1236.pt",
+   "checkpoint_sha256": "96a8d79a3a94c9df4a363aeca166541d56a3c654ed368312cef99f5ab7a3da76",
+   "holdout": {
+    "TEMP": 0.8394687303217114,
+    "SALT": 0.9268663742746995
+   },
+   "wall_s": 248.9
+  },
+  "uniform_expertlocal_cbottle": {
+   "row": "uniform_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6755234562429073,
+   "validation": {
+    "TEMP": 0.7884399760396772,
+    "SALT": 0.8632268732085606
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.8872965363544658,
+     "TEMP": 0.9735454383335438,
+     "SALT": 1.2035415001254104
+    },
+    {
+     "step": 1000,
+     "score": 0.8019724469924225,
+     "TEMP": 0.8602458686509421,
+     "SALT": 1.1099082142183954
+    },
+    {
+     "step": 1500,
+     "score": 0.7904484421701218,
+     "TEMP": 0.8433699850348787,
+     "SALT": 1.0990288830058366
+    },
+    {
+     "step": 2000,
+     "score": 0.736107526998345,
+     "TEMP": 0.822973967307142,
+     "SALT": 0.9812700190977318
+    },
+    {
+     "step": 2500,
+     "score": 0.7196263861050188,
+     "TEMP": 0.8262028727792295,
+     "SALT": 0.9349823355392642
+    },
+    {
+     "step": 3000,
+     "score": 0.7142078711719981,
+     "TEMP": 0.8360913828009107,
+     "SALT": 0.9098520793923317
+    },
+    {
+     "step": 3500,
+     "score": 0.6868559847277069,
+     "TEMP": 0.8128190434352716,
+     "SALT": 0.8651848530213544
+    },
+    {
+     "step": 4000,
+     "score": 0.6860341703159969,
+     "TEMP": 0.8210385776334783,
+     "SALT": 0.853827431549606
+    },
+    {
+     "step": 4500,
+     "score": 0.7029026273864906,
+     "TEMP": 0.8260534310941269,
+     "SALT": 0.8918603503770707
+    },
+    {
+     "step": 5000,
+     "score": 0.6755234562429073,
+     "TEMP": 0.7884399760396772,
+     "SALT": 0.8632268732085606
+    }
+   ],
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/uniform_expertlocal_cbottle_seed1236.pt",
+   "checkpoint_sha256": "eb7acbb91525f64962f74c4eee854171c46566b2a5b2bfcc4b11d03616f8993c",
+   "holdout": {
+    "TEMP": 0.8349693922540574,
+    "SALT": 1.0019467225344258
+   },
+   "wall_s": 242.3
+  },
+  "count_expertlocal_cbottle": {
+   "row": "count_expertlocal_cbottle",
+   "trainable": true,
+   "n_params": 233859,
+   "selected_step": 5000,
+   "validation_score": 0.6839675219690564,
+   "validation": {
+    "TEMP": 0.7961109813700857,
+    "SALT": 0.8764703484790044
+   },
+   "history": [
+    {
+     "step": 500,
+     "score": 0.9051819205050785,
+     "TEMP": 0.9751768333140429,
+     "SALT": 1.2480062155749323
+    },
+    {
+     "step": 1000,
+     "score": 0.8003346508453595,
+     "TEMP": 0.8672455690891474,
+     "SALT": 1.0978084209281116
+    },
+    {
+     "step": 1500,
+     "score": 0.765223431344954,
+     "TEMP": 0.8256628410623412,
+     "SALT": 1.0536176748075428
+    },
+    {
+     "step": 2000,
+     "score": 0.741599285279026,
+     "TEMP": 0.8262056423843784,
+     "SALT": 0.9918565367084148
+    },
+    {
+     "step": 2500,
+     "score": 0.7150470617194765,
+     "TEMP": 0.8214848162613145,
+     "SALT": 0.9284268063908744
+    },
+    {
+     "step": 3000,
+     "score": 0.7138389873449078,
+     "TEMP": 0.821988490603541,
+     "SALT": 0.9247340786654669
+    },
+    {
+     "step": 3500,
+     "score": 0.69212309467118,
+     "TEMP": 0.8134665385541143,
+     "SALT": 0.8780917722424255
+    },
+    {
+     "step": 4000,
+     "score": 0.6898416730689453,
+     "TEMP": 0.8233952244279183,
+     "SALT": 0.8610368325821881
+    },
+    {
+     "step": 4500,
+     "score": 0.6997095915136549,
+     "TEMP": 0.8179059923611973,
+     "SALT": 0.8927442878048607
+    },
+    {
+     "step": 5000,
+     "score": 0.6839675219690564,
+     "TEMP": 0.7961109813700857,
+     "SALT": 0.8764703484790044
+    }
+   ],
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/count_expertlocal_cbottle_seed1236.pt",
+   "checkpoint_sha256": "59510541f77eaedca542f131beb9b84363180741e34d88bc8319676feff4aef7",
+   "holdout": {
+    "TEMP": 0.8589293234593549,
+    "SALT": 1.0343272326351025
+   },
+   "wall_s": 227.1
+  }
+ },
+ "provenance_warning": "The mentor document's result tables, checkpoint hashes and test counts are targets that were never run. These are fresh measurements and must not be compared against them."
+}

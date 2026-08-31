@@ -65,6 +65,9 @@ DEPTHS = 16
 KS = [1, 2, 4, 8]
 
 ap = argparse.ArgumentParser()
+ap.add_argument("--godas-dir", default="",
+                help="real GODAS subset; without it the geometry is rebuilt on "
+                     "synthetic all-ocean fields (land is what differs)")
 ap.add_argument("--months", type=int, default=6)
 ap.add_argument("--seed", type=int, default=1234)
 ap.add_argument("--rho", type=float, default=0.9,
@@ -76,17 +79,25 @@ args = ap.parse_args()
 
 t0 = time.time()
 rng = np.random.default_rng(args.seed)
-T, Z, Y, X = args.months + 2, DEPTHS, B.GRID_NY, B.GRID_NX
-FIELDS = {"TEMP": rng.standard_normal((T, Z, Y, X)),
-          "SALT": rng.standard_normal((T, Z, Y, X)),
-          "SSH": rng.standard_normal((T, Y, X))}
+if args.godas_dir:
+    from ocean_tokenizer.godas import load_godas
+    FIELDS = load_godas(args.godas_dir)
+    SOURCE = "godas"
+    t_off = FIELDS["TEMP"].shape[0] - args.months - 1
+else:
+    T, Z, Y, X = args.months + 2, DEPTHS, B.GRID_NY, B.GRID_NX
+    FIELDS = {"TEMP": rng.standard_normal((T, Z, Y, X)),
+              "SALT": rng.standard_normal((T, Z, Y, X)),
+              "SSH": rng.standard_normal((T, Y, X))}
+    SOURCE, t_off = "synthetic-all-ocean", 0
 CFG = ObsConfig(train=False)
-SAMPLES = [build_sample(FIELDS, t, CFG, rng, 0) for t in range(args.months)]
+SAMPLES = [build_sample(FIELDS, t_off + t, CFG, rng, 0)
+           for t in range(args.months)]
 BASIS = RandomFourierBasis(
     B.N_FEATURES,
     B.LENGTH_SCALES_KM + variable_group_coords.scales(N_VARIABLE_GROUPS),
     B.BASIS_SEED)
-print(f"[{args.tag}] {len(SAMPLES)} samples, "
+print(f"[{args.tag}] source={SOURCE}, {len(SAMPLES)} samples, "
       f"{int(SAMPLES[0]['mask'].sum())} tokens each, F={B.N_FEATURES}, "
       f"rho={args.rho}", flush=True)
 
