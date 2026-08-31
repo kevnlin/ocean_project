@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -265,8 +266,94 @@ def integrate_support(basis: RandomFourierBasis, nodes: torch.Tensor,
     return psi, lam
 
 
+# --------------------------------------------------------------------------
+# Phase 1a — vertical quadrature
+#
+# A profile level was a point: it carried a horizontal area and zero vertical
+# extent, so layer thickness never entered the measure.  The consequence is
+# that "the same profile reported at 2 dbar versus 10 dbar" was unrepresentable
+# — 5x as many tokens, each still a point, so 5x the evidence for the same
+# water.  Integrating the basis over the layer instead makes the support a
+# VOLUME, and a vertical resampling that conserves total thickness conserves
+# total evidence.
+# --------------------------------------------------------------------------
+def vertical_quadrature(z_center: torch.Tensor, dz: torch.Tensor,
+                        n_nodes: int = 3):
+    """Gauss-Legendre nodes/weights over each token's layer.
+
+    ``z_center`` (N,) layer midpoints, ``dz`` (N,) thicknesses; returns
+    ``(z (N, Q), w (N, Q))`` with ``w`` summing to ``dz`` per token, so the
+    quadrature integrates rather than averages — a thicker layer genuinely
+    carries more support.
+
+    ``n_nodes = 1`` degenerates to the midpoint rule, i.e. exactly the
+    pre-Phase-1 behaviour scaled by thickness.
+    """
+    x, w = np.polynomial.legendre.leggauss(int(n_nodes))
+    x = torch.as_tensor(x, dtype=torch.float64, device=z_center.device)
+    w = torch.as_tensor(w, dtype=torch.float64, device=z_center.device)
+    half = (dz.to(torch.float64) * 0.5)[:, None]
+    z = z_center.to(torch.float64)[:, None] + half * x[None, :]
+    return z, half * w[None, :]
+
+
+# --------------------------------------------------------------------------
+# Phase 1b — provenance as noise correlation
+#
+# Metadata (platform / WMO id, product, processing level) belongs in the NOISE
+# model, not the content embedding: two tokens from one float delivered by the
+# real-time and delayed-mode streams are not two independent measurements, and
+# putting instance identity into the content channel would let the model
+# memorise platforms and leak into a held-out-float evaluation.
+#
+# The noise covariance is the plan's ``Cov = D + U diag(c) U^T``: block
+# equicorrelation over provenance groups.  Within a group of m tokens,
+#
+#     Cov = lam * [(1 - rho) I + rho 11^T]
+#
+# whose inverse square root is analytic, so whitening stays O(N).  The
+# effective count of k such tokens is the classical
+#
+#     n_eff = k / (1 + (k - 1) rho)
+#
+# which is the curve Phase 1 has to reproduce: rho = 0 leaves k independent
+# votes, rho -> 1 collapses them to one.
+# --------------------------------------------------------------------------
+def whiten_provenance(psi: torch.Tensor, lam: torch.Tensor,
+                      provenance: torch.Tensor | None, rho: float
+                      ) -> torch.Tensor:
+    """``psi -> Cov^{-1/2} psi`` for block-equicorrelated provenance noise.
+
+    ``rho = 0`` reproduces the diagonal whitening ``psi / sqrt(lam)`` exactly.
+    Assumes equal ``lam`` within a provenance group (one platform, one stream),
+    which is what makes ``Cov^{-1/2}`` separable into ``lam^{-1/2} R^{-1/2}``.
+    """
+    out = psi.to(torch.float64) / lam.to(torch.float64).sqrt()[:, None]
+    if provenance is None or rho <= 0.0:
+        return out
+    rho = float(min(max(rho, 0.0), 1.0 - 1e-9))
+    for g in torch.unique(provenance):
+        idx = (provenance == g).nonzero(as_tuple=True)[0]
+        m = int(idx.numel())
+        if m < 2:
+            continue
+        blk = out[idx]                                   # (m, F)
+        mean = blk.mean(dim=0, keepdim=True)             # the 1-direction
+        # eigenvalues of R: (1 - rho + rho m) once, (1 - rho) m-1 times
+        a = (1.0 - rho) ** -0.5
+        b = (1.0 - rho + rho * m) ** -0.5
+        out[idx] = a * (blk - mean) + b * mean
+    return out
+
+
+def n_eff(k: int, rho: float) -> float:
+    """Effective independent count of ``k`` equicorrelated observations."""
+    return k / (1.0 + (k - 1) * rho)
+
+
 def dfs_omega(psi: torch.Tensor, lam: torch.Tensor,
-              mask: torch.Tensor) -> torch.Tensor:
+              mask: torch.Tensor, provenance: torch.Tensor | None = None,
+              rho: float = 0.0) -> torch.Tensor:
     """Whitened ridge leverage of each active token. ``psi`` (N, F) -> (N,).
 
     Masked tokens are removed from the solve entirely — not merely zeroed
@@ -278,7 +365,8 @@ def dfs_omega(psi: torch.Tensor, lam: torch.Tensor,
     out = torch.zeros(psi.shape[0], dtype=torch.float64, device=psi.device)
     if not bool(mask.any()):
         return out
-    p = psi[mask] / lam[mask].sqrt()[:, None]            # (M, F)
+    prov = None if provenance is None else provenance[mask]
+    p = whiten_provenance(psi[mask], lam[mask], prov, rho)   # (M, F)
     F = p.shape[1]
     A = p.T @ p + torch.eye(F, dtype=p.dtype, device=p.device)
     sol = torch.linalg.solve(A, p.T)                     # (F, M)

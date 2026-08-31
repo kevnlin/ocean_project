@@ -30,7 +30,8 @@ import torch.nn.functional as F
 from .batched_dfs import (RandomFourierBasis, integrate_support, dfs_omega,
                           ConservativeResampler, PerceiverResampler,
                           variable_group_coords, N_FEATURES, LENGTH_SCALES,
-                          LENGTH_SCALES_KM, to_physical, BASIS_SEED)
+                          LENGTH_SCALES_KM, to_physical, BASIS_SEED,
+                          vertical_quadrature)
 from .godas_obs import N_MODALITIES, N_CHANNELS, N_VARIABLE_GROUPS
 from .objective_interpolation import ObjectiveInterpolation, OISettings
 from .oi_residual import OIResidual
@@ -120,7 +121,8 @@ class GodasRowModel(nn.Module):
                  n_latent_blocks: int = N_LATENT_BLOCKS,
                  n_dec_blocks: int = N_DEC_BLOCKS,
                  n_features: int = N_FEATURES, physical_units: bool = True,
-                 noise_scale: float = 1.0):
+                 noise_scale: float = 1.0, n_vertical_nodes: int = 3,
+                 provenance_rho: float = 0.0):
         super().__init__()
         assert mass_mode in ("dfs", "uniform", "count")
         self.mass_mode = mass_mode
@@ -129,6 +131,12 @@ class GodasRowModel(nn.Module):
         # without touching the geometry.  1.0 is the registered prior.
         self.physical_units = bool(physical_units)
         self.noise_scale = float(noise_scale)
+        # Phase 1a: >1 integrates the basis over each layer (3 nodes converge);
+        # 1 is the pre-Phase-1 midpoint rule.
+        self.n_vertical_nodes = int(n_vertical_nodes)
+        # Phase 1b: correlation between tokens sharing a provenance group.
+        # 0.0 keeps the pre-Phase-1 independent-noise behaviour.
+        self.provenance_rho = float(provenance_rho)
         self.last_omega = None
         self.encoder = _TokenEncoder(d_model)
         # the kernel spans (x, y, z, t) PLUS a variable-group axis, so tokens
@@ -167,16 +175,37 @@ class GodasRowModel(nn.Module):
             # per-token operating point s = support/noise is interpretable.
             coord = (to_physical(s["coord"]) if self.physical_units
                      else s["coord"])
-            full = torch.cat([coord, grp.to(coord.device)], dim=-1)
             if self.physical_units and "support_area" in s:
-                weight = s["support_area"].to(torch.float64)[:, None]
+                area = s["support_area"].to(torch.float64)
+                if self.n_vertical_nodes > 1 and "support_dz" in s:
+                    # Phase 1a: integrate the basis over the layer, so a token
+                    # is a VOLUME.  Splitting a layer in two halves each child's
+                    # thickness, so a vertical resampling that conserves total
+                    # thickness conserves total evidence.
+                    zq, wq = vertical_quadrature(coord[:, 2],
+                                                 s["support_dz"].to(torch.float64),
+                                                 self.n_vertical_nodes)
+                    Q = zq.shape[1]
+                    nodes = coord[:, None, :].repeat(1, Q, 1).clone()
+                    nodes[:, :, 2] = zq
+                    weight = wq * area[:, None]
+                else:
+                    nodes = coord[:, None, :]
+                    weight = area[:, None]
             else:
+                nodes = coord[:, None, :]
                 weight = torch.ones(s["coord"].shape[0], 1,
                                     dtype=torch.float64, device=dev)
+            g = grp.to(coord.device)[:, None, :].expand(-1, nodes.shape[1], -1)
+            full = torch.cat([nodes, g], dim=-1)
             psi, lam = integrate_support(
-                self.basis, full[:, None, :], weight,
+                self.basis, full, weight,
                 s["noise_density"] * self.noise_scale)
-            w = dfs_omega(psi, lam, mask & s["support_mask"])
+            # Phase 1b: provenance drives the NOISE correlation, so tokens from
+            # one platform / product stream collapse along n_eff rather than
+            # voting independently.  rho = 0 reproduces diagonal whitening.
+            w = dfs_omega(psi, lam, mask & s["support_mask"],
+                          s.get("provenance"), self.provenance_rho)
             self.last_omega = w.detach()
         else:
             # `uniform` and `count` both report unit mass; for `count` it is

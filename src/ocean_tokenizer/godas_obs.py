@@ -42,7 +42,8 @@ import numpy as np
 import torch
 
 from .batched_dfs import (NOISE_AREA_POINT_KM2, NOISE_AREA_PATCH_KM2,
-                          profile_support_area_km2, patch_support_area_km2)
+                          profile_support_area_km2, patch_support_area_km2,
+                          BOX_DEPTH_M)
 
 N_PROFILE_COLS = 24
 PATCH = 4
@@ -115,7 +116,18 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
     # quadrature weight is a real area, not a dimensionless 1), and ``noise``
     # is the matching error-variance density expressed as a noise area, so
     # s_token = support / noise is the interpretable operating point.
+    # ``support``/``support_dz`` are the token's physical footprint (km²) and
+    # vertical extent (m) — Phase 1 gives profile levels real layer thickness,
+    # so a vertical resampling that conserves total thickness conserves total
+    # evidence.  ``prov`` is the provenance group (platform / product stream):
+    # it drives the NOISE correlation, never the content embedding, so instance
+    # identity cannot be memorised or leak into a held-out-float evaluation.
     coord, value, vmask, modality, noise, support = [], [], [], [], [], []
+    support_dz, prov = [], []
+    # one layer thickness under the uniform-level convention the z coordinate
+    # already assumes (z = level index / (Z-1)); true GODAS level edges would
+    # be more physical and are a small follow-up once the data is present
+    dz_level = BOX_DEPTH_M / max(Z - 1, 1)
 
     # ---- profile point tokens: 24 columns x Z depths, at t_src -----------
     if avail[MOD_PROFILE]:
@@ -127,7 +139,7 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
             # swamps the effect being measured
             ys[0], xs[0] = int(cfg.pin_first_profile[0]), int(cfg.pin_first_profile[1])
         zz = np.arange(Z)
-        for y, x in zip(ys, xs):
+        for col, (y, x) in enumerate(zip(ys, xs)):
             t = np.stack([fields["TEMP"][t_src, :, y, x],
                           fields["SALT"][t_src, :, y, x]], axis=-1)   # (Z,2)
             coord.append(np.stack([np.full(Z, x / max(X - 1, 1)),
@@ -139,9 +151,13 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
             modality.append(np.full(Z, MOD_PROFILE))
             noise.append(np.full(Z, NOISE_AREA_POINT_KM2))
             support.append(np.full(Z, profile_support_area_km2()))
+            support_dz.append(np.full(Z, dz_level))
+            # every level of one column comes from one platform
+            prov.append(np.full(Z, col))
 
     # ---- gridded patches over [t_src-context+1, t_src] ------------------
     boxes = _patch_boxes(Y, X, cfg.patch)
+    prov_base = cfg.n_profiles                 # patch ids never collide with columns
     for mod, keys in ((MOD_SURF, ("TEMP", "SALT")), (MOD_SSH, ("SSH",))):
         if not avail[mod]:
             continue
@@ -168,15 +184,20 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
                 # edge patches are genuinely smaller, so they genuinely carry
                 # less support — hy/hx, not the nominal 4x4
                 support.append(np.array([patch_support_area_km2(hy, hx)]))
+                support_dz.append(np.array([dz_level]))
+                # a gridded product is one processing stream per context month
+                prov.append(np.array([prov_base + mod * cfg.context + back]))
 
     if coord:
         coord = np.concatenate(coord); value = np.concatenate(value)
         vmask = np.concatenate(vmask); modality = np.concatenate(modality)
         noise = np.concatenate(noise); support = np.concatenate(support)
+        support_dz = np.concatenate(support_dz); prov = np.concatenate(prov)
     else:                                   # every stream dropped
         coord = np.zeros((0, 4)); value = np.zeros((0, N_CHANNELS))
         vmask = np.zeros((0, N_CHANNELS), bool); modality = np.zeros(0, int)
         noise = np.zeros(0); support = np.zeros(0)
+        support_dz = np.zeros(0); prov = np.zeros(0, dtype=int)
 
     value = np.where(vmask, np.nan_to_num(value), 0.0)   # zero-fill at the boundary
     tok = torch.as_tensor(vmask.any(axis=-1))            # a token with no finite
@@ -212,6 +233,8 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
         modality_available=torch.as_tensor(avail),
         noise_density=torch.as_tensor(noise, dtype=torch.float64),
         support_area=torch.as_tensor(support, dtype=torch.float64),
+        support_dz=torch.as_tensor(support_dz, dtype=torch.float64),
+        provenance=torch.as_tensor(np.asarray(prov, dtype="int64")),
         query=torch.as_tensor(qcoord, dtype=torch.float64),
         target=torch.as_tensor(np.nan_to_num(target), dtype=torch.float32),
         target_mask=torch.as_tensor(tmask),
@@ -249,7 +272,8 @@ def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,
     if k == 1:
         return out
     per_token = ("coord", "value", "value_mask", "mask", "support_mask",
-                 "modality", "variable_group", "noise_density", "support_area")
+                 "modality", "variable_group", "noise_density", "support_area",
+                 "support_dz", "provenance")
     block = {kk: out[kk][:depths] for kk in per_token}
     for kk in per_token:
         out[kk] = torch.cat([out[kk]] + [block[kk]] * (k - 1), dim=0)
