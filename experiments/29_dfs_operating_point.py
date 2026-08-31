@@ -84,6 +84,18 @@ from ocean_tokenizer.godas_obs import (ObsConfig, build_sample,
                                         MOD_SURF, MOD_SSH)
 
 MOD_NAME = {MOD_PROFILE: "profile", MOD_SURF: "surf", MOD_SSH: "ssh"}
+DUP_DEPTHS = 16                      # one profile column = 16 depth tokens
+
+
+def dup_group_index(n_orig: int, k: int, depths: int = DUP_DEPTHS):
+    """Indices of the k copies of the attacked column after the attack.
+
+    ``duplicate_profile_attack`` returns ``original(n_orig) ++ block*(k-1)``,
+    so the group is the leading block plus the appended tail — two disjoint
+    ranges, not one contiguous prefix.
+    """
+    return torch.cat([torch.arange(depths),
+                      torch.arange(n_orig, n_orig + depths * (k - 1))])
 #: registered in doc/phase0_registration.md before any number was read
 SWEEP_C = [1e-3, 1e-2, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 100.0]
 DUP_K = [1, 2, 4, 8]
@@ -335,8 +347,17 @@ if args.duplicates:
                     continue
                 w, st, live, _, _ = omega_of(a, n_features=B.N_FEATURES,
                                              physical=True, noise_scale=c)
-                depths = 16
-                g.append(float(w[:depths * k][live[:depths * k]].double().sum()))
+                # duplicate_profile_attack keeps the original column at [0:D]
+                # and APPENDS its k-1 copies at the tail, so the attacked group
+                # is those two ranges — NOT w[:D*k], which is the first k
+                # DISTINCT columns of the original set and grows ~k for reasons
+                # that have nothing to do with duplication.
+                idx = dup_group_index(int(s["mask"].shape[0]), k, DUP_DEPTHS)
+                assert idx.numel() == DUP_DEPTHS * k
+                assert torch.allclose(a["coord"][idx].reshape(k, DUP_DEPTHS, -1),
+                                      a["coord"][:DUP_DEPTHS][None]), \
+                    "attacked group is not k copies of one column"
+                g.append(float(w[idx][live[idx]].double().sum()))
             row["k"][str(k)] = float(np.mean(g)) if g else float("nan")
         base = row["k"]["1"]
         row["ratio_k8_over_k1"] = row["k"]["8"] / base if base else float("nan")
@@ -391,10 +412,28 @@ with open(out, "w") as f:
 print(f"\nwrote {out}", flush=True)
 print(f"registration commit {record['registration_commit'][:12]} "
       f"(rule registered before this run)", flush=True)
-if mean_s is not None:
-    verdict = ("s = O(1): the estimator is OUT of the degenerate corner"
-               if mean_s >= 0.1 else
-               "s << 1: STILL at the NEO/Berner corner — mechanism effects "
-               "remain capped by construction")
-    print(f"EXIT CRITERION 1: s_measured = {mean_s:.4g} -> {verdict}", flush=True)
+phase0 = (record.get("operating_point", {}) or {}).get("phase0", {})
+s_tok = phase0.get("s_token_mean")
+if s_tok is not None:
+    # Read the operating point on s_token, NOT on omega/(1-omega).
+    #
+    # omega = s/(1+s) is the LONE-token identity, so inverting it as
+    # s_hat = omega/(1-omega) is only valid for a set of one.  With N tokens
+    # competing for a bounded evidence pool every omega_i is pushed well below
+    # s_i/(1+s_i), so the inversion is biased LOW by roughly the competition
+    # factor -- here 0.95 -> 0.070, a factor of ~14.  Reporting s_hat as "the
+    # operating point" is what makes a working mechanism look degenerate.
+    verdict = ("s_token = O(1): the estimator is OUT of the degenerate corner"
+               if s_tok >= 0.1 else
+               "s_token << 1: at the NEO/Berner corner")
+    print(f"EXIT CRITERION 1: s_token = {s_tok:.4g} -> {verdict}", flush=True)
+    print(f"  (for reference, the lone-token inversion omega/(1-omega) reads "
+          f"{mean_s:.4g}; it is biased low by competition and is NOT the "
+          f"operating point of a multi-token set)", flush=True)
+dups = record.get("duplicates") or []
+prior = next((d for d in dups if d["c"] == 1.0), None)
+if prior:
+    print(f"MECHANISM: duplicate discount at the prior (c=1) = "
+          f"{prior['discount']:.3f}  (1.0 = perfect collapse, 0.0 = independent "
+          f"votes)", flush=True)
 print(f"TOTAL {time.time()-t0:.1f}s", flush=True)
