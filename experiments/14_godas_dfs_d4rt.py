@@ -45,6 +45,11 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--configs", default="dfs_oi_expert_cbottle",
                 help="comma-separated registered rows")
 ap.add_argument("--seed", type=int, default=1234)
+ap.add_argument("--provenance-rho", type=float, default=0.0,
+                help="Phase 1b: noise correlation within a provenance group. "
+                     "Must be set at TRAINING time to be tested fairly -- "
+                     "changing it only at eval feeds the model a mass "
+                     "distribution it was never fitted to.")
 ap.add_argument("--steps", type=int, default=5000)
 ap.add_argument("--validation-interval", type=int, default=500)
 ap.add_argument("--queries", type=int, default=512)
@@ -320,7 +325,7 @@ for row in configs:
         continue
 
     torch.manual_seed(args.seed)
-    model = build_row(row).to(dev)
+    model = build_row(row, provenance_rho=args.provenance_rho).to(dev)
     n_params = sum(p.numel() for p in model.parameters())
     ckpt_path = os.path.join(OUT, f"{row}_seed{args.seed}.pt")
 

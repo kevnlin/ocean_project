@@ -43,10 +43,19 @@ ROWS = (
     "count_expertlocal_cbottle",
     "uniform_expertlocal_cbottle",
     "dfs_expertlocal_cbottle",
+    # the work plan's control ladder: what operational centres actually do.
+    # Count-independent by CONSTRUCTION -- no learned mass anywhere -- so if
+    # these match dfs on the redundancy regimes, the claim becomes "the first
+    # differentiable, in-operator version of preprocessing" rather than a win.
+    "thin_expertlocal_cbottle",
+    "superob_expertlocal_cbottle",
     "count_oi_expert_cbottle",
     "uniform_oi_expert_cbottle",
     "dfs_oi_expert_cbottle",
 )
+#: mass modes that carry unit mass and instead remove redundancy by
+#: PREPROCESSING the token set before it ever reaches the model
+PREPROCESS_MODES = {"thin": "thin", "superob": "superob"}
 
 D_MODEL = 64
 N_HEADS = 4
@@ -124,8 +133,11 @@ class GodasRowModel(nn.Module):
                  noise_scale: float = 1.0, n_vertical_nodes: int = 3,
                  provenance_rho: float = 0.0):
         super().__init__()
-        assert mass_mode in ("dfs", "uniform", "count")
+        assert mass_mode in ("dfs", "uniform", "count", "thin", "superob")
         self.mass_mode = mass_mode
+        # thin/superob are unit-mass rows whose redundancy handling happens in
+        # a preprocessing step, exactly as an operational centre would do it
+        self.preprocess = PREPROCESS_MODES.get(mass_mode)
         # ``noise_scale`` is the Phase-0 sweep knob: it multiplies the declared
         # observation-error variance densities, moving s = support/noise
         # without touching the geometry.  1.0 is the registered prior.
@@ -208,8 +220,10 @@ class GodasRowModel(nn.Module):
                           s.get("provenance"), self.provenance_rho)
             self.last_omega = w.detach()
         else:
-            # `uniform` and `count` both report unit mass; for `count` it is
-            # diagnostic only and does not drive the transport (doc §2.2)
+            # `uniform`, `count`, `thin` and `superob` all report unit mass;
+            # for `count` it is diagnostic only and does not drive the
+            # transport (doc §2.2), and for thin/superob the redundancy has
+            # already been removed upstream by `prep`
             w = torch.ones(mask.shape[0], dtype=torch.float64, device=dev)
         return w * mask.to(w.dtype)
 
@@ -222,7 +236,20 @@ class GodasRowModel(nn.Module):
                        s["coord"][live], s["value"][live].to(s["query"].dtype),
                        s["noise_density"][live]).to(torch.float32)
 
+    def prep(self, s: dict) -> dict:
+        """Apply the row's observation preprocessing, if it has any.
+
+        Called at the top of ``forward``.  ``observation_mass`` deliberately
+        does NOT call it, so a caller measuring mass directly gets the raw
+        token set and cannot double-apply the merge.
+        """
+        if self.preprocess is None:
+            return s
+        from .godas_obs import superob_tokens
+        return superob_tokens(s, self.preprocess)
+
     def forward(self, s: dict) -> torch.Tensor:
+        s = self.prep(s)
         emb = self.encoder(s["value"], s["value_mask"], s["coord"],
                            s["modality"])[None]                  # (1,N,d)
         mask = s["mask"][None]

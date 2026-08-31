@@ -43,7 +43,8 @@ import torch
 
 from .batched_dfs import (NOISE_AREA_POINT_KM2, NOISE_AREA_PATCH_KM2,
                           profile_support_area_km2, patch_support_area_km2,
-                          BOX_DEPTH_M, GODAS_LEVELS_M, level_thickness_m)
+                          BOX_DEPTH_M, GODAS_LEVELS_M, level_thickness_m,
+                          GRID_NX, GRID_NY)
 
 N_PROFILE_COLS = 24
 PATCH = 4
@@ -249,6 +250,109 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
         t_src=int(t_src),
         lead=int(lead),
     )
+
+
+#: Bin used by thinning / superobbing, in grid cells and months.  One cell is
+#: the finest bin that can still merge anything, and is what an operational
+#: centre would use at this resolution.
+SUPEROB_BIN_CELLS = 1.0
+SUPEROB_BIN_MONTHS = 1.0
+
+_MERGE_KEYS = ("coord", "value", "value_mask", "mask", "support_mask",
+               "modality", "variable_group", "noise_density", "support_area",
+               "support_dz", "provenance")
+
+
+def superob_tokens(s: dict, mode: str = "superob",
+                   bin_cells: float = SUPEROB_BIN_CELLS,
+                   bin_months: float = SUPEROB_BIN_MONTHS) -> dict:
+    """Thin or superob the observations — what operational centres actually do.
+
+    This is the work plan's decisive control: it is **count-independent by
+    construction**, so it removes redundancy without any learned mass at all.
+    If it matches DFS on the redundancy regimes, then DFS is "a differentiable,
+    in-operator version of what preprocessing already does", which is a
+    different (and weaker) claim than beating it.
+
+    Tokens are binned on ``(modality, variable_group, x, y, z, t)`` — within a
+    stream, not across streams, which is the common practice: a profile point
+    and a surface patch are not averaged together just because they sit in the
+    same box.
+
+    ``thin``     keep one member per bin, drop the rest.
+    ``superob``  replace the bin by a single token carrying the MEAN of its
+                 members.
+
+    The mean (not the sum) is what makes this count-independent: k bit-exact
+    duplicates collapse to a token identical to one of them, so re-ingesting an
+    observation changes nothing.  Summing support would instead let duplicates
+    manufacture footprint, which is the failure this control exists to avoid.
+    """
+    if mode not in ("thin", "superob"):
+        raise ValueError(f"mode must be 'thin' or 'superob', got {mode!r}")
+    n = int(s["coord"].shape[0])
+    if n == 0:
+        return {k: (v.clone() if torch.is_tensor(v) else v)
+                for k, v in s.items()}
+    c = s["coord"].to(torch.float64)
+    devc = c.device                       # accumulators must live where the
+    #                                       tokens do, not on the default device
+    # bin in GRID units so the bin is a physical box rather than a fraction of
+    # a domain whose width is an accident of the region choice
+    bx = bin_cells / max(GRID_NX - 1, 1)
+    by = bin_cells / max(GRID_NY - 1, 1)
+    key = torch.stack([
+        s["modality"].to(torch.float64),
+        s["variable_group"].to(torch.float64),
+        torch.round(c[:, 0] / bx), torch.round(c[:, 1] / by),
+        torch.round(c[:, 2] * 1e6),          # levels are discrete already
+        torch.round(c[:, 3] / bin_months),
+    ], dim=-1)
+    uniq, inv = torch.unique(key, dim=0, return_inverse=True)
+    m = int(uniq.shape[0])
+    out = {k: v for k, v in s.items() if k not in _MERGE_KEYS}
+
+    if mode == "thin":
+        # first member of each bin, in original order
+        order = torch.argsort(inv, stable=True)
+        first = torch.ones(n, dtype=torch.bool, device=devc)
+        first[1:] = inv[order][1:] != inv[order][:-1]
+        keep = order[first]
+        keep, _ = torch.sort(keep)
+        for k in _MERGE_KEYS:
+            out[k] = s[k][keep].clone()
+        return out
+
+    cnt = torch.zeros(m, dtype=torch.float64, device=devc).index_add_(
+        0, inv, torch.ones(n, dtype=torch.float64, device=devc)).clamp(min=1)
+    for k in _MERGE_KEYS:
+        v = s[k]
+        if k in ("mask", "support_mask"):                 # a bin is live if any
+            acc = torch.zeros(m, dtype=torch.float64, device=devc).index_add_(
+                0, inv, v.to(torch.float64))
+            out[k] = acc > 0
+        elif k == "value_mask":
+            acc = torch.zeros(m, v.shape[1], dtype=torch.float64,
+                              device=devc).index_add_(0, inv, v.to(torch.float64))
+            out[k] = acc > 0
+        elif k in ("modality", "variable_group", "provenance"):
+            # categorical: take the bin's first member (they agree by
+            # construction for modality/variable_group; provenance is merged
+            # away, which is the point — a superob has no single platform)
+            idx = torch.zeros(m, dtype=torch.long, device=devc)
+            idx.scatter_(0, inv, torch.arange(n, device=devc))
+            out[k] = v[idx].clone()
+        else:                                              # numeric: MEAN
+            dtype = torch.float64
+            if v.dim() == 1:
+                acc = torch.zeros(m, dtype=dtype, device=devc).index_add_(
+                    0, inv, v.to(dtype))
+                out[k] = (acc / cnt).to(v.dtype)
+            else:
+                acc = torch.zeros(m, v.shape[1], dtype=dtype,
+                                  device=devc).index_add_(0, inv, v.to(dtype))
+                out[k] = (acc / cnt[:, None]).to(v.dtype)
+    return out
 
 
 def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,

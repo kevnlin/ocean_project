@@ -187,3 +187,64 @@ def test_clustered_sampling_carries_less_evidence_than_uniform():
             torch.full((n,), AREA, dtype=torch.float64))
         out.append(float(dfs_omega(psi, lam, torch.ones(n, dtype=torch.bool)).sum()))
     assert out[1] < 0.8 * out[0], f"clustered {out[1]:.3f} vs uniform {out[0]:.3f}"
+
+
+# --------------------------------------------------------------------------
+# Phase 2 — the control ladder's defining property
+# --------------------------------------------------------------------------
+def test_superobbing_is_exactly_count_independent():
+    """k re-ingestions of one column must leave the token set unchanged.
+
+    This is what makes thinning/superobbing the control that decides the
+    claim: it removes duplication by construction, with no learned mass
+    anywhere.  DFS has to be compared against this, not only against uniform.
+    """
+    from ocean_tokenizer.godas_obs import (ObsConfig, build_sample,
+                                           superob_tokens,
+                                           duplicate_profile_attack)
+    rng = np.random.default_rng(0)
+    T, Z, Y, X = 4, 16, B.GRID_NY, B.GRID_NX
+    f = {"TEMP": rng.standard_normal((T, Z, Y, X)),
+         "SALT": rng.standard_normal((T, Z, Y, X)),
+         "SSH": rng.standard_normal((T, Y, X))}
+    s = build_sample(f, 1, ObsConfig(train=False), rng, 0)
+    base = superob_tokens(duplicate_profile_attack(s, 1), "superob")
+    for k in (2, 4, 8):
+        got = superob_tokens(duplicate_profile_attack(s, k), "superob")
+        assert got["coord"].shape == base["coord"].shape, k
+        assert torch.allclose(got["coord"], base["coord"]), k
+        assert torch.allclose(got["support_area"], base["support_area"]), k
+
+
+def test_superob_row_prediction_is_invariant_to_duplication():
+    """End to end: the superob row's output cannot move when obs are re-ingested."""
+    from ocean_tokenizer.godas_obs import (ObsConfig, build_sample,
+                                           duplicate_profile_attack)
+    from ocean_tokenizer.godas_model import build_row
+    rng = np.random.default_rng(0)
+    T, Z, Y, X = 4, 16, B.GRID_NY, B.GRID_NX
+    f = {"TEMP": rng.standard_normal((T, Z, Y, X)),
+         "SALT": rng.standard_normal((T, Z, Y, X)),
+         "SSH": rng.standard_normal((T, Y, X))}
+    s = build_sample(f, 1, ObsConfig(train=False), rng, 0)
+    torch.manual_seed(0)
+    m = build_row("superob_expertlocal_cbottle").eval()
+    with torch.no_grad():
+        a = m(duplicate_profile_attack(s, 1))
+        b = m(duplicate_profile_attack(s, 8))
+    assert torch.allclose(a, b, atol=1e-6), float((a - b).abs().max())
+
+
+def test_thinning_keeps_one_member_per_bin():
+    from ocean_tokenizer.godas_obs import (ObsConfig, build_sample,
+                                           superob_tokens,
+                                           duplicate_profile_attack)
+    rng = np.random.default_rng(0)
+    T, Z, Y, X = 4, 16, B.GRID_NY, B.GRID_NX
+    f = {"TEMP": rng.standard_normal((T, Z, Y, X)),
+         "SALT": rng.standard_normal((T, Z, Y, X)),
+         "SSH": rng.standard_normal((T, Y, X))}
+    s = build_sample(f, 1, ObsConfig(train=False), rng, 0)
+    n1 = superob_tokens(duplicate_profile_attack(s, 1), "thin")["mask"].shape[0]
+    n8 = superob_tokens(duplicate_profile_attack(s, 8), "thin")["mask"].shape[0]
+    assert n1 == n8
