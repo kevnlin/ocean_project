@@ -1,0 +1,257 @@
+{
+  "task": "phase0_dfs_operating_point",
+  "registration": "doc/phase0_registration.md",
+  "registration_commit": "6f300e33174d76c889c8002fdbb5ec55336198de",
+  "git_commit": "6f300e33174d76c889c8002fdbb5ec55336198de",
+  "source": "synthetic-all-ocean",
+  "months": 6,
+  "seed": 1234,
+  "geometry": {
+    "box_extent_x_km_y_km_z_m_t_months": [
+      4410.846233684195,
+      2779.875,
+      949.0,
+      1.0
+    ],
+    "length_scales_normalised": [
+      0.35,
+      0.35,
+      0.25,
+      2.0
+    ],
+    "length_scales_physical_km_km_m_months": [
+      1543.7961817894682,
+      972.95625,
+      237.25,
+      2.0
+    ],
+    "cell_area_km2": 13255.785052824704,
+    "profile_support_km2": 7853.981633974483,
+    "patch_4x4_support_km2": 212092.56084519526,
+    "noise_area_point_km2": 7853.981633974483,
+    "noise_area_patch_km2": 212092.56084519526
+  },
+  "operating_point": {
+    "legacy": {
+      "sum_omega": 28.68454463272032,
+      "sum_omega_over_F": 0.89639201977251,
+      "mean_omega": 0.04319961541072339,
+      "median_omega": 0.03783241932921279,
+      "max_omega": 0.1706448521981738,
+      "s_measured": 0.04515012804930044,
+      "s_token_mean": 8.339975554254766,
+      "s_token_median": 10.48326290079039,
+      "n_live": 664.0,
+      "feature_ceiling": 32,
+      "by_modality": {
+        "profile": {
+          "n": 384.0,
+          "mean_omega": 0.04887316162564065,
+          "sum_omega": 18.767294064246006,
+          "s_token_mean": 12.297137480605125
+        },
+        "ssh": {
+          "n": 140.0,
+          "mean_omega": 0.04346043608565355,
+          "sum_omega": 6.0844610519914974,
+          "s_token_mean": 2.9940391319749016
+        },
+        "surf": {
+          "n": 140.0,
+          "mean_omega": 0.0273770679748773,
+          "sum_omega": 3.8327895164828214,
+          "s_token_mean": 2.8319821214022203
+        }
+      }
+    },
+    "phase0": {
+      "sum_omega": 43.62389523592992,
+      "sum_omega_over_F": 0.17040584076535126,
+      "mean_omega": 0.06569863740350891,
+      "median_omega": 0.06031741440204328,
+      "max_omega": 0.1889548843622452,
+      "s_measured": 0.07031944528410213,
+      "s_token_mean": 0.9499759480809761,
+      "s_token_median": 0.9967471450671567,
+      "n_live": 664.0,
+      "feature_ceiling": 256,
+      "by_modality": {
+        "profile": {
+          "n": 384.0,
+          "mean_omega": 0.06332633904585779,
+          "sum_omega": 24.31731419360939,
+          "s_token_mean": 0.9977528849790082
+        },
+        "ssh": {
+          "n": 140.0,
+          "mean_omega": 0.07565763082922798,
+          "sum_omega": 10.592068316091916,
+          "s_token_mean": 0.8896627111403453
+        },
+        "surf": {
+          "n": 140.0,
+          "mean_omega": 0.06224651947306157,
+          "sum_omega": 8.714512726228621,
+          "s_token_mean": 0.8792438723870041
+        }
+      }
+    }
+  },
+  "sweep": [
+    {
+      "c": 0.001,
+      "s_token_mean": 949.9759480809762,
+      "mean_omega": 0.18129288463967072,
+      "sum_omega": 120.37847540074137,
+      "sum_omega_over_F": 0.47022841953414596,
+      "s_measured": 0.22144503957290998
+    },
+    {
+      "c": 0.01,
+      "s_token_mean": 94.99759480809759,
+      "mean_omega": 0.14527349127225456,
+      "sum_omega": 96.46159820477703,
+      "sum_omega_over_F": 0.3768031179874103,
+      "s_measured": 0.16996968656884912
+    },
+    {
+      "c": 0.1,
+      "s_token_mean": 9.499759480809761,
+      "mean_omega": 0.10649781391449832,
+      "sum_omega": 70.71454843922689,
+      "sum_omega_over_F": 0.27622870484073003,
+      "s_measured": 0.11919421645100185
+    },
+    {
+      "c": 0.25,
+      "s_token_mean": 3.7999037923239043,
+      "mean_omega": 0.09042135897276089,
+      "sum_omega": 60.03978235791323,
+      "sum_omega_over_F": 0.23453039983559856,
+      "s_measured": 0.0994121793797264
+    },
+    {
+      "c": 0.5,
+      "s_token_mean": 1.8999518961619521,
+      "mean_omega": 0.07807819974029541,
+      "sum_omega": 51.843924627556156,
+      "sum_omega_over_F": 0.20251533057639123,
+      "s_measured": 0.08469215661463553
+    },
+    {
+      "c": 1.0,
+      "s_token_mean": 0.9499759480809761,
+      "mean_omega": 0.06569863740350891,
+      "sum_omega": 43.62389523592992,
+      "sum_omega_over_F": 0.17040584076535126,
+      "s_measured": 0.07031944528410213
+    },
+    {
+      "c": 2.0,
+      "s_token_mean": 0.47498797404048804,
+      "mean_omega": 0.05354235173175028,
+      "sum_omega": 35.55212154988218,
+      "sum_omega_over_F": 0.13887547480422727,
+      "s_measured": 0.056571933152945376
+    },
+    {
+      "c": 5.0,
+      "s_token_mean": 0.1899951896161952,
+      "mean_omega": 0.038510267305837266,
+      "sum_omega": 25.570817491075946,
+      "sum_omega_over_F": 0.09988600582451541,
+      "s_measured": 0.04005302475392226
+    },
+    {
+      "c": 10.0,
+      "s_token_mean": 0.0949975948080976,
+      "mean_omega": 0.028485857195718736,
+      "sum_omega": 18.914609177957242,
+      "sum_omega_over_F": 0.07388519210139548,
+      "s_measured": 0.02932126963116488
+    },
+    {
+      "c": 100.0,
+      "s_token_mean": 0.00949975948080976,
+      "mean_omega": 0.006933164353127447,
+      "sum_omega": 4.603621130476625,
+      "sum_omega_over_F": 0.017982895040924315,
+      "s_measured": 0.006981573975068162
+    }
+  ],
+  "duplicates": [
+    {
+      "c": 1.0,
+      "k": {
+        "1": 1.0907175761451715,
+        "2": 2.0493358436587084,
+        "4": 3.564770194899463,
+        "8": 7.562861374836369
+      },
+      "ratio_k8_over_k1": 6.933840198637977,
+      "discount": 0.1523085430517176
+    },
+    {
+      "c": 10.0,
+      "k": {
+        "1": 0.48394606021939063,
+        "2": 0.9469144261920986,
+        "4": 1.6849773415318667,
+        "8": 3.3990166371459103
+      },
+      "ratio_k8_over_k1": 7.023544391713842,
+      "discount": 0.139493658326594
+    },
+    {
+      "c": 100.0,
+      "k": {
+        "1": 0.11740003607072101,
+        "2": 0.23316229010617862,
+        "4": 0.4438894137662732,
+        "8": 0.8723591411584405
+      },
+      "ratio_k8_over_k1": 7.430654796672609,
+      "discount": 0.08133502904677015
+    }
+  ],
+  "convergence": [
+    {
+      "p": 32,
+      "rmse_mean": 0.16354548659878737,
+      "rmse_std": 0.016852645333402097,
+      "rel_pct": 16.354548659878738
+    },
+    {
+      "p": 64,
+      "rmse_mean": 0.12056323270179577,
+      "rmse_std": 0.009535457103152725,
+      "rel_pct": 12.056323270179577
+    },
+    {
+      "p": 128,
+      "rmse_mean": 0.08045106823443784,
+      "rmse_std": 0.006190637935299345,
+      "rel_pct": 8.045106823443785
+    },
+    {
+      "p": 256,
+      "rmse_mean": 0.05494840281019633,
+      "rmse_std": 0.003379382093910168,
+      "rel_pct": 5.494840281019632
+    },
+    {
+      "p": 512,
+      "rmse_mean": 0.03932948103445829,
+      "rmse_std": 0.00336046790136746,
+      "rel_pct": 3.932948103445829
+    },
+    {
+      "p": 1024,
+      "rmse_mean": 0.029798719079686793,
+      "rmse_std": 0.0035801629837072654,
+      "rel_pct": 2.9798719079686795
+    }
+  ],
+  "s_star": null,
+  "s_star_status": "NOT SELECTED \u2014 the registered rule selects s* on validation accuracy J (one-standard-error rule, three seeds). J requires GODAS fields and training, which are unavailable here, so the registration's fallback clause applies: report the geometry calibration curve and defer s* rather than substituting a geometry-only criterion."
+}

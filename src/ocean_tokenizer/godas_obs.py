@@ -41,7 +41,8 @@ from dataclasses import dataclass
 import numpy as np
 import torch
 
-from .batched_dfs import NOISE_DENSITY_POINT, NOISE_DENSITY_PATCH
+from .batched_dfs import (NOISE_AREA_POINT_KM2, NOISE_AREA_PATCH_KM2,
+                          profile_support_area_km2, patch_support_area_km2)
 
 N_PROFILE_COLS = 24
 PATCH = 4
@@ -110,7 +111,11 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
             if avail.any():
                 break
 
-    coord, value, vmask, modality, noise = [], [], [], [], []
+    # ``support`` is the token's physical footprint in km² (Phase 0: the
+    # quadrature weight is a real area, not a dimensionless 1), and ``noise``
+    # is the matching error-variance density expressed as a noise area, so
+    # s_token = support / noise is the interpretable operating point.
+    coord, value, vmask, modality, noise, support = [], [], [], [], [], []
 
     # ---- profile point tokens: 24 columns x Z depths, at t_src -----------
     if avail[MOD_PROFILE]:
@@ -132,7 +137,8 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
             value.append(t)
             vmask.append(np.isfinite(t))
             modality.append(np.full(Z, MOD_PROFILE))
-            noise.append(np.full(Z, NOISE_DENSITY_POINT))
+            noise.append(np.full(Z, NOISE_AREA_POINT_KM2))
+            support.append(np.full(Z, profile_support_area_km2()))
 
     # ---- gridded patches over [t_src-context+1, t_src] ------------------
     boxes = _patch_boxes(Y, X, cfg.patch)
@@ -158,16 +164,19 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
                                         0.0, -float(back)]]))
                 value.append(v[None]); vmask.append(m[None])
                 modality.append(np.array([mod]))
-                noise.append(np.array([NOISE_DENSITY_PATCH]))
+                noise.append(np.array([NOISE_AREA_PATCH_KM2]))
+                # edge patches are genuinely smaller, so they genuinely carry
+                # less support — hy/hx, not the nominal 4x4
+                support.append(np.array([patch_support_area_km2(hy, hx)]))
 
     if coord:
         coord = np.concatenate(coord); value = np.concatenate(value)
         vmask = np.concatenate(vmask); modality = np.concatenate(modality)
-        noise = np.concatenate(noise)
+        noise = np.concatenate(noise); support = np.concatenate(support)
     else:                                   # every stream dropped
         coord = np.zeros((0, 4)); value = np.zeros((0, N_CHANNELS))
         vmask = np.zeros((0, N_CHANNELS), bool); modality = np.zeros(0, int)
-        noise = np.zeros(0)
+        noise = np.zeros(0); support = np.zeros(0)
 
     value = np.where(vmask, np.nan_to_num(value), 0.0)   # zero-fill at the boundary
     tok = torch.as_tensor(vmask.any(axis=-1))            # a token with no finite
@@ -202,6 +211,7 @@ def build_sample(fields: dict, t_src: int, cfg: ObsConfig | None = None,
             if modality.size else np.zeros(0, dtype="int64")),
         modality_available=torch.as_tensor(avail),
         noise_density=torch.as_tensor(noise, dtype=torch.float64),
+        support_area=torch.as_tensor(support, dtype=torch.float64),
         query=torch.as_tensor(qcoord, dtype=torch.float64),
         target=torch.as_tensor(np.nan_to_num(target), dtype=torch.float32),
         target_mask=torch.as_tensor(tmask),
@@ -239,7 +249,7 @@ def duplicate_profile_attack(s: dict, k: int, temp_bias: float = 2.0,
     if k == 1:
         return out
     per_token = ("coord", "value", "value_mask", "mask", "support_mask",
-                 "modality", "variable_group", "noise_density")
+                 "modality", "variable_group", "noise_density", "support_area")
     block = {kk: out[kk][:depths] for kk in per_token}
     for kk in per_token:
         out[kk] = torch.cat([out[kk]] + [block[kk]] * (k - 1), dim=0)

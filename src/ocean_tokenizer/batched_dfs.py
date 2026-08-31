@@ -42,9 +42,115 @@ import math
 import torch
 import torch.nn as nn
 
-N_FEATURES = 32
+N_FEATURES = 256
+#: The pre-Phase-0 feature count.  Kept so the frozen "NEO corner" runs remain
+#: reproducible as the honest record of the uncalibrated configuration; it is
+#: NOT the current setting.  At p = 32 the RFF kernel error is ~18 % while the
+#: effects being measured are ~1 %, i.e. the numerics were louder than the
+#: signal (work_plan.md Phase 0).  See experiments/29_dfs_operating_point.py
+#: --convergence for the table that puts this on record.
+N_FEATURES_LEGACY = 32
+
+#: Length scales in the NORMALISED [0, 1] box coordinates.  Retained because
+#: the theorem tests exercise the estimator directly on normalised coords; the
+#: GODAS row now runs the physical path below.
 LENGTH_SCALES = (0.35, 0.35, 0.25, 2.0)      # (x, y, z, t)
 BASIS_SEED = 0
+
+# --------------------------------------------------------------------------
+# Physical geometry of the GODAS experiment box (doc §4: 25-50 N, 280-330 E,
+# 16 levels to 949 m, stride-2 grid of 38 lat x 26 lon).
+#
+# Phase 0 reparameterises the kernel into km / m / months.  The conversion is
+# deliberately NUMERICALLY EQUIVALENT to the normalised form: physical scales
+# are the normalised ones multiplied by the box extent, so the kernel is
+# unchanged and only its *description* becomes interpretable.  Retuning the
+# values is separate work (work_plan.md Phase 0), and doing the equivalent
+# change first is what keeps a retune attributable.
+#
+# What the reparameterisation exposes is that the same 0.35 means very
+# different physical distances in x and y, because the box is wider in
+# longitude than in latitude — an accidental anisotropy, not a modelling
+# choice.  ``LENGTH_SCALES_KM`` prints it instead of hiding it.
+# --------------------------------------------------------------------------
+KM_PER_DEG = 111.195
+BOX_LAT = (25.0, 50.0)
+BOX_LON = (280.0, 330.0)
+BOX_DEPTH_M = 949.0
+GRID_NY, GRID_NX = 38, 26            # stride-2 experiment grid (godas.py)
+
+
+def box_extent(lat=BOX_LAT, lon=BOX_LON, depth_m=BOX_DEPTH_M) -> tuple:
+    """Physical span of the normalised unit box: (x_km, y_km, z_m, t_months).
+
+    Longitude is scaled by cos(mean latitude), so ``x_km`` is a true distance
+    rather than a degree count.  ``t`` is already in months and passes through.
+    """
+    y_km = (lat[1] - lat[0]) * KM_PER_DEG
+    x_km = ((lon[1] - lon[0]) * KM_PER_DEG
+            * math.cos(math.radians(0.5 * (lat[0] + lat[1]))))
+    return (x_km, y_km, float(depth_m), 1.0)
+
+
+BOX_EXTENT = box_extent()
+#: (x_km, y_km, z_m, t_months) — numerically equivalent to LENGTH_SCALES.
+LENGTH_SCALES_KM = tuple(l * e for l, e in zip(LENGTH_SCALES, BOX_EXTENT))
+
+
+def to_physical(coord: torch.Tensor, extent=BOX_EXTENT) -> torch.Tensor:
+    """Normalised (x, y, z, t) in [0,1]^3 x months -> (km, km, m, months)."""
+    sc = torch.as_tensor(extent, dtype=coord.dtype, device=coord.device)
+    return coord * sc
+
+
+def cell_area_km2(ny: int = GRID_NY, nx: int = GRID_NX) -> float:
+    """Area of one analysis grid cell, in km²."""
+    x_km, y_km, _, _ = BOX_EXTENT
+    return (y_km / max(ny - 1, 1)) * (x_km / max(nx - 1, 1))
+
+
+#: Horizontal representativeness radius of a profile point (km).  A profile is
+#: a point sample, so its support is what it *represents*, not a cell average;
+#: 50 km matches ``token_api.ProfileEncoder.support_radius_km``.
+PROFILE_RADIUS_KM = 50.0
+
+
+def profile_support_area_km2(radius_km: float = PROFILE_RADIUS_KM) -> float:
+    return math.pi * radius_km ** 2
+
+
+def patch_support_area_km2(hy: int, hx: int, ny: int = GRID_NY,
+                           nx: int = GRID_NX) -> float:
+    """Area of an ``hy x hx`` cell patch, in km²."""
+    return hy * hx * cell_area_km2(ny, nx)
+
+
+# --------------------------------------------------------------------------
+# Observation-error variance density, expressed as a NOISE AREA.
+#
+# With a physical support weight, ``psi_i = A_i phi_i`` and
+# ``lambda_i = n_i A_i``, so the per-token operating point is
+#
+#     s_i = |psi~_i|^2 = A_i^2 / (n_i A_i) = A_i / n_i
+#
+# i.e. the support area divided by the error-variance density.  Writing ``n``
+# in km² therefore gives it a reading: **the support area at which a token
+# carries unit evidence**.  A token whose footprint equals its noise area
+# contributes s = 1; twice the footprint, twice the evidence.
+#
+# The defaults set s = 1 at each stream's nominal footprint.  That is a
+# declared normalisation, not a measured GODAS observation error — the honest
+# successor to the pilot constants 0.08 / 0.35, which were dimensionless and
+# whose operating point was a side effect.  Real error tables would replace
+# these; the ``--sweep`` in 29_dfs_operating_point.py explores the family.
+# --------------------------------------------------------------------------
+NOISE_AREA_POINT_KM2 = profile_support_area_km2()
+NOISE_AREA_PATCH_KM2 = patch_support_area_km2(4, 4)
+
+#: Pre-Phase-0 dimensionless pilot densities, used with unit support weights.
+#: Retained for reproducing the frozen uncalibrated runs only.
+NOISE_DENSITY_POINT_LEGACY = 0.08
+NOISE_DENSITY_PATCH_LEGACY = 0.35
 # Kernel value between tokens carrying DIFFERENT observed variables at the same
 # place and time.  1.0 would call them exact duplicates, which is what a purely
 # geometric kernel does and what this constant exists to stop: SSH and surface

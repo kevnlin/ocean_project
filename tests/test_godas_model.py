@@ -86,11 +86,18 @@ def test_uniform_uses_unit_masses_and_dfs_does_not():
 
 
 def test_dfs_mass_respects_the_feature_ceiling():
+    """sum omega = F - trace(A^-1) <= F, whatever F is configured to.
+
+    Pinned to the model's own basis rather than a literal: Phase 0 raised the
+    feature count from 32 to 256, and a hard-coded ceiling would have turned
+    that deliberate change into a spurious failure while silently ceasing to
+    test the bound that matters.
+    """
     torch.manual_seed(0)
     m = build_row("dfs_expertlocal_cbottle").eval()
     with torch.no_grad():
         w = m.observation_mass(_sample())
-    assert float(w.sum()) <= 32.0 + 1e-6
+    assert float(w.sum()) <= m.basis.n_features + 1e-6
 
 
 def test_masked_tokens_carry_no_mass_in_any_row():
