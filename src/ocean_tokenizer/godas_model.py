@@ -31,6 +31,7 @@ from .batched_dfs import (RandomFourierBasis, integrate_support, dfs_omega,
                           ConservativeResampler, PerceiverResampler,
                           variable_group_coords, N_FEATURES, LENGTH_SCALES,
                           LENGTH_SCALES_KM, to_physical, BASIS_SEED,
+                          extent_for, length_scales_km_for,
                           vertical_quadrature)
 from .godas_obs import N_MODALITIES, N_CHANNELS, N_VARIABLE_GROUPS
 from .objective_interpolation import ObjectiveInterpolation, OISettings
@@ -131,7 +132,7 @@ class GodasRowModel(nn.Module):
                  n_dec_blocks: int = N_DEC_BLOCKS,
                  n_features: int = N_FEATURES, physical_units: bool = True,
                  noise_scale: float = 1.0, n_vertical_nodes: int = 3,
-                 provenance_rho: float = 0.0):
+                 provenance_rho: float = 0.0, region: str | None = None):
         super().__init__()
         assert mass_mode in ("dfs", "uniform", "count", "thin", "superob")
         self.mass_mode = mass_mode
@@ -154,7 +155,13 @@ class GodasRowModel(nn.Module):
         # the kernel spans (x, y, z, t) PLUS a variable-group axis, so tokens
         # carrying different physical quantities are not consolidated as
         # duplicates just because they share a location
-        base_scales = (LENGTH_SCALES_KM if physical_units else LENGTH_SCALES)
+        # ``region`` selects the box whose physical span sets the kernel's
+        # length scales. None keeps the historical Gulf Stream extent, so every
+        # run made before this existed is unchanged.
+        self.region = region
+        self.box_extent = extent_for(region)
+        base_scales = (length_scales_km_for(region) if physical_units
+                       else LENGTH_SCALES)
         self.basis = RandomFourierBasis(
             n_features,
             base_scales + variable_group_coords.scales(N_VARIABLE_GROUPS),
@@ -185,7 +192,8 @@ class GodasRowModel(nn.Module):
             # weight is the token's physical footprint in km² instead of a
             # dimensionless 1, so lambda = noise_area * support_area and the
             # per-token operating point s = support/noise is interpretable.
-            coord = (to_physical(s["coord"]) if self.physical_units
+            coord = (to_physical(s["coord"], self.box_extent)
+                     if self.physical_units
                      else s["coord"])
             if self.physical_units and "support_area" in s:
                 area = s["support_area"].to(torch.float64)

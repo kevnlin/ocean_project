@@ -1,0 +1,89 @@
+{
+ "package": "P4",
+ "track": "A",
+ "region": "gulfstream",
+ "results": {
+  "version": 2,
+  "checkpoint": "external/Senseiver/lightning_logs/version_2/checkpoints/train-epoch=3809.ckpt",
+  "months": 36,
+  "channels": {
+   "TEMP": {
+    "rmse": 2.2192484739623968,
+    "n_wmos": 60,
+    "n": 48215,
+    "ci_wmo": {
+     "point": 2.2192484739623968,
+     "lo": 1.7298536754858058,
+     "hi": 2.7066369697031463,
+     "n_clusters": 60,
+     "cluster_unit": "wmo",
+     "n_boot": 4000,
+     "alpha": 0.05,
+     "method_label": "senseiver",
+     "kind": "percentile",
+     "n_seeds": 1,
+     "excludes_zero": true
+    }
+   },
+   "SALT": {
+    "rmse": 0.4064708738408273,
+    "n_wmos": 60,
+    "n": 48215,
+    "ci_wmo": {
+     "point": 0.4064708738408273,
+     "lo": 0.3319249484355832,
+     "hi": 0.47620611979174104,
+     "n_clusters": 60,
+     "cluster_unit": "wmo",
+     "n_boot": 4000,
+     "alpha": 0.05,
+     "method_label": "senseiver",
+     "kind": "percentile",
+     "n_seeds": 1,
+     "excludes_zero": true
+    }
+   }
+  },
+  "godas_vs_argo_ceiling": {
+   "TEMP": {
+    "rmse": 2.205655839885314,
+    "n_wmos": 60
+   },
+   "SALT": {
+    "rmse": 0.4064200398517452,
+    "n_wmos": 60
+   }
+  }
+ },
+ "seeds": [
+  123
+ ],
+ "command": "experiments/56_senseiver_score.py --region gulfstream",
+ "checkpoint_hashes": {},
+ "counts": {
+  "months": 36,
+  "eval_split": "development"
+ },
+ "warnings": [
+  "The Senseiver is trained to reproduce a GRIDDED field (GODAS) because its architecture requires dense training snapshots. This score therefore measures how closely a GODAS emulator matches real held-out floats, which is not the same question the DFS rows answer.",
+  "git working tree was dirty: the recorded commit does not fully identify the code that produced these numbers"
+ ],
+ "notes": "Authors' model and inference; this script only loads the checkpoint and scores the output at held-out float positions.",
+ "protocol_version": "crosscheck_v1",
+ "protocol_hash_": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7",
+ "git_commit_": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "git_dirty_": true,
+ "data_manifests": {
+  "argo_cohort:gulfstream": "3be6704343edcbe0237a7a28d9fab36c9a6c6785cc483d831aacf3419877bcc8",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "collection_manifests": {
+  "godas_gulfstream": "0775e3cc95be48b825289716f8e596d1b682554ce6f7a1fe725acc38ba42c428",
+  "godas_npac_gyre": "3a185a12d15d9211842ffcdcefafdd3ca40d47965d73147f057376c7086995a9",
+  "argo": "484abc1334fc0267d24a635e8028964f37253385bb18a653635089ae352bf85f",
+  "argo_cohort": "277fedfeaeaf07144f5a0804391646d8709c05bb04e684b80ae6d902b95ae75b",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "created_utc": "2026-09-07T13:50:29Z",
+ "host": "brev-rct25klo4"
+}

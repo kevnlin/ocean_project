@@ -103,6 +103,10 @@ ap.add_argument("--n-dec-blocks", type=int, default=2)
 ap.add_argument("--anchor-grid", default="12,24",
                 help="'NLAT,NLON' geographically anchored latents "
                      "(overrides --n-latent); '' to disable")
+ap.add_argument("--patch-surf", default="",
+                help="'H,W' patch for the SST/SSS (and SSH) encoder; default "
+                     "uses the shared 10x12. Finer patches test whether the "
+                     "gridded pathway is inert because of patch averaging.")
 ap.add_argument("--query-chunk", type=int, default=1024,
                 help="D4RT decoder query chunk: memory only, never couples queries")
 ap.add_argument("--aug-min", type=int, default=200)
@@ -218,6 +222,8 @@ build_kw = dict(d_model=args.d_model, n_latent=args.n_latent,
                 n_heads=args.n_heads, n_self_blocks=args.n_self_blocks,
                 seed=args.seed, anchor_grid=anchor,
                 with_ssh=("ssh" in INCLUDE))
+if args.patch_surf:
+    build_kw["patch_surf"] = tuple(int(x) for x in args.patch_surf.split(","))
 if args.variant == "d4rt":
     build_kw.update(n_dec_blocks=args.n_dec_blocks, max_lead=1,
                     query_chunk=args.query_chunk)

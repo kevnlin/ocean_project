@@ -53,14 +53,25 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--start-year", type=int, default=2000)
 ap.add_argument("--end-year", type=int, default=2025)
 ap.add_argument("--workers", type=int, default=4)
-ap.add_argument("--out", default=None, help="default: <repo>/data/godas_gulfstream")
+# P1 needs a SECOND region.  Defaults are the frozen Gulf Stream box, so every
+# existing invocation is bit-identical; a second region is a pure CLI change.
+# Keep the SPANS (25 deg lat, 51 deg lon) if you want the same 38 x 26 grid,
+# because the model, token budget and patch tiling are all sized to that shape.
+ap.add_argument("--lat", type=float, nargs=2, default=list(LAT),
+                metavar=("LAT0", "LAT1"))
+ap.add_argument("--lon", type=float, nargs=2, default=list(LON),
+                metavar=("LON0", "LON1"), help="0-360 convention")
+ap.add_argument("--region-name", default="gulfstream")
+ap.add_argument("--out", default=None,
+                help="default: <repo>/data/godas_<region-name>")
 ap.add_argument("--smoke", action="store_true",
                 help="one year only. NOT usable as training input — the "
                      "training split needs the full year range.")
 args = ap.parse_args()
 
+LAT, LON = tuple(args.lat), tuple(args.lon)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OUT = args.out or os.path.join(ROOT, "data", "godas_gulfstream")
+OUT = args.out or os.path.join(ROOT, "data", f"godas_{args.region_name}")
 os.makedirs(OUT, exist_ok=True)
 years = ([args.start_year] if args.smoke
          else list(range(args.start_year, args.end_year + 1)))
@@ -174,7 +185,8 @@ def main() -> None:
         "acknowledgement": "NOAA PSL, Boulder, Colorado, USA",
         "role": "mentor dfs_d4rt_intern_plan.md \u00a74 regional subset",
         "access": "OPeNDAP server-side subset via " + BASE,
-        "region": {"lat": list(LAT), "lon": list(LON)},
+        "region": {"lat": list(LAT), "lon": list(LON),
+                   "name": args.region_name},
         "lon_interval_note": (
             "slice(280, 331) on 1-degree centres at .5 gives 51 raw cells -> the "
             "doc's 38 x 26 experiment grid after stride 2. A literal 280-330 gives "

@@ -1,0 +1,85 @@
+{
+ "git_commit": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "git_dirty": true,
+ "protocol_hash": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7",
+ "protocol_version": "crosscheck_v1",
+ "data_manifests": {
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "checkpoints": {
+  "count_expertlocal_cbottle_s1234.pt": "7de57b2e9d3e47d05bd3687ef57b9c90d8b13b75b072f001eaa97edf1c007612",
+  "count_oi_expert_cbottle_s1234.pt": "dace46fee643c0dac604109931b9e4de5e7c1d48230de289f9e8ef2c948a91f9",
+  "dfs_expertlocal_cbottle_s1234.pt": "ae76f8c25c4784faf544d38b7d42787676d37caa16b95f88e1aab9d800d9a6a7",
+  "dfs_oi_expert_cbottle_s1234.pt": "6689544a0926aaaeba8066e8c228301714fba6aeee4057ff48c5735084571670",
+  "superob_expertlocal_cbottle_s1234.pt": "43051f5d0c694d2b5137e0bf918341285a51ec9b71c4d2f8e84eb16f250dd49e",
+  "thin_expertlocal_cbottle_s1234.pt": "6a121baa0cf190c794ccb889a2db361e4500c26e1c77bf374a0844b43c973b55",
+  "uniform_expertlocal_cbottle_s1234.pt": "f5fcb6b510d7f4e050ddd86d4b0d20e7f82fa167fe9b67c6d060a20baa3813fc",
+  "uniform_oi_expert_cbottle_s1234.pt": "36988eb6107668245c3c025b379a14c8ac871af56f139debad7f227a0bcdb92e"
+ },
+ "primary_endpoint": {
+  "quantity": "pooled RMSE on held-out-float measurements (train-only z units)",
+  "primary_channel": "TEMP",
+  "secondary_channel": "SALT",
+  "lead": 0,
+  "primary_cluster_unit": "wmo",
+  "secondary_cluster_unit": "source_month",
+  "split": "holdout",
+  "uses": "exactly once, after freezing"
+ },
+ "registered_rows": [
+  "objective_interpolation",
+  "count_expertlocal_cbottle",
+  "uniform_expertlocal_cbottle",
+  "dfs_expertlocal_cbottle",
+  "thin_expertlocal_cbottle",
+  "superob_expertlocal_cbottle",
+  "count_oi_expert_cbottle",
+  "uniform_oi_expert_cbottle",
+  "dfs_oi_expert_cbottle"
+ ],
+ "reference_rows": [
+  "train_climatology",
+  "source_persistence",
+  "en4",
+  "ecco"
+ ],
+ "region": "npac_gyre",
+ "seed": 1234,
+ "scored_rows": [
+  "count_expertlocal_cbottle",
+  "uniform_expertlocal_cbottle",
+  "dfs_expertlocal_cbottle",
+  "thin_expertlocal_cbottle",
+  "superob_expertlocal_cbottle",
+  "count_oi_expert_cbottle",
+  "uniform_oi_expert_cbottle",
+  "dfs_oi_expert_cbottle"
+ ],
+ "frozen_utc": "2026-09-07T13:17:14Z",
+ "holdout_read": true,
+ "opened_utc": "2026-09-07T13:17:44Z",
+ "freeze_mismatches": [],
+ "forced": false,
+ "corrections": [
+  {
+   "corrected_utc": "2026-09-08T00:08:08Z",
+   "reason": "the recorded open resolved checkpoints by filename and loaded models the freeze record does not pin",
+   "rows_corrected": [
+    "count_oi_expert_cbottle",
+    "dfs_oi_expert_cbottle",
+    "uniform_oi_expert_cbottle"
+   ],
+   "scored_sha256_before": {
+    "count_oi_expert_cbottle": "8fc743bf6a1e92a5c2b10bd0fcd3ed403239fcda49d18bd98f0f0efb43ed48de",
+    "dfs_oi_expert_cbottle": "357122185d432ba19cbd5223d51b9344e5e5423b4a6c603c1d6f29eecaca36f3",
+    "uniform_oi_expert_cbottle": "b2934b59cb1c6aea166f948f81e7a308e88a5c74e153270d8247eed24e46cfee"
+   },
+   "frozen_sha256": {
+    "count_oi_expert_cbottle": "dace46fee643c0dac604109931b9e4de5e7c1d48230de289f9e8ef2c948a91f9",
+    "dfs_oi_expert_cbottle": "6689544a0926aaaeba8066e8c228301714fba6aeee4057ff48c5735084571670",
+    "uniform_oi_expert_cbottle": "36988eb6107668245c3c025b379a14c8ac871af56f139debad7f227a0bcdb92e"
+   },
+   "note": "not a second open: same freeze record, checkpoints, cohort and endpoint. Nothing was retrained or retuned between the open and this correction."
+  }
+ ]
+}

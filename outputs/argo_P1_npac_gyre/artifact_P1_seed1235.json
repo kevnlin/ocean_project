@@ -1,0 +1,1997 @@
+{
+ "package": "P1",
+ "track": "A",
+ "region": "npac_gyre",
+ "results": {
+  "layout_verification": {
+   "264": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1780.2255037597927,
+     "n_floats": 18
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 499.34604211165964,
+     "n_floats": 7
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2253.9612487385652,
+     "n_floats": 24
+    }
+   },
+   "265": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1955.6956157001703,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 502.416510733961,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2264.1759134972194,
+     "n_floats": 24
+    }
+   },
+   "266": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1812.4158040099078,
+     "n_floats": 19
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 378.1411622012665,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2059.554212403321,
+     "n_floats": 24
+    }
+   },
+   "267": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1999.090796723055,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 432.17774083882546,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2247.953606503894,
+     "n_floats": 24
+    }
+   },
+   "268": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 2076.0267499093907,
+     "n_floats": 18
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 351.6250952244147,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2172.020740323175,
+     "n_floats": 24
+    }
+   },
+   "269": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1781.1473321282813,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 598.8439476113256,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2106.5661472885245,
+     "n_floats": 24
+    }
+   },
+   "270": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 2138.1369383136175,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 508.2505371192224,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2167.9611448446344,
+     "n_floats": 24
+    }
+   },
+   "271": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1982.917809608092,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 439.27790456368706,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2190.4429681383544,
+     "n_floats": 24
+    }
+   },
+   "272": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1987.1670928487476,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 516.9599216824389,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2204.5064860520283,
+     "n_floats": 24
+    }
+   },
+   "273": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1989.061958837834,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 451.38016867054534,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2188.2687947989416,
+     "n_floats": 24
+    }
+   },
+   "274": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1890.700886327045,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 467.1199044274668,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2231.3366969035947,
+     "n_floats": 24
+    }
+   },
+   "275": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 2266.9271948770333,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 471.8027976148525,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2189.5756129871347,
+     "n_floats": 24
+    }
+   }
+  },
+  "training": {
+   "dfs_expertlocal_cbottle": {
+    "loaded_from": "outputs/argo_P0_npac_gyre/dfs_expertlocal_cbottle_s1235.pt",
+    "checkpoint_sha256": "cdcc18b8190fa8d3269e74f0270e8682c611e933e73e2e7c4a1b648c3c24870d",
+    "trained": false
+   },
+   "uniform_expertlocal_cbottle": {
+    "loaded_from": "outputs/argo_P0_npac_gyre/uniform_expertlocal_cbottle_s1235.pt",
+    "checkpoint_sha256": "55318e2278322f4df81effd4df8fe1781b1ad6df4fb57857226ce588aa5299ff",
+    "trained": false
+   },
+   "count_expertlocal_cbottle": {
+    "loaded_from": "outputs/argo_P0_npac_gyre/count_expertlocal_cbottle_s1235.pt",
+    "checkpoint_sha256": "bab2b321409bebb96af258e6c4d397a8b178bfe03193dc52f7feacdece825896",
+    "trained": false
+   },
+   "thin_expertlocal_cbottle": {
+    "loaded_from": "outputs/argo_P0_npac_gyre/thin_expertlocal_cbottle_s1235.pt",
+    "checkpoint_sha256": "646eb180cecc9c03b53a8260a6c51f8926539f4cff4cc84f5cbe88e9c0bd5e97",
+    "trained": false
+   },
+   "superob_expertlocal_cbottle": {
+    "loaded_from": "outputs/argo_P0_npac_gyre/superob_expertlocal_cbottle_s1235.pt",
+    "checkpoint_sha256": "f0e6c1f0be113a6e0f6937437aa59c7ee7934e82eeb1e1362096b13c50101cf5",
+    "trained": false
+   }
+  },
+  "layouts": {
+   "dfs_expertlocal_cbottle": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.38454417408370606,
+        "100-300m": 0.28302862615757285,
+        "300-max": 0.3762862074827602
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3357723936757981,
+         "lo": 0.3179323021994292,
+         "hi": 0.356636135171265,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3357723936757981,
+         "lo": 0.31799393610430854,
+         "hi": 0.3541821584077048,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3357723936757981
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.34148680674349785,
+        "100-300m": 0.6261149069121825,
+        "300-max": 1.904866501343192
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9529093209861577,
+         "lo": 0.28238470555028866,
+         "hi": 1.6182927653733994,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9529093209861578,
+         "lo": 0.4624118651449726,
+         "hi": 1.3736741022518668,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9529093209861578
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.403458027282467,
+        "100-300m": 0.30373394821346245,
+        "300-max": 0.3927720084713331
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3547569512573388,
+         "lo": 0.3386193463771454,
+         "hi": 0.3746566582806195,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3547569512573388,
+         "lo": 0.3311665473811434,
+         "hi": 0.38062449790600367,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3547569512573388
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3575676989022571,
+        "100-300m": 0.6372012545677167,
+        "300-max": 1.9107580739340928
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.960600778055972,
+         "lo": 0.29763821490256276,
+         "hi": 1.626410284153918,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9606007780559718,
+         "lo": 0.47106248036899984,
+         "hi": 1.38117382436072,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9606007780559718
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.3871999208620629,
+        "100-300m": 0.2953826276854317,
+        "300-max": 0.37920578549133344
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3426012547456056,
+         "lo": 0.32277742637839163,
+         "hi": 0.36679141098858586,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3426012547456056,
+         "lo": 0.32577148302002795,
+         "hi": 0.3600688178035252,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3426012547456056
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.34302016806481633,
+        "100-300m": 0.6269842731811287,
+        "300-max": 1.9055722184242394
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9536302944777852,
+         "lo": 0.2846188931196957,
+         "hi": 1.6191012559375144,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9536302944777851,
+         "lo": 0.4632575330764052,
+         "hi": 1.3744092020538456,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9536302944777851
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.012155696511733205,
+      "lo": 0.0004248987469041345,
+      "hi": 0.021930240424470403,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "dfs_expertlocal_cbottle_clustered - dfs_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     },
+     "SALT": {
+      "point": 0.006970483578186748,
+      "lo": 0.004624023248111404,
+      "hi": 0.021067639991604877,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "dfs_expertlocal_cbottle_clustered - dfs_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   },
+   "uniform_expertlocal_cbottle": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.41157525235744863,
+        "100-300m": 0.3123176074829363,
+        "300-max": 0.32541036971544723
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3486704053731728,
+         "lo": 0.32907429335000965,
+         "hi": 0.3713678189000474,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3486704053731728,
+         "lo": 0.3271215405103274,
+         "hi": 0.37004238546596646,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3486704053731728
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3383652426569667,
+        "100-300m": 0.6302917371916945,
+        "300-max": 1.890973160114854
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9487836154575571,
+         "lo": 0.28650043852019635,
+         "hi": 1.607022351934048,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9487836154575571,
+         "lo": 0.4673338670772825,
+         "hi": 1.3605269172231964,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9487836154575571
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.41639591754561667,
+        "100-300m": 0.32303590641294483,
+        "300-max": 0.34377382155731023
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3584949658763417,
+         "lo": 0.33961288586842675,
+         "hi": 0.3800113006548264,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3584949658763418,
+         "lo": 0.33425341281515764,
+         "hi": 0.3838662479415576,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3584949658763418
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3531660343413956,
+        "100-300m": 0.6380267586200071,
+        "300-max": 1.9002744893704753
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9564880358472316,
+         "lo": 0.30285948100970705,
+         "hi": 1.6139568467476852,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9564880358472314,
+         "lo": 0.4780179401579803,
+         "hi": 1.3683536678410266,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9564880358472314
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.41443888233681125,
+        "100-300m": 0.32011036825901046,
+        "300-max": 0.3285610179172836
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3537854246748389,
+         "lo": 0.33248848064870407,
+         "hi": 0.3786467389775695,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.35378542467483887,
+         "lo": 0.3325804362724523,
+         "hi": 0.37478746476411673,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.35378542467483887
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.336876301557077,
+        "100-300m": 0.6310157468168297,
+        "300-max": 1.8927707164556598
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9495256881204136,
+         "lo": 0.2882976997770664,
+         "hi": 1.60788049126189,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9495256881204137,
+         "lo": 0.4684545040218564,
+         "hi": 1.3614156190189146,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9495256881204137
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.004709541201502798,
+      "lo": -0.005076863804621777,
+      "hi": 0.011930527914182315,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "uniform_expertlocal_cbottle_clustered - uniform_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": false
+     },
+     "SALT": {
+      "point": 0.00696234772681803,
+      "lo": 0.004184637200788974,
+      "hi": 0.02354620529514691,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "uniform_expertlocal_cbottle_clustered - uniform_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   },
+   "count_expertlocal_cbottle": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.40468845109859086,
+        "100-300m": 0.28347783930241277,
+        "300-max": 0.3385780965312341
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3358993657170985,
+         "lo": 0.318299047039769,
+         "hi": 0.35658184509570423,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3358993657170985,
+         "lo": 0.31509046155653414,
+         "hi": 0.35708315179839645,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3358993657170985
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.34168435139692876,
+        "100-300m": 0.6251080747972027,
+        "300-max": 1.8928613467281037
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9481373520400974,
+         "lo": 0.2739532814903616,
+         "hi": 1.6118110620552024,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9481373520400974,
+         "lo": 0.4577665922694013,
+         "hi": 1.3675199327013339,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9481373520400974
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4126715396961181,
+        "100-300m": 0.296741942815123,
+        "300-max": 0.3524632860972429
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3471476961208745,
+         "lo": 0.33048332573804656,
+         "hi": 0.3673510841471252,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3471476961208744,
+         "lo": 0.32316459700771855,
+         "hi": 0.37266336830685204,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3471476961208744
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3599951820944618,
+        "100-300m": 0.6352225335178272,
+        "300-max": 1.901223950158043
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9567000389413124,
+         "lo": 0.29156962194114855,
+         "hi": 1.6203396573172881,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9567000389413124,
+         "lo": 0.4676479189623801,
+         "hi": 1.375479161464825,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9567000389413124
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4075310035505431,
+        "100-300m": 0.2921182760041667,
+        "300-max": 0.34136342186443663
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.34116759806078906,
+         "lo": 0.3217165572647319,
+         "hi": 0.3642516432235282,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3411675980607891,
+         "lo": 0.32071112076466624,
+         "hi": 0.36176176983461905,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3411675980607891
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.33996537649015546,
+        "100-300m": 0.6257256554665866,
+        "300-max": 1.8926592036424073
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.948073149911877,
+         "lo": 0.2739753027721852,
+         "hi": 1.611369590263333,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9480731499118771,
+         "lo": 0.45702892005786067,
+         "hi": 1.3672702424768266,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9480731499118771
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.005980098060085426,
+      "lo": -0.0032046979772341164,
+      "hi": 0.012756208857743201,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "count_expertlocal_cbottle_clustered - count_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": false
+     },
+     "SALT": {
+      "point": 0.008626889029435425,
+      "lo": 0.00605916067290615,
+      "hi": 0.027372813912838904,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "count_expertlocal_cbottle_clustered - count_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   },
+   "thin_expertlocal_cbottle": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4052424603961643,
+        "100-300m": 0.2991263975135281,
+        "300-max": 0.31647306606654335
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.33888581435416437,
+         "lo": 0.3208169204457235,
+         "hi": 0.35965623559043264,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.33888581435416437,
+         "lo": 0.3184684730373454,
+         "hi": 0.35941329850780845,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.33888581435416437
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.33423495259201064,
+        "100-300m": 0.6290886445755092,
+        "300-max": 1.8897349136985995
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9474655825528416,
+         "lo": 0.289063669720907,
+         "hi": 1.6041250252951618,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9474655825528415,
+         "lo": 0.4679351971606142,
+         "hi": 1.3579395450180518,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9474655825528415
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4119346871213997,
+        "100-300m": 0.3107331858991207,
+        "300-max": 0.32992967734300516
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.34888386824832485,
+         "lo": 0.33111577696532285,
+         "hi": 0.36966898563294176,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3488838682483249,
+         "lo": 0.3256296694927725,
+         "hi": 0.373253966505376,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3488838682483249
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3491324933386601,
+        "100-300m": 0.6357348866369882,
+        "300-max": 1.900745982375356
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.955433769051236,
+         "lo": 0.3045659756634027,
+         "hi": 1.612290811181882,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.955433769051236,
+         "lo": 0.4789129087121289,
+         "hi": 1.3660556058284348,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.955433769051236
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4064372474323627,
+        "100-300m": 0.30437965361818203,
+        "300-max": 0.3186932449478414
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.34204989820161535,
+         "lo": 0.32278251245693806,
+         "hi": 0.36477859874086926,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.34204989820161535,
+         "lo": 0.3216243000257377,
+         "hi": 0.36220469669016575,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.34204989820161535
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.3316496251826477,
+        "100-300m": 0.6289784991159469,
+        "300-max": 1.8907839581624488
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9475341940173484,
+         "lo": 0.28912370272562493,
+         "hi": 1.604538143488177,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9475341940173485,
+         "lo": 0.4681306019638819,
+         "hi": 1.3581872558159356,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9475341940173485
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.006833970046709492,
+      "lo": -0.0006464677698468493,
+      "hi": 0.012710126849618853,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "thin_expertlocal_cbottle_clustered - thin_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": false
+     },
+     "SALT": {
+      "point": 0.007899575033887607,
+      "lo": 0.005438683165552733,
+      "hi": 0.024107861378931127,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "thin_expertlocal_cbottle_clustered - thin_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   },
+   "superob_expertlocal_cbottle": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.40487806056589204,
+        "100-300m": 0.2923548088097132,
+        "300-max": 0.3159642715942384
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3356846183420379,
+         "lo": 0.31780824663120466,
+         "hi": 0.3565327736856736,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3356846183420379,
+         "lo": 0.31529897562193243,
+         "hi": 0.35623165873619145,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3356846183420379
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.33762090188227145,
+        "100-300m": 0.6280997617533093,
+        "300-max": 1.8909011195045111
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9479451158739837,
+         "lo": 0.2846189065543586,
+         "hi": 1.6060297913217,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9479451158739836,
+         "lo": 0.4663389538088285,
+         "hi": 1.3593011150331655,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9479451158739836
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.41114846482149786,
+        "100-300m": 0.30389701345716186,
+        "300-max": 0.32884475231180843
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.34536774798427977,
+         "lo": 0.327641865393381,
+         "hi": 0.3660383443630116,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.34536774798427977,
+         "lo": 0.32213848898029274,
+         "hi": 0.3697657914698157,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.34536774798427977
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.35392134411837517,
+        "100-300m": 0.6351313129624041,
+        "300-max": 1.9013457965443474
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9560056347079272,
+         "lo": 0.29926151296979636,
+         "hi": 1.614359162170949,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9560056347079272,
+         "lo": 0.4763534562631539,
+         "hi": 1.3685581955337542,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9560056347079272
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4063890644961508,
+        "100-300m": 0.2981773528124275,
+        "300-max": 0.3174602140895936
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.3390678978461954,
+         "lo": 0.3198924279192415,
+         "hi": 0.3613807116036221,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.3390678978461954,
+         "lo": 0.318804087646693,
+         "hi": 0.35927525459266496,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.3390678978461954
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.33478371991217926,
+        "100-300m": 0.6281191996191848,
+        "300-max": 1.8912837951672614
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.9477788293306718,
+         "lo": 0.2847383894139398,
+         "hi": 1.6060116959729849,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.9477788293306718,
+         "lo": 0.4659662955407516,
+         "hi": 1.3594069182819515,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.9477788293306718
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.006299850138084373,
+      "lo": -0.001424947314479362,
+      "hi": 0.012422627726244265,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "superob_expertlocal_cbottle_clustered - superob_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": false
+     },
+     "SALT": {
+      "point": 0.008226805377255397,
+      "lo": 0.005732348936916434,
+      "hi": 0.024104058199123757,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "superob_expertlocal_cbottle_clustered - superob_expertlocal_cbottle_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   },
+   "objective_interpolation": {
+    "natural": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4992585685996582,
+        "100-300m": 0.8037824887141455,
+        "300-max": 0.9952276733741875
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.7655221858125565,
+         "lo": 0.6575531244229329,
+         "hi": 0.8824140047759345,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.7655221858125565,
+         "lo": 0.7486547405296071,
+         "hi": 0.7824873085290752,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.7655221858125565
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.5456022600647513,
+        "100-300m": 1.008847775704619,
+        "300-max": 2.173457874921001
+       },
+       "ci": {
+        "wmo": {
+         "point": 1.2174040418068641,
+         "lo": 0.7256722395959758,
+         "hi": 1.8172072667785455,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 1.2174040418068641,
+         "lo": 0.8587851880926358,
+         "hi": 1.5883839433671099,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 1.2174040418068641
+      }
+     }
+    },
+    "clustered": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.7942664703687292,
+        "100-300m": 0.8475287624666491,
+        "300-max": 1.005374887434577
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.8633469088884117,
+         "lo": 0.7345643080273555,
+         "hi": 0.999184099988955,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.8633469088884117,
+         "lo": 0.8475782601279582,
+         "hi": 0.880235753338145,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.8633469088884117
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.8091566247230415,
+        "100-300m": 1.035296267081192,
+        "300-max": 2.1811861948677387
+       },
+       "ci": {
+        "wmo": {
+         "point": 1.275583960294339,
+         "lo": 0.8032680165552253,
+         "hi": 1.8572477174385844,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 1.275583960294339,
+         "lo": 0.9348277195896053,
+         "hi": 1.6334040563764511,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 1.275583960294339
+      }
+     }
+    },
+    "dispersed": {
+     "n_targets": 36656,
+     "n_months": 36,
+     "n_wmos": 42,
+     "lead": 0,
+     "channels": {
+      "TEMP": {
+       "by_band": {
+        "0-100m": 0.4025708563494473,
+        "100-300m": 0.7910622388871817,
+        "300-max": 0.9920829143337379
+       },
+       "ci": {
+        "wmo": {
+         "point": 0.7398783205060021,
+         "lo": 0.6428713804182704,
+         "hi": 0.8446168069748551,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 0.739878320506002,
+         "lo": 0.723760885557175,
+         "hi": 0.7556020228640845,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 0.739878320506002
+      },
+      "SALT": {
+       "by_band": {
+        "0-100m": 0.4764273131383259,
+        "100-300m": 1.001165635782453,
+        "300-max": 2.172928340727476
+       },
+       "ci": {
+        "wmo": {
+         "point": 1.2049031100337222,
+         "lo": 0.7104346125227069,
+         "hi": 1.807703310158452,
+         "n_clusters": 42,
+         "cluster_unit": "wmo",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        },
+        "source_month": {
+         "point": 1.2049031100337224,
+         "lo": 0.8407469732956441,
+         "hi": 1.5784378667652719,
+         "n_clusters": 36,
+         "cluster_unit": "source_month",
+         "n_boot": 4000,
+         "alpha": 0.05,
+         "method_label": "",
+         "kind": "percentile",
+         "n_seeds": 1,
+         "excludes_zero": true
+        }
+       },
+       "rmse": 1.2049031100337224
+      }
+     }
+    },
+    "layout_gap": {
+     "TEMP": {
+      "point": 0.1234685883824096,
+      "lo": 0.08600463217020768,
+      "hi": 0.161648104137385,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "objective_interpolation_clustered - objective_interpolation_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     },
+     "SALT": {
+      "point": 0.07068085026061688,
+      "lo": 0.04301606847846083,
+      "hi": 0.13061867677432143,
+      "n_clusters": 42,
+      "cluster_unit": "wmo",
+      "n_boot": 4000,
+      "alpha": 0.05,
+      "method_label": "objective_interpolation_clustered - objective_interpolation_dispersed",
+      "kind": "percentile",
+      "n_seeds": 1,
+      "excludes_zero": true
+     }
+    }
+   }
+  },
+  "layout_did": {
+   "point": -0.007446155310230407,
+   "lo": -0.01187301562652757,
+   "hi": -0.0037062262452095644,
+   "n_clusters": 42,
+   "cluster_unit": "wmo",
+   "n_boot": 4000,
+   "alpha": 0.05,
+   "method_label": "DiD = gap(b) - gap(a)",
+   "kind": "percentile",
+   "n_seeds": 1,
+   "excludes_zero": true
+  },
+  "comparable": {
+   "rmse": {
+    "dfs_expertlocal_cbottle|natural": {
+     "TEMP": 0.3357723936757981,
+     "SALT": 0.9529093209861578
+    },
+    "dfs_expertlocal_cbottle|clustered": {
+     "TEMP": 0.3547569512573388,
+     "SALT": 0.9606007780559718
+    },
+    "dfs_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.3426012547456056,
+     "SALT": 0.9536302944777851
+    },
+    "uniform_expertlocal_cbottle|natural": {
+     "TEMP": 0.3486704053731728,
+     "SALT": 0.9487836154575571
+    },
+    "uniform_expertlocal_cbottle|clustered": {
+     "TEMP": 0.3584949658763418,
+     "SALT": 0.9564880358472314
+    },
+    "uniform_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.35378542467483887,
+     "SALT": 0.9495256881204137
+    },
+    "count_expertlocal_cbottle|natural": {
+     "TEMP": 0.3358993657170985,
+     "SALT": 0.9481373520400974
+    },
+    "count_expertlocal_cbottle|clustered": {
+     "TEMP": 0.3471476961208744,
+     "SALT": 0.9567000389413124
+    },
+    "count_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.3411675980607891,
+     "SALT": 0.9480731499118771
+    },
+    "thin_expertlocal_cbottle|natural": {
+     "TEMP": 0.33888581435416437,
+     "SALT": 0.9474655825528415
+    },
+    "thin_expertlocal_cbottle|clustered": {
+     "TEMP": 0.3488838682483249,
+     "SALT": 0.955433769051236
+    },
+    "thin_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.34204989820161535,
+     "SALT": 0.9475341940173485
+    },
+    "superob_expertlocal_cbottle|natural": {
+     "TEMP": 0.3356846183420379,
+     "SALT": 0.9479451158739836
+    },
+    "superob_expertlocal_cbottle|clustered": {
+     "TEMP": 0.34536774798427977,
+     "SALT": 0.9560056347079272
+    },
+    "superob_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.3390678978461954,
+     "SALT": 0.9477788293306718
+    },
+    "objective_interpolation|natural": {
+     "TEMP": 0.7655221858125565,
+     "SALT": 1.2174040418068641
+    },
+    "objective_interpolation|clustered": {
+     "TEMP": 0.8633469088884117,
+     "SALT": 1.275583960294339
+    },
+    "objective_interpolation|dispersed": {
+     "TEMP": 0.739878320506002,
+     "SALT": 1.2049031100337224
+    }
+   },
+   "n_wmos": 42,
+   "n_targets": 36656,
+   "n_months": 36,
+   "ranking": [
+    "superob_expertlocal_cbottle",
+    "dfs_expertlocal_cbottle",
+    "count_expertlocal_cbottle",
+    "thin_expertlocal_cbottle",
+    "uniform_expertlocal_cbottle",
+    "objective_interpolation"
+   ],
+   "layout_did": {
+    "point": -0.007446155310230407,
+    "lo": -0.01187301562652757,
+    "hi": -0.0037062262452095644,
+    "excludes_zero": true
+   }
+  }
+ },
+ "seeds": [
+  1235
+ ],
+ "command": "experiments/45_argo_real_data.py --package P1 --region npac_gyre --rows dfs_expertlocal_cbottle,uniform_expertlocal_cbottle,count_expertlocal_cbottle,thin_expertlocal_cbottle,superob_expertlocal_cbottle --seed 1235 --split-protocol main --n-boot 4000 --require-checkpoints --output outputs/argo_P1_npac_gyre",
+ "checkpoint_hashes": {},
+ "counts": {
+  "layout_months": 36
+ },
+ "warnings": [
+  "git working tree was dirty: the recorded commit does not fully identify the code that produced these numbers"
+ ],
+ "notes": "Input: real Argo cohort floats. Target: real measurements from WMO-disjoint held-out floats. No held-out float appears in any training month.",
+ "protocol_version": "crosscheck_v1",
+ "protocol_hash_": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7",
+ "git_commit_": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "git_dirty_": true,
+ "data_manifests": {
+  "argo_cohort:npac_gyre": "9196a4b50269a23fab049c8240a0cee4b0d3e3465ece0bb5fd042b6b382615ea",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "collection_manifests": {
+  "godas_gulfstream": "0775e3cc95be48b825289716f8e596d1b682554ce6f7a1fe725acc38ba42c428",
+  "godas_npac_gyre": "3a185a12d15d9211842ffcdcefafdd3ca40d47965d73147f057376c7086995a9",
+  "argo": "484abc1334fc0267d24a635e8028964f37253385bb18a653635089ae352bf85f",
+  "argo_cohort": "277fedfeaeaf07144f5a0804391646d8709c05bb04e684b80ae6d902b95ae75b",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "created_utc": "2026-09-07T22:13:55Z",
+ "host": "brev-rct25klo4"
+}
