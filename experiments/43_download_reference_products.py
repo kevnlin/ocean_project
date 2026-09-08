@@ -98,6 +98,12 @@ ap.add_argument("--end-year", type=int, default=2025)
 ap.add_argument("--en4-correction", default="g10", choices=["g10", "c13", "c14", "l09"])
 ap.add_argument("--workers", type=int, default=4)
 ap.add_argument("--out", default=None)
+ap.add_argument("--max-depth", type=float, default=MAX_DEPTH_M,
+                help="deepest level to keep. The 700-1400 m band needs ~1450.")
+ap.add_argument("--suffix", default="",
+                help="appended to the region label, e.g. '_deep', so a deeper "
+                     "cut lands in its own files and the existing 20-level "
+                     "artifacts keep referring to unchanged data")
 ap.add_argument("--smoke", action="store_true", help="one year only")
 args = ap.parse_args()
 
@@ -138,7 +144,7 @@ def _cut(ds: xr.Dataset, region: str, latname="lat", lonname="lon") -> xr.Datase
     for dn in ("depth", "Z", "z", "lev"):
         if dn in ds.dims:
             d = np.abs(ds[dn].values)
-            ds = ds.isel({dn: np.flatnonzero(d <= MAX_DEPTH_M)})
+            ds = ds.isel({dn: np.flatnonzero(d <= args.max_depth)})
             break
     return ds
 
@@ -153,7 +159,7 @@ def fetch_en4(year: int) -> list[dict]:
     """
     out = []
     want = {r: os.path.join(OUT, "en4",
-                            f"EN.4.2.2.{args.en4_correction}.{r}.{year}.nc")
+                            f"EN.4.2.2.{args.en4_correction}.{r}{args.suffix}.{year}.nc")
             for r in args.regions}
     if all(os.path.exists(p) and os.path.getsize(p) > 0 for p in want.values()):
         return [dict(product="en4", region=r, year=year, file=os.path.relpath(p, OUT),
@@ -191,7 +197,7 @@ def fetch_en4(year: int) -> list[dict]:
                                          "Government Licence"))
         _write_atomic(ds, want[region])
         p = want[region]
-        out.append(dict(product="en4", region=region, year=year,
+        out.append(dict(product="en4", region=region + args.suffix, year=year,
                         file=os.path.relpath(p, OUT), bytes=os.path.getsize(p),
                         sha256=sha256(p), cached=False))
     return out
@@ -205,7 +211,7 @@ def fetch_ecco(years_: list[int]) -> list[dict]:
     for year in years_:
         if year > ECCO_LAST_YEAR:
             continue
-        want = {r: os.path.join(OUT, "ecco", f"ECCO_V4r4.{r}.{year}.nc")
+        want = {r: os.path.join(OUT, "ecco", f"ECCO_V4r4.{r}{args.suffix}.{year}.nc")
                 for r in args.regions}
         if all(os.path.exists(p) and os.path.getsize(p) > 0 for p in want.values()):
             out += [dict(product="ecco", region=r, year=year,
@@ -231,7 +237,7 @@ def fetch_ecco(years_: list[int]) -> list[dict]:
                                  acknowledgement="ECCO Consortium, Fukumori et al., PO.DAAC")
                 _write_atomic(sub, want[region])
                 p = want[region]
-                out.append(dict(product="ecco", region=region, year=year,
+                out.append(dict(product="ecco", region=region + args.suffix, year=year,
                                 file=os.path.relpath(p, OUT), bytes=os.path.getsize(p),
                                 sha256=sha256(p), cached=False))
             ds.close()
@@ -279,7 +285,7 @@ manifest = {
              "last_year": ECCO_LAST_YEAR,
              "limitation": "V4r4 ends 2017 — cannot be scored on the 2025 GODAS holdout"},
     "regions": {k: REGIONS[k] for k in args.regions},
-    "max_depth_m": MAX_DEPTH_M,
+    "max_depth_m": args.max_depth,
     "period": [args.start_year, args.end_year],
     "failures": failures,
     "file_count": len(bykey),

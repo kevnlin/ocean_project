@@ -59,8 +59,10 @@ from ocean_tokenizer.reference_adapters import GriddedReference
 from ocean_tokenizer.losses import CBottleMaskedLoss
 
 CHANNELS = P.CHANNELS
+#: Four bands. The deepest runs to 1401 m so the 1400.5 m level falls INSIDE
+#: it rather than off the end of the table.
 DEPTH_BANDS = (("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
-               ("300-max", 300.0, 1000.0))
+               ("300-700m", 300.0, 700.0), ("700-1400m", 700.0, 1401.0))
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--package", default="P0", choices=["P0", "P1", "P2", "P3", "P5"])
@@ -73,7 +75,7 @@ ap.add_argument("--n-profiles", type=int, default=24)
 ap.add_argument("--queries", type=int, default=512)
 ap.add_argument("--lr", type=float, default=3e-4)
 ap.add_argument("--weight-decay", type=float, default=0.01)
-ap.add_argument("--leads", default="0,1,2,3")
+ap.add_argument("--leads", default="0,1,3,6")
 ap.add_argument("--split-protocol", default="main",
                 choices=list(P.SPLIT_PROTOCOLS),
                 help="'ecco_overlap' shifts the eras inside ECCO V4r4's "
@@ -83,6 +85,9 @@ ap.add_argument("--eval-split", default="development",
                 choices=["validation", "development", "holdout"])
 ap.add_argument("--n-boot", type=int, default=10000)
 ap.add_argument("--cohort", default=None)
+ap.add_argument("--reference-suffix", default="",
+                help="'_deep' selects the EN4/ECCO cut that reaches 1450 m, "
+                     "which the 700-1400 m band needs")
 ap.add_argument("--output", default=None)
 ap.add_argument("--checkpoint-dir", default=None,
                 help="where trained rows live. Defaults to this package's own "
@@ -170,6 +175,9 @@ def eligible(split: str, lead: int = 0) -> np.ndarray:
                 and c.month(m + lead, float_split="heldout_float").size):
             out.append(int(m))
     return np.array(sorted(out), dtype=int)
+
+
+MAX_LEAD_REQUESTED = 0        # set after the lead list is parsed
 
 
 elig = {s: eligible(s) for s in ("train", "validation", "development", "holdout")}
@@ -413,6 +421,62 @@ class GriddedRow:
     def train(self): pass
 
 
+class WOAClimatology:
+    """WOA23 at each query's OWN (lat, lon, depth, calendar month).
+
+    `train_climatology` predicts zero anomaly, and the anomaly reference is
+    `ArgoNorm` -- a per-depth-level mean POOLED over every location and month in
+    the training era. That is the region's mean vertical profile: no spatial
+    structure, no seasonal cycle. It is a weak baseline, and normalising J by it
+    inflates every skill number relative to what the literature reports.
+
+    This row is the defensible denominator: an observational climatology that
+    varies with position and season, which is what WOA23 is and what published
+    reconstruction skill is normally measured against. Both rows are kept so the
+    difference between them is visible rather than assumed.
+    """
+
+    def __init__(self, woa_phys, box, levels, norm, grid_shape):
+        self.w = woa_phys                    # (12, 2, L, NY, NX) physical units
+        self.box, self.levels, self.norm = box, levels, norm
+        self.NY, self.NX = grid_shape
+
+    def __call__(self, s):
+        lat = np.asarray(s["target_lat"]); lon = np.asarray(s["target_lon"])
+        lev = np.asarray(s["target_level"]); cm = int(s["target_month"]) % 12
+        (la0, la1), (lo0, lo1) = self.box["lat"], self.box["lon"]
+        gy = np.clip(((lat - la0) / (la1 - la0) * self.NY).astype(int), 0, self.NY - 1)
+        gx = np.clip(((lon - lo0) / (lo1 - lo0) * self.NX).astype(int), 0, self.NX - 1)
+        li = np.abs(self.levels[None, :] - lev[:, None]).argmin(axis=1)
+        out = np.full((lat.size, len(CHANNELS)), np.nan)
+        for j, ch in enumerate(CHANNELS):
+            v = self.w[cm, j, li, gy, gx]
+            out[:, j] = (v - self.norm.mean[ch][li]) / self.norm.std[ch][li]
+        return torch.as_tensor(out, dtype=torch.float32,
+                               device=s["query"].device)
+
+    def eval(self): pass
+    def train(self): pass
+
+
+def woa_on_region(region: str, levels: np.ndarray, grid_shape) -> np.ndarray:
+    """WOA23 interpolated onto a region box's cell centres and the cohort levels."""
+    import xarray as xr
+    box = P.REGIONS[region]
+    NY, NX = grid_shape
+    la0, la1 = box["lat"]; lo0, lo1 = box["lon"]
+    lat_c = la0 + (np.arange(NY) + 0.5) * (la1 - la0) / NY
+    lon_c = lo0 + (np.arange(NX) + 0.5) * (lo1 - lo0) / NX
+    src = xr.open_zarr(os.path.join(ROOT, "data", "woa23_standard.zarr"))
+    src = src.assign_coords(lon=(src.lon % 360.0)).sortby("lon")
+    out = np.empty((12, len(CHANNELS), levels.size, NY, NX), "float32")
+    for j, ch in enumerate(CHANNELS):
+        di = src[ch].interp(lat=lat_c, lon=lon_c, depth=levels, method="linear",
+                            kwargs={"fill_value": None}).values
+        out[:, j] = np.asarray(di, "float32")
+    return out
+
+
 NONLEARNED = {"train_climatology": TrainClimatology,
               "source_persistence": SourcePersistence}
 
@@ -428,6 +492,58 @@ if args.freeze_record:
     FROZEN_CKPTS = json.load(open(args.freeze_record)).get("checkpoints", {})
     print(f"  freeze record: {len(FROZEN_CKPTS)} checkpoints pinned; every load "
           f"will be verified against it", flush=True)
+
+
+def regime() -> dict:
+    """The data regime a checkpoint is only valid within.
+
+    `split_protocol` belongs here for the same reason the depth grid does. The
+    `ecco_overlap` protocol evaluates on 2015-2017, which sits INSIDE the main
+    protocol's 2000-2018 training era -- so loading a main-protocol checkpoint
+    for an ecco_overlap run scores a model on months it trained on. The floats
+    stay held out (the cohort is WMO-disjoint), so it is not a hard leak, but it
+    is in-sample in time and optimistically biased. It happened, and the guard
+    did not catch it because it only compared levels and lead.
+    """
+    return {"n_levels": int(c.levels.size),
+            "max_level_m": round(float(c.levels.max()), 1),
+            "max_lead": int(max(leads)),
+            "split_protocol": args.split_protocol}
+
+
+def regime_matches(path: str) -> bool:
+    """Refuse a checkpoint trained on a different depth grid or lead horizon.
+
+    Reuse ACROSS PACKAGES is deliberate: P1 and P5 manipulate the input at
+    evaluation time and must score the model P0 registered. But a checkpoint is
+    interchangeable only within one data regime. Loading a 16-level, lead-0..3
+    model and scoring it on the 23-level cohort at lead 6 runs without error
+    and means nothing — the model never saw water below 949 m, nor any lead
+    past 3. That happened here and produced a plausible-looking table, which is
+    the dangerous kind of wrong.
+
+    A checkpoint with no sidecar predates this guard and is accepted only when
+    the current regime matches the 16-level / lead-3 defaults it must have been
+    trained under.
+    """
+    want = regime()
+    side = path.replace(".pt", ".regime.json")
+    if os.path.exists(side):
+        got = json.load(open(side))
+        if all(got.get(k) == want[k] for k in want):
+            return True
+        print(f"  skipping {os.path.relpath(path, ROOT)}: trained on "
+              f"{got.get('n_levels')} levels / lead {got.get('max_lead')}, "
+              f"need {want['n_levels']} / lead {want['max_lead']}", flush=True)
+        return False
+    legacy = {"n_levels": 16, "max_level_m": 949.0, "max_lead": 3,
+              "split_protocol": "main"}
+    if all(legacy[k] == want[k] for k in legacy):
+        return True
+    print(f"  skipping {os.path.relpath(path, ROOT)}: no regime sidecar; the "
+          f"legacy regime (16 levels / lead 3) does not match the current "
+          f"{want['n_levels']} levels / lead {want['max_lead']}", flush=True)
+    return False
 
 
 def find_checkpoint(row: str, seed: int) -> str | None:
@@ -448,6 +564,8 @@ def find_checkpoint(row: str, seed: int) -> str | None:
             f"{os.path.relpath(dc, ROOT)} shares the name of a frozen "
             f"checkpoint but not its bytes; skipped in favour of the file the "
             f"freeze record pins")
+    if path is not None and not regime_matches(path):
+        return None
     return path
 
 
@@ -544,15 +662,48 @@ def run_P0():
         trained[row] = model
         results.setdefault("training", {})[row] = meta
         if meta.get("trained"):
-            torch.save(model.state_dict(),
-                       os.path.join(OUT, f"{row}_s{args.seed}.pt"))
+            ck_ = os.path.join(OUT, f"{row}_s{args.seed}.pt")
+            torch.save(model.state_dict(), ck_)
+            # a checkpoint is only interchangeable within its data regime
+            with open(ck_.replace(".pt", ".regime.json"), "w") as _f:
+                json.dump(regime(), _f, indent=1)
     for name, cls in NONLEARNED.items():
         trained[name] = cls()
+    try:
+        wp = woa_on_region(args.region, LEVELS, c.grid)
+        trained["woa_climatology"] = WOAClimatology(
+            wp, P.REGIONS[args.region], LEVELS, norm, c.grid)
+        print(f"  woa_climatology: WOA23 on {c.grid} x {LEVELS.size} levels",
+              flush=True)
+    except Exception as e:
+        warnings_.append(f"woa_climatology unavailable: {type(e).__name__}: {e}")
     trained["objective_interpolation"] = ObjectiveInterpolation(OISettings()).to(dev)
     for name, factory in (("en4", GriddedReference.en4),
                           ("ecco", GriddedReference.ecco)):
         try:
-            ref = factory(os.path.join(ROOT, "data", "reference"), args.region)
+            # Fall back per product. The deep (1450 m) re-cut succeeded for
+            # EN4 -- an open Met Office download -- but failed for ECCO, whose
+            # PO.DAAC fetch needs Earthdata credentials that are no longer
+            # valid. Rather than drop ECCO entirely, use whatever cut exists
+            # and record which one: the shallower file simply cannot answer
+            # queries below 1000 m, and those are dropped and counted in
+            # `query_coverage` instead of being filled.
+            rdir = os.path.join(ROOT, "data", "reference")
+            ref, used = None, None
+            for cand in (args.region + args.reference_suffix, args.region):
+                try:
+                    ref = factory(rdir, cand); used = cand; break
+                except Exception:
+                    continue
+            if ref is None:
+                raise FileNotFoundError(
+                    f"no {name} files for {args.region}"
+                    f"[{args.reference_suffix}] or {args.region}")
+            if used != args.region + args.reference_suffix:
+                warnings_.append(
+                    f"{name}: the '{args.reference_suffix}' cut is absent, so "
+                    f"the shallower '{used}' files were used; queries below "
+                    f"its deepest level are dropped, see query_coverage")
         except Exception as e:
             warnings_.append(f"{name} unavailable: {type(e).__name__}: {e}")
             continue
@@ -574,7 +725,8 @@ def run_P0():
         row.ref_levels = LEVELS
         trained[name] = row
         results.setdefault("reference_coverage", {})[name] = {
-            "months_covered": len(covered),
+            "months_covered": len(covered), "files_used": used,
+            "max_depth_m": float(ref.depth.max()),
             "product_range": [str(ref.time[0]), str(ref.time[-1])]}
 
     per_row, cl_stats = {}, {}
@@ -659,8 +811,11 @@ def run_P1():
         trained[row] = model
         results.setdefault("training", {})[row] = meta
         if meta.get("trained"):
-            torch.save(model.state_dict(),
-                       os.path.join(OUT, f"{row}_s{args.seed}.pt"))
+            ck_ = os.path.join(OUT, f"{row}_s{args.seed}.pt")
+            torch.save(model.state_dict(), ck_)
+            # a checkpoint is only interchangeable within its data regime
+            with open(ck_.replace(".pt", ".regime.json"), "w") as _f:
+                json.dump(regime(), _f, indent=1)
     trained["objective_interpolation"] = ObjectiveInterpolation(OISettings()).to(dev)
 
     per = {}
@@ -720,8 +875,11 @@ def run_P5():
         trained[row] = model
         results.setdefault("training", {})[row] = meta
         if meta.get("trained"):
-            torch.save(model.state_dict(),
-                       os.path.join(OUT, f"{row}_s{args.seed}.pt"))
+            ck_ = os.path.join(OUT, f"{row}_s{args.seed}.pt")
+            torch.save(model.state_dict(), ck_)
+            # a checkpoint is only interchangeable within its data regime
+            with open(ck_.replace(".pt", ".regime.json"), "w") as _f:
+                json.dump(regime(), _f, indent=1)
     trained["objective_interpolation"] = ObjectiveInterpolation(OISettings()).to(dev)
 
     per = {}

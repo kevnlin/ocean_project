@@ -1,0 +1,6 @@
+{
+ "n_levels": 23,
+ "max_level_m": 1400.5,
+ "max_lead": 6,
+ "split_protocol": "ecco_overlap"
+}
