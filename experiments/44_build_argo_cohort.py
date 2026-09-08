@@ -100,8 +100,17 @@ LEVELS = np.asarray(GODAS_LEVELS_M, dtype=np.float64)
 PROTOCOL_LEVELS = np.array(
     [5., 15., 25., 35., 45., 55., 65., 85., 105., 125., 145., 165.1,
      186.3, 222.6, 267.7, 326.9, 408.8, 527.7, 707.6, 984.7], dtype=np.float64)
+#: protocol_v1 names "the extended 23-level grid to 1400 m" as a separate,
+#: clearly-labelled secondary protocol. These are exactly the CESM2 axis levels
+#: 40-42 appended to the primary 20, and they are what makes a 700-1400 m depth
+#: band possible: 78 % of Argo profiles reach 1400 dbar (median float max is
+#: ~2000 dbar), so the observations support it even though the primary grid
+#: stops at 985 m.
+PROTOCOL_LEVELS_EXT = np.concatenate(
+    [PROTOCOL_LEVELS, np.array([1106.2, 1244.6, 1400.5])])
 GRIDS = {"regional": (38, 26), "global": (180, 360)}
-LEVELSETS = {"godas": LEVELS, "protocol": PROTOCOL_LEVELS}
+LEVELSETS = {"godas": LEVELS, "protocol": PROTOCOL_LEVELS,
+             "protocol_ext": PROTOCOL_LEVELS_EXT}
 
 #: identical to the GODAS driver's SPLITS, deliberately -- see module docstring
 YEAR_SPLITS = {"train": (2000, 2018), "validation": (2019, 2021),

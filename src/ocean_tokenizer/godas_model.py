@@ -132,7 +132,8 @@ class GodasRowModel(nn.Module):
                  n_dec_blocks: int = N_DEC_BLOCKS,
                  n_features: int = N_FEATURES, physical_units: bool = True,
                  noise_scale: float = 1.0, n_vertical_nodes: int = 3,
-                 provenance_rho: float = 0.0, region: str | None = None):
+                 provenance_rho: float = 0.0, region: str | None = None,
+                 max_lead: int = 6):
         super().__init__()
         assert mass_mode in ("dfs", "uniform", "count", "thin", "superob")
         self.mass_mode = mass_mode
@@ -179,7 +180,10 @@ class GodasRowModel(nn.Module):
         self.decoder = IndependentQueryDecoder(d_model, n_dec_blocks, n_heads)
         self.experts = ChannelExpertHead(d_model, n_heads, geographic=False)
         self.oi = ObjectiveInterpolation(OISettings())
-        self.oi_residual = OIResidual() if use_oi else None
+        # The OI-residual rows carry per-lead gates, so their horizon is a
+        # real parameter; the expertlocal rows treat lead as a continuous
+        # offset and are unbounded.
+        self.oi_residual = OIResidual(max_lead=max_lead) if use_oi else None
 
     # ---- §2.2 observation mass -----------------------------------------
     def observation_mass(self, s: dict) -> torch.Tensor:

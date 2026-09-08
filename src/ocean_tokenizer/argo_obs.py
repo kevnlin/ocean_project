@@ -200,7 +200,7 @@ class ArgoObsConfig:
     patch: int = 4
     context: int = 2
     n_queries: int = 512
-    max_lead: int = 3
+    max_lead: int = 6
     modality_dropout: float = 0.2
     target_dropout: float = 0.2
     train: bool = False
@@ -292,7 +292,12 @@ def build_argo_sample(c: ArgoCohort, norm: ArgoNorm, t_src: int,
         raise ValueError(f"lead must be in 0..{cfg.max_lead}, got {lead}")
     L = c.levels.size
     dz_all = level_thickness_m(c.levels)
-    z_norm = c.levels / BOX_DEPTH_M
+    # Normalise by the cohort's OWN deepest level, not a module constant fixed
+    # at 949 m. With the extended 23-level grid the constant would push z past
+    # 1.47 and silently place the deep levels outside the coordinate range the
+    # kernel was designed for. For the 16-level GODAS cohort this is identical
+    # (max level IS 949 m), so nothing already run changes.
+    z_norm = c.levels / max(float(c.levels.max()), 1e-9)
     NY, NX = c.grid
 
     if target_rows is None:
