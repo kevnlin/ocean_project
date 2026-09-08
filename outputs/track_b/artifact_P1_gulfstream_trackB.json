@@ -1,0 +1,2203 @@
+{
+ "package": "P1",
+ "track": "B",
+ "region": "gulfstream",
+ "results": {
+  "layout_verification": {
+   "264": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1581.4891215167193,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 409.5419636113798,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1847.4149135153914,
+     "n_floats": 24
+    }
+   },
+   "265": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1692.2704301479112,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 333.74682403510593,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1994.1127035101956,
+     "n_floats": 24
+    }
+   },
+   "266": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1634.4109490200497,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 225.84000768713932,
+     "n_floats": 7
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1920.4430851202321,
+     "n_floats": 24
+    }
+   },
+   "267": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1730.0591581791577,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 416.9944050205363,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1982.3793179400134,
+     "n_floats": 24
+    }
+   },
+   "268": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1668.1436035885824,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 395.1877768093359,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2023.5782339652947,
+     "n_floats": 24
+    }
+   },
+   "269": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1298.181789551328,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 327.257713275344,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2064.584305628335,
+     "n_floats": 24
+    }
+   },
+   "270": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1769.628131872917,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 364.469471300772,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1965.9898534074293,
+     "n_floats": 24
+    }
+   },
+   "271": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1813.0712908278408,
+     "n_floats": 24
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 366.5062670214526,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2084.439369245186,
+     "n_floats": 24
+    }
+   },
+   "272": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1921.0563381960712,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 437.5694504209583,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2098.6283575904436,
+     "n_floats": 24
+    }
+   },
+   "273": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1770.2198792983636,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 333.9777180451709,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2094.3318656149454,
+     "n_floats": 24
+    }
+   },
+   "274": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1979.0397692044144,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 372.9100018843763,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2086.2366804725834,
+     "n_floats": 24
+    }
+   },
+   "275": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1954.3335247917996,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 342.00321686222986,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1966.8696194179292,
+     "n_floats": 24
+    }
+   },
+   "276": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1805.9712591983628,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 302.29287178856964,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1936.565618800678,
+     "n_floats": 24
+    }
+   },
+   "277": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1871.4104361564823,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 435.1463386994245,
+     "n_floats": 11
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2063.3977056034755,
+     "n_floats": 24
+    }
+   },
+   "278": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1649.2215951581322,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 349.2358999003104,
+     "n_floats": 11
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2068.4229851750233,
+     "n_floats": 24
+    }
+   },
+   "279": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1776.6754838812697,
+     "n_floats": 21
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 311.98756380635945,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1958.140309958064,
+     "n_floats": 24
+    }
+   },
+   "280": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1929.3154167540956,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 380.1881606347678,
+     "n_floats": 12
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2019.9680125107802,
+     "n_floats": 24
+    }
+   },
+   "281": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1814.0971823351315,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 561.7978002386017,
+     "n_floats": 12
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1886.4082550025396,
+     "n_floats": 24
+    }
+   },
+   "282": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1575.7734263151783,
+     "n_floats": 21
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 336.5525562945056,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1938.2265372887102,
+     "n_floats": 24
+    }
+   },
+   "283": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1605.548558299493,
+     "n_floats": 21
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 430.1984124019535,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1959.121679438585,
+     "n_floats": 24
+    }
+   },
+   "284": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1803.8785341633454,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 221.0048329622435,
+     "n_floats": 5
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2057.488938191336,
+     "n_floats": 24
+    }
+   },
+   "285": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 2030.8284926087692,
+     "n_floats": 19
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 355.37200975399287,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2037.5207858410786,
+     "n_floats": 24
+    }
+   },
+   "286": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1821.264433886828,
+     "n_floats": 21
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 516.8130577629876,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1940.7830081513891,
+     "n_floats": 24
+    }
+   },
+   "287": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1583.5497390140818,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 465.3839946905981,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1956.1565727611464,
+     "n_floats": 24
+    }
+   },
+   "288": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1543.675611275371,
+     "n_floats": 21
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 105.57213501469757,
+     "n_floats": 1
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1887.7528176586009,
+     "n_floats": 24
+    }
+   },
+   "289": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1488.6916326715495,
+     "n_floats": 19
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 220.65274634169933,
+     "n_floats": 7
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1968.5596900707544,
+     "n_floats": 24
+    }
+   },
+   "290": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1643.5428047251366,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 46.79799418872863,
+     "n_floats": 1
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1944.3625388577677,
+     "n_floats": 24
+    }
+   },
+   "291": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1685.470190705209,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 390.652920356992,
+     "n_floats": 8
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2024.6680739088013,
+     "n_floats": 24
+    }
+   },
+   "292": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1711.953376254921,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 596.1963198133172,
+     "n_floats": 7
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2055.6372844435223,
+     "n_floats": 24
+    }
+   },
+   "293": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1795.7553499783505,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 345.92989825791756,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2017.7586506393573,
+     "n_floats": 24
+    }
+   },
+   "294": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1666.6227204890495,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 268.70468401044036,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1994.4797141146635,
+     "n_floats": 24
+    }
+   },
+   "295": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1670.8361459563237,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 277.1836747683339,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1937.6899102794487,
+     "n_floats": 24
+    }
+   },
+   "296": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1649.4297860012812,
+     "n_floats": 23
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 242.56068827765515,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1984.4771630817104,
+     "n_floats": 24
+    }
+   },
+   "297": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1738.9203267233574,
+     "n_floats": 22
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 279.0845566301392,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1921.5822054957773,
+     "n_floats": 24
+    }
+   },
+   "298": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1791.5331372136177,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 277.85136383504033,
+     "n_floats": 10
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 2023.1627201267975,
+     "n_floats": 24
+    }
+   },
+   "299": {
+    "natural": {
+     "n": 24,
+     "mean_pairwise_km": 1629.9211937568675,
+     "n_floats": 20
+    },
+    "clustered": {
+     "n": 24,
+     "mean_pairwise_km": 467.37739348042413,
+     "n_floats": 9
+    },
+    "dispersed": {
+     "n": 24,
+     "mean_pairwise_km": 1934.8265862259702,
+     "n_floats": 24
+    }
+   }
+  },
+  "layout_checks": {
+   "months_checked": 36,
+   "exact_count_equality": true,
+   "dispersed_farther_than_clustered": true,
+   "heldout_floats_in_input": 0,
+   "deterministic": true,
+   "nondeterministic_cases": []
+  },
+  "layouts": {
+   "count_expertlocal_cbottle": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.5604406891880771,
+      "SALT": 0.5408205573692836,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5366271383484255,
+      "SALT": 0.5084340594548873,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5138890098793815,
+      "SALT": 0.5031275673640303,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.5733248053005708,
+      "SALT": 0.5518364934512215,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5364346660582114,
+      "SALT": 0.5100914188519964,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5180923264225296,
+      "SALT": 0.5105778631866096,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.5604401017243473,
+      "SALT": 0.5414419049942962,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5357212699163942,
+      "SALT": 0.5081371136723373,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5124978515714331,
+      "SALT": 0.5018850125676103,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   },
+   "dfs_expertlocal_cbottle": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.5604258074142442,
+      "SALT": 0.54158202949166,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.526322769206247,
+      "SALT": 0.5242769548249574,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5116662753146344,
+      "SALT": 0.5026935218194635,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.574534597292627,
+      "SALT": 0.5561236892380165,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.526195466667465,
+      "SALT": 0.5250394250318798,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5148280068213772,
+      "SALT": 0.5088383948058005,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.5601983928871774,
+      "SALT": 0.5413670702173854,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5249769256397192,
+      "SALT": 0.5229922567841593,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5107194225641262,
+      "SALT": 0.5016764482571887,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   },
+   "superob_expertlocal_cbottle": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.5514706350713273,
+      "SALT": 0.530550160710836,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5388240188405695,
+      "SALT": 0.5190729711998918,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5117425092717469,
+      "SALT": 0.5053613317917901,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.5642022705152258,
+      "SALT": 0.5441242272532031,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5391950183729717,
+      "SALT": 0.5212633055361039,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5152676630709272,
+      "SALT": 0.5131444223132496,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.5509556388618021,
+      "SALT": 0.5307436290535036,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5371717142018493,
+      "SALT": 0.5177324493189256,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5104663056381825,
+      "SALT": 0.5043068403522215,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   },
+   "thin_expertlocal_cbottle": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.5529874576418901,
+      "SALT": 0.5308322670018736,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5281512907350276,
+      "SALT": 0.5295469057274947,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5115467707698681,
+      "SALT": 0.5011762435317242,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.5648248298008407,
+      "SALT": 0.5442503342788768,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5292463394488646,
+      "SALT": 0.5309279326548098,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5143947547441635,
+      "SALT": 0.507318379251818,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.5526470315894048,
+      "SALT": 0.5312225575278816,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5274738028103927,
+      "SALT": 0.5292656526505013,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.510313522399521,
+      "SALT": 0.50001362912967,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   },
+   "uniform_expertlocal_cbottle": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.5273866217557784,
+      "SALT": 0.5045519741252772,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5645043285684123,
+      "SALT": 0.5352521961390223,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5130508549858048,
+      "SALT": 0.5040773019184862,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.5395890612835557,
+      "SALT": 0.5123793242965399,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5677374405980874,
+      "SALT": 0.5400223439401373,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5164460179210019,
+      "SALT": 0.5112804926314553,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.5249643667445988,
+      "SALT": 0.5034655253726458,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.5639670569086094,
+      "SALT": 0.5352021822165538,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.5114848519288551,
+      "SALT": 0.5028214541924314,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   },
+   "objective_interpolation": {
+    "natural": {
+     "1234": {
+      "TEMP": 0.800743874471208,
+      "SALT": 0.7965315394666935,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.7948408032408117,
+      "SALT": 0.8087654982544749,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.815652772138786,
+      "SALT": 0.8110664780134675,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "clustered": {
+     "1234": {
+      "TEMP": 0.9561805487119973,
+      "SALT": 0.9505078945322945,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.9487340588415505,
+      "SALT": 0.9326772308707896,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.962227028709083,
+      "SALT": 0.9506048909462396,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    },
+    "dispersed": {
+     "1234": {
+      "TEMP": 0.7681628372717637,
+      "SALT": 0.7776561855021399,
+      "n_wmos": 60,
+      "n_targets": 36214
+     },
+     "1235": {
+      "TEMP": 0.7743127099021784,
+      "SALT": 0.7784210705553063,
+      "n_wmos": 60,
+      "n_targets": 36238
+     },
+     "1236": {
+      "TEMP": 0.7728768687904692,
+      "SALT": 0.7860489596100454,
+      "n_wmos": 60,
+      "n_targets": 36174
+     }
+    }
+   }
+  },
+  "layout_gap": {
+   "count_expertlocal_cbottle": {
+    "TEMP": {
+     "point": 0.006397524856379048,
+     "lo": -0.00881847222595978,
+     "hi": 0.021613521938717878,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "count_expertlocal_cbottle layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.01288470357622351,
+      0.0007133961418170909,
+      0.0055944748510965425
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.01288470357622351,
+       "lo": 0.007910429559698322,
+       "hi": 0.01818881474119374,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0007133961418170909,
+       "lo": -0.0029390767567142647,
+       "hi": 0.0045939193506205084,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.0055944748510965425,
+       "lo": 0.00012609397017339944,
+       "hi": 0.01046800769493123,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.007013914751861194,
+     "lo": -0.004074279479010113,
+     "hi": 0.0181021089827325,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "count_expertlocal_cbottle layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.010394588456925313,
+      0.0019543051796591104,
+      0.00869285061899916
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.010394588456925313,
+       "lo": 0.0037703552676187136,
+       "hi": 0.018808773120492773,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0019543051796591104,
+       "lo": -0.001891364972802373,
+       "hi": 0.0060898321110831365,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.00869285061899916,
+       "lo": 0.0045941661852630915,
+       "hi": 0.013367013966125937,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "count_expertlocal_cbottle gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   },
+   "dfs_expertlocal_cbottle": {
+    "TEMP": {
+     "point": 0.006554443230148717,
+     "lo": -0.010567185176116007,
+     "hi": 0.02367607163641344,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "dfs_expertlocal_cbottle layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.014336204405449582,
+      0.0012185410277456565,
+      0.0041085842572509135
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.014336204405449582,
+       "lo": 0.008648600602228088,
+       "hi": 0.020174313746795562,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0012185410277456565,
+       "lo": -0.002902572273846346,
+       "hi": 0.005335881394300602,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.0041085842572509135,
+       "lo": -0.0010839120175526115,
+       "hi": 0.008607582429621846,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.007988577938987773,
+     "lo": -0.007897288371130014,
+     "hi": 0.02387444424910556,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "dfs_expertlocal_cbottle layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.014756619020630968,
+      0.0020471682477205544,
+      0.007161946548611797
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.014756619020630968,
+       "lo": 0.008026026146287576,
+       "hi": 0.02323905264247707,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0020471682477205544,
+       "lo": -0.0035967566620242657,
+       "hi": 0.007003312452468293,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.007161946548611797,
+       "lo": 0.003423032774983564,
+       "hi": 0.011467528520158572,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "dfs_expertlocal_cbottle gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   },
+   "superob_expertlocal_cbottle": {
+    "TEMP": {
+     "point": 0.006690431085763578,
+     "lo": -0.00783003263567291,
+     "hi": 0.021210894807200065,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "superob_expertlocal_cbottle layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.013246631653423657,
+      0.0020233041711223976,
+      0.0048013574327446795
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.013246631653423657,
+       "lo": 0.007599224082660061,
+       "hi": 0.019008761363629723,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0020233041711223976,
+       "lo": -0.001044985390963521,
+       "hi": 0.005161069492029344,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.0048013574327446795,
+       "lo": -0.0006588643611759078,
+       "hi": 0.009615018517386355,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.008583012125968644,
+     "lo": -0.0036632976729172595,
+     "hi": 0.02082932192485455,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "superob_expertlocal_cbottle layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.0133805981996995,
+      0.003530856217178302,
+      0.00883758196102813
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.0133805981996995,
+       "lo": 0.006061473318666552,
+       "hi": 0.022252826522559718,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.003530856217178302,
+       "lo": -0.0002517156906286663,
+       "hi": 0.0074242097286753555,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.00883758196102813,
+       "lo": 0.004703021921669425,
+       "hi": 0.013505126071060825,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "superob_expertlocal_cbottle gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   },
+   "thin_expertlocal_cbottle": {
+    "TEMP": {
+     "point": 0.006010522398183486,
+     "lo": -0.007563645107563078,
+     "hi": 0.01958468990393005,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "thin_expertlocal_cbottle layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.012177798211436053,
+      0.0017725366384717667,
+      0.004081232344642638
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.012177798211436053,
+       "lo": 0.006516154102681168,
+       "hi": 0.018037828118266742,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0017725366384717667,
+       "lo": -0.0025296069242706,
+       "hi": 0.006228692091969422,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.004081232344642638,
+       "lo": -0.0009153631126661564,
+       "hi": 0.008384405473615303,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.007331602292483937,
+     "lo": -0.006785245444860657,
+     "hi": 0.02144845002982853,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "thin_expertlocal_cbottle layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.013027776750995201,
+      0.0016622800043084585,
+      0.0073047501221481514
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.013027776750995201,
+       "lo": 0.005760998451386487,
+       "hi": 0.02163554918818402,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0016622800043084585,
+       "lo": -0.004588101364992189,
+       "hi": 0.0070311467259528216,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      },
+      {
+       "point": 0.0073047501221481514,
+       "lo": 0.0035852051651971625,
+       "hi": 0.011569039653731898,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "thin_expertlocal_cbottle gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   },
+   "uniform_expertlocal_cbottle": {
+    "TEMP": {
+     "point": 0.007785414740193859,
+     "lo": -0.007002259112128849,
+     "hi": 0.02257308859251657,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "uniform_expertlocal_cbottle layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": false,
+     "per_seed": [
+      0.014624694538956873,
+      0.0037703836894780185,
+      0.004961165992146688
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.014624694538956873,
+       "lo": 0.00904500780311999,
+       "hi": 0.020122122340153162,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.0037703836894780185,
+       "lo": 0.0004397898632083952,
+       "hi": 0.007755140702446678,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.004961165992146688,
+       "lo": -3.599202493578108e-05,
+       "hi": 0.009462272394557816,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": false
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.007397666362167062,
+     "lo": 0.001823918168816453,
+     "hi": 0.01297141455551767,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "uniform_expertlocal_cbottle layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": true,
+     "per_seed": [
+      0.00891379892389399,
+      0.00482016172358346,
+      0.008459038439023736
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.00891379892389399,
+       "lo": 0.0023895002632051163,
+       "hi": 0.016394084762691843,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.00482016172358346,
+       "lo": 0.0011221788875754354,
+       "hi": 0.00929948410440551,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.008459038439023736,
+       "lo": 0.004840312558828143,
+       "hi": 0.01285351403231839,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "uniform_expertlocal_cbottle gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   },
+   "objective_interpolation": {
+    "TEMP": {
+     "point": 0.18392974009940652,
+     "lo": 0.16340724697810785,
+     "hi": 0.2044522332207052,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "objective_interpolation layout gap TEMP",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": true,
+     "per_seed": [
+      0.18801771144023371,
+      0.174421348939372,
+      0.18935015991861381
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.18801771144023371,
+       "lo": 0.14522466503495585,
+       "hi": 0.24010168916343053,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap TEMP seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.174421348939372,
+       "lo": 0.12110395725554232,
+       "hi": 0.24115615900886753,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap TEMP seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.18935015991861381,
+       "lo": 0.13107566094982892,
+       "hi": 0.262830547713412,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap TEMP seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    },
+    "SALT": {
+     "point": 0.16388793356061068,
+     "lo": 0.14074631757815245,
+     "hi": 0.1870295495430689,
+     "n_clusters": 0,
+     "cluster_unit": "seed",
+     "n_boot": 0,
+     "alpha": 0.05,
+     "method_label": "objective_interpolation layout gap SALT",
+     "kind": "seed_t",
+     "n_seeds": 3,
+     "excludes_zero": true,
+     "per_seed": [
+      0.17285170903015457,
+      0.1542561603154834,
+      0.16455593133619406
+     ],
+     "per_seed_intervals": [
+      {
+       "point": 0.17285170903015457,
+       "lo": 0.12613668775907033,
+       "hi": 0.22899528783755632,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap SALT seed 1234",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.1542561603154834,
+       "lo": 0.10569733851125762,
+       "hi": 0.2141510867883164,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap SALT seed 1235",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      },
+      {
+       "point": 0.16455593133619406,
+       "lo": 0.11222117583206839,
+       "hi": 0.22706280088289812,
+       "n_clusters": 60,
+       "cluster_unit": "wmo",
+       "n_boot": 4000,
+       "alpha": 0.05,
+       "method_label": "objective_interpolation gap SALT seed 1236",
+       "kind": "percentile",
+       "n_seeds": 1,
+       "excludes_zero": true
+      }
+     ]
+    }
+   }
+  },
+  "layout_did": {
+   "point": 0.0012309715100451424,
+   "lo": -0.0016957552495692448,
+   "hi": 0.0041576982696595296,
+   "n_clusters": 0,
+   "cluster_unit": "seed",
+   "n_boot": 0,
+   "alpha": 0.05,
+   "method_label": "DiD = gap(Uniform) - gap(DFS)",
+   "kind": "seed_t",
+   "n_seeds": 3,
+   "excludes_zero": false,
+   "per_seed": [
+    0.0002884901335072909,
+    0.002551842661732362,
+    0.0008525817348957743
+   ],
+   "per_seed_intervals": [
+    {
+     "point": 0.0002884901335072909,
+     "lo": -0.005458039083648505,
+     "hi": 0.0069975168683524425,
+     "n_clusters": 60,
+     "cluster_unit": "wmo",
+     "n_boot": 4000,
+     "alpha": 0.05,
+     "method_label": "DiD seed 1234",
+     "kind": "percentile",
+     "n_seeds": 1,
+     "excludes_zero": false
+    },
+    {
+     "point": 0.002551842661732362,
+     "lo": 0.0007416917041716903,
+     "hi": 0.0048953201987729095,
+     "n_clusters": 60,
+     "cluster_unit": "wmo",
+     "n_boot": 4000,
+     "alpha": 0.05,
+     "method_label": "DiD seed 1235",
+     "kind": "percentile",
+     "n_seeds": 1,
+     "excludes_zero": true
+    },
+    {
+     "point": 0.0008525817348957743,
+     "lo": -0.0005255580262923651,
+     "hi": 0.002383587737287349,
+     "n_clusters": 60,
+     "cluster_unit": "wmo",
+     "n_boot": 4000,
+     "alpha": 0.05,
+     "method_label": "DiD seed 1236",
+     "kind": "percentile",
+     "n_seeds": 1,
+     "excludes_zero": false
+    }
+   ]
+  },
+  "comparable": {
+   "rmse": {
+    "count_expertlocal_cbottle|natural": {
+     "TEMP": 0.5369856124719613,
+     "SALT": 0.5174607280627337
+    },
+    "count_expertlocal_cbottle|clustered": {
+     "TEMP": 0.5426172659271039,
+     "SALT": 0.5241685918299425
+    },
+    "count_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.5362197410707249,
+     "SALT": 0.5171546770780813
+    },
+    "dfs_expertlocal_cbottle|natural": {
+     "TEMP": 0.5328049506450419,
+     "SALT": 0.5228508353786937
+    },
+    "dfs_expertlocal_cbottle|clustered": {
+     "TEMP": 0.5385193569271564,
+     "SALT": 0.5300005030252323
+    },
+    "dfs_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.5319649136970076,
+     "SALT": 0.5220119250862444
+    },
+    "superob_expertlocal_cbottle|natural": {
+     "TEMP": 0.5340123877278812,
+     "SALT": 0.5183281545675059
+    },
+    "superob_expertlocal_cbottle|clustered": {
+     "TEMP": 0.5395549839863749,
+     "SALT": 0.5261773183675188
+    },
+    "superob_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.5328645529006112,
+     "SALT": 0.5175943062415502
+    },
+    "thin_expertlocal_cbottle|natural": {
+     "TEMP": 0.5308951730489286,
+     "SALT": 0.5205184720870308
+    },
+    "thin_expertlocal_cbottle|clustered": {
+     "TEMP": 0.5361553079979563,
+     "SALT": 0.5274988820618348
+    },
+    "thin_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.5301447855997728,
+     "SALT": 0.520167279769351
+    },
+    "uniform_expertlocal_cbottle|natural": {
+     "TEMP": 0.5349806017699985,
+     "SALT": 0.5146271573942619
+    },
+    "uniform_expertlocal_cbottle|clustered": {
+     "TEMP": 0.5412575066008816,
+     "SALT": 0.5212273869560442
+    },
+    "uniform_expertlocal_cbottle|dispersed": {
+     "TEMP": 0.5334720918606878,
+     "SALT": 0.513829720593877
+    },
+    "objective_interpolation|natural": {
+     "TEMP": 0.8037458166169352,
+     "SALT": 0.8054545052448786
+    },
+    "objective_interpolation|clustered": {
+     "TEMP": 0.9557138787542102,
+     "SALT": 0.9445966721164413
+    },
+    "objective_interpolation|dispersed": {
+     "TEMP": 0.7717841386548038,
+     "SALT": 0.7807087385558305
+    }
+   },
+   "per_seed_rmse": {
+    "count_expertlocal_cbottle|natural": {
+     "TEMP": [
+      0.5604406891880771,
+      0.5366271383484255,
+      0.5138890098793815
+     ],
+     "SALT": [
+      0.5408205573692836,
+      0.5084340594548873,
+      0.5031275673640303
+     ]
+    },
+    "count_expertlocal_cbottle|clustered": {
+     "TEMP": [
+      0.5733248053005708,
+      0.5364346660582114,
+      0.5180923264225296
+     ],
+     "SALT": [
+      0.5518364934512215,
+      0.5100914188519964,
+      0.5105778631866096
+     ]
+    },
+    "count_expertlocal_cbottle|dispersed": {
+     "TEMP": [
+      0.5604401017243473,
+      0.5357212699163942,
+      0.5124978515714331
+     ],
+     "SALT": [
+      0.5414419049942962,
+      0.5081371136723373,
+      0.5018850125676103
+     ]
+    },
+    "dfs_expertlocal_cbottle|natural": {
+     "TEMP": [
+      0.5604258074142442,
+      0.526322769206247,
+      0.5116662753146344
+     ],
+     "SALT": [
+      0.54158202949166,
+      0.5242769548249574,
+      0.5026935218194635
+     ]
+    },
+    "dfs_expertlocal_cbottle|clustered": {
+     "TEMP": [
+      0.574534597292627,
+      0.526195466667465,
+      0.5148280068213772
+     ],
+     "SALT": [
+      0.5561236892380165,
+      0.5250394250318798,
+      0.5088383948058005
+     ]
+    },
+    "dfs_expertlocal_cbottle|dispersed": {
+     "TEMP": [
+      0.5601983928871774,
+      0.5249769256397192,
+      0.5107194225641262
+     ],
+     "SALT": [
+      0.5413670702173854,
+      0.5229922567841593,
+      0.5016764482571887
+     ]
+    },
+    "superob_expertlocal_cbottle|natural": {
+     "TEMP": [
+      0.5514706350713273,
+      0.5388240188405695,
+      0.5117425092717469
+     ],
+     "SALT": [
+      0.530550160710836,
+      0.5190729711998918,
+      0.5053613317917901
+     ]
+    },
+    "superob_expertlocal_cbottle|clustered": {
+     "TEMP": [
+      0.5642022705152258,
+      0.5391950183729717,
+      0.5152676630709272
+     ],
+     "SALT": [
+      0.5441242272532031,
+      0.5212633055361039,
+      0.5131444223132496
+     ]
+    },
+    "superob_expertlocal_cbottle|dispersed": {
+     "TEMP": [
+      0.5509556388618021,
+      0.5371717142018493,
+      0.5104663056381825
+     ],
+     "SALT": [
+      0.5307436290535036,
+      0.5177324493189256,
+      0.5043068403522215
+     ]
+    },
+    "thin_expertlocal_cbottle|natural": {
+     "TEMP": [
+      0.5529874576418901,
+      0.5281512907350276,
+      0.5115467707698681
+     ],
+     "SALT": [
+      0.5308322670018736,
+      0.5295469057274947,
+      0.5011762435317242
+     ]
+    },
+    "thin_expertlocal_cbottle|clustered": {
+     "TEMP": [
+      0.5648248298008407,
+      0.5292463394488646,
+      0.5143947547441635
+     ],
+     "SALT": [
+      0.5442503342788768,
+      0.5309279326548098,
+      0.507318379251818
+     ]
+    },
+    "thin_expertlocal_cbottle|dispersed": {
+     "TEMP": [
+      0.5526470315894048,
+      0.5274738028103927,
+      0.510313522399521
+     ],
+     "SALT": [
+      0.5312225575278816,
+      0.5292656526505013,
+      0.50001362912967
+     ]
+    },
+    "uniform_expertlocal_cbottle|natural": {
+     "TEMP": [
+      0.5273866217557784,
+      0.5645043285684123,
+      0.5130508549858048
+     ],
+     "SALT": [
+      0.5045519741252772,
+      0.5352521961390223,
+      0.5040773019184862
+     ]
+    },
+    "uniform_expertlocal_cbottle|clustered": {
+     "TEMP": [
+      0.5395890612835557,
+      0.5677374405980874,
+      0.5164460179210019
+     ],
+     "SALT": [
+      0.5123793242965399,
+      0.5400223439401373,
+      0.5112804926314553
+     ]
+    },
+    "uniform_expertlocal_cbottle|dispersed": {
+     "TEMP": [
+      0.5249643667445988,
+      0.5639670569086094,
+      0.5114848519288551
+     ],
+     "SALT": [
+      0.5034655253726458,
+      0.5352021822165538,
+      0.5028214541924314
+     ]
+    },
+    "objective_interpolation|natural": {
+     "TEMP": [
+      0.800743874471208,
+      0.7948408032408117,
+      0.815652772138786
+     ],
+     "SALT": [
+      0.7965315394666935,
+      0.8087654982544749,
+      0.8110664780134675
+     ]
+    },
+    "objective_interpolation|clustered": {
+     "TEMP": [
+      0.9561805487119973,
+      0.9487340588415505,
+      0.962227028709083
+     ],
+     "SALT": [
+      0.9505078945322945,
+      0.9326772308707896,
+      0.9506048909462396
+     ]
+    },
+    "objective_interpolation|dispersed": {
+     "TEMP": [
+      0.7681628372717637,
+      0.7743127099021784,
+      0.7728768687904692
+     ],
+     "SALT": [
+      0.7776561855021399,
+      0.7784210705553063,
+      0.7860489596100454
+     ]
+    }
+   },
+   "n_wmos": 60,
+   "n_targets": 36214,
+   "n_months": 36,
+   "ranking": [
+    "thin_expertlocal_cbottle",
+    "dfs_expertlocal_cbottle",
+    "superob_expertlocal_cbottle",
+    "uniform_expertlocal_cbottle",
+    "count_expertlocal_cbottle",
+    "objective_interpolation"
+   ],
+   "layout_did": {
+    "point": 0.0012309715100451424,
+    "lo": -0.0016957552495692448,
+    "hi": 0.0041576982696595296,
+    "excludes_zero": false
+   }
+  }
+ },
+ "seeds": [
+  1234,
+  1235,
+  1236
+ ],
+ "command": "experiments/51_track_b.py --package P1 --region gulfstream",
+ "checkpoint_hashes": {
+  "dfs_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P1_gulfstream/dfs_expertlocal_cbottle_s1234.pt",
+   "sha256": "9a92778ab2190afb0e3ecfe30c872e286d6c72fc8b5837b77f7ece65fb668252",
+   "matches_track_a": true
+  },
+  "uniform_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P1_gulfstream/uniform_expertlocal_cbottle_s1234.pt",
+   "sha256": "d9e7324ee72af931a49e645def0dc799a170ac213b5472fe3271621e949d1e7e",
+   "matches_track_a": true
+  },
+  "count_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P1_gulfstream/count_expertlocal_cbottle_s1234.pt",
+   "sha256": "67a4d811e9184a30dd04eac6a04bbe6df6c8778da5be24cb7629fd955ac74e76",
+   "matches_track_a": true
+  },
+  "thin_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1234.pt",
+   "sha256": "7e244b7d3b4c76ef00e5e10d30039a5464ecbd8af81d5e7fc2f5935d88983cb8",
+   "matches_track_a": true
+  },
+  "superob_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1234.pt",
+   "sha256": "1e2419698b7c1cd6e7a5cb2695ad1ad017cda33813e71abafb0088deeb2a6556",
+   "matches_track_a": true
+  },
+  "dfs_expertlocal_cbottle_s1235": {
+   "path": "outputs/argo_P1_gulfstream/dfs_expertlocal_cbottle_s1235.pt",
+   "sha256": "205cdd406cb2441138ff5bf23200b3114e587ba1cd4224ea8aea0c3406ae298f",
+   "matches_track_a": true
+  },
+  "uniform_expertlocal_cbottle_s1235": {
+   "path": "outputs/argo_P1_gulfstream/uniform_expertlocal_cbottle_s1235.pt",
+   "sha256": "b9f952661eeb44508fd2f64b4fb9d742b792f059016746c14c74381734289a63",
+   "matches_track_a": true
+  },
+  "count_expertlocal_cbottle_s1235": {
+   "path": "outputs/argo_P1_gulfstream/count_expertlocal_cbottle_s1235.pt",
+   "sha256": "e0108c8e6138775a6a31d7b36a0cc2a5cf3b7c8e491a92840cdede52c51a42d3",
+   "matches_track_a": true
+  },
+  "thin_expertlocal_cbottle_s1235": {
+   "path": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1235.pt",
+   "sha256": "545f97d69a26e75c342923ad8dc6f16ea558eafe93b516850705e1aef4d74318",
+   "matches_track_a": true
+  },
+  "superob_expertlocal_cbottle_s1235": {
+   "path": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1235.pt",
+   "sha256": "0b41c6f3ecd50102206e9066c7c69e15025d8090b3969a1f0d0e8f8ae857d911",
+   "matches_track_a": true
+  },
+  "dfs_expertlocal_cbottle_s1236": {
+   "path": "outputs/argo_P1_gulfstream/dfs_expertlocal_cbottle_s1236.pt",
+   "sha256": "23b4bcde1366b742a45194b79e675eb729653aae0fd0c09d4d5fe5683089b3ff",
+   "matches_track_a": true
+  },
+  "uniform_expertlocal_cbottle_s1236": {
+   "path": "outputs/argo_P1_gulfstream/uniform_expertlocal_cbottle_s1236.pt",
+   "sha256": "8dda309b0387a1c86ba57e2302c8fa2a811b6494552a7c4d776c8b838afec181",
+   "matches_track_a": true
+  },
+  "count_expertlocal_cbottle_s1236": {
+   "path": "outputs/argo_P1_gulfstream/count_expertlocal_cbottle_s1236.pt",
+   "sha256": "02376a65d64fd2d1ed0253a4aee9251c121c6cc9c2cced4fb9f9bbdf7a3106f3",
+   "matches_track_a": true
+  },
+  "thin_expertlocal_cbottle_s1236": {
+   "path": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1236.pt",
+   "sha256": "84db25fa9a58351731e000f5e4f1d1d24b7166ebab8037a61183274c889755eb",
+   "matches_track_a": true
+  },
+  "superob_expertlocal_cbottle_s1236": {
+   "path": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1236.pt",
+   "sha256": "a8c5bcd1f49bcb64697e0b54aa1a10fb98f4a20946a1c400efcd7061295d64ab",
+   "matches_track_a": true
+  }
+ },
+ "counts": {
+  "layout_months": 36
+ },
+ "warnings": [
+  "Track B was written by the same author as Track A. It can catch implementation error; it cannot establish that a shared conception is correct. Agreement here is evidence of arithmetic, not of science.",
+  "git working tree was dirty: the recorded commit does not fully identify the code that produced these numbers"
+ ],
+ "notes": "Independent re-implementation of QC, aggregation and CI. Shares the frozen protocol, manifests, sample construction and checkpoints, as plan S2 requires.",
+ "protocol_version": "crosscheck_v1",
+ "protocol_hash_": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7",
+ "git_commit_": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "git_dirty_": true,
+ "data_manifests": {
+  "argo_cohort:gulfstream": "3be6704343edcbe0237a7a28d9fab36c9a6c6785cc483d831aacf3419877bcc8",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "collection_manifests": {
+  "godas_gulfstream": "0775e3cc95be48b825289716f8e596d1b682554ce6f7a1fe725acc38ba42c428",
+  "godas_npac_gyre": "3a185a12d15d9211842ffcdcefafdd3ca40d47965d73147f057376c7086995a9",
+  "argo": "484abc1334fc0267d24a635e8028964f37253385bb18a653635089ae352bf85f",
+  "argo_cohort": "277fedfeaeaf07144f5a0804391646d8709c05bb04e684b80ae6d902b95ae75b",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "created_utc": "2026-09-07T22:36:38Z",
+ "host": "brev-rct25klo4"
+}

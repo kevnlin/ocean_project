@@ -1,0 +1,621 @@
+{
+ "package": "P7",
+ "track": "B",
+ "region": "gulfstream",
+ "results": {
+  "freeze_verification": {
+   "record_path": "outputs/argo_P7_gulfstream/freeze_record_seed1234.json",
+   "record_sha256": "32f3e85292836f1ae5d63c17f5d39d397546c8975fad4d33c66ee2be2bf4fcd8",
+   "frozen_utc": "2026-09-07T13:17:12Z",
+   "opened_utc": "2026-09-07T13:17:33Z",
+   "holdout_read_by_track_a": true,
+   "git_commit": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+   "git_dirty": true,
+   "freeze_mismatches_at_open": [],
+   "primary_endpoint": {
+    "quantity": "pooled RMSE on held-out-float measurements (train-only z units)",
+    "primary_channel": "TEMP",
+    "secondary_channel": "SALT",
+    "lead": 0,
+    "primary_cluster_unit": "wmo",
+    "secondary_cluster_unit": "source_month",
+    "split": "holdout",
+    "uses": "exactly once, after freezing"
+   },
+   "checkpoints_rehashed": 8,
+   "checkpoint_mismatches": [],
+   "same_name_decoys": [
+    "outputs/argo_P7_gulfstream/count_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes",
+    "outputs/argo_P7_gulfstream/dfs_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes",
+    "outputs/argo_P7_gulfstream/uniform_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes"
+   ],
+   "resolved_from": {
+    "count_expertlocal_cbottle": "outputs/argo_P0_gulfstream/count_expertlocal_cbottle_s1234.pt",
+    "count_oi_expert_cbottle": "outputs/argo_P0_gulfstream/count_oi_expert_cbottle_s1234.pt",
+    "dfs_expertlocal_cbottle": "outputs/argo_P0_gulfstream/dfs_expertlocal_cbottle_s1234.pt",
+    "dfs_oi_expert_cbottle": "outputs/argo_P0_gulfstream/dfs_oi_expert_cbottle_s1234.pt",
+    "superob_expertlocal_cbottle": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1234.pt",
+    "thin_expertlocal_cbottle": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1234.pt",
+    "uniform_expertlocal_cbottle": "outputs/argo_P0_gulfstream/uniform_expertlocal_cbottle_s1234.pt",
+    "uniform_oi_expert_cbottle": "outputs/argo_P0_gulfstream/uniform_oi_expert_cbottle_s1234.pt"
+   },
+   "track_a_loaded_what_it_froze": {
+    "count_expertlocal_cbottle": {
+     "frozen_sha256": "07743ac7d36b29259f3633bc70d2fb8199b2ef68ff2d216992192522e8567e15",
+     "scored_sha256": "07743ac7d36b29259f3633bc70d2fb8199b2ef68ff2d216992192522e8567e15",
+     "loaded_from": "outputs/argo_P0_gulfstream/count_expertlocal_cbottle_s1234.pt",
+     "matches_freeze": true
+    },
+    "count_oi_expert_cbottle": {
+     "frozen_sha256": "b732db954fcab97c2241963d0ec3f51c26485b13ccb244de09355abb3af28e45",
+     "scored_sha256": "f90808daf87fec1f2792cbc096c1e5c7d273f25e5e815fae2d53424763edcd71",
+     "loaded_from": "outputs/argo_P7_gulfstream/count_oi_expert_cbottle_s1234.pt",
+     "matches_freeze": false
+    },
+    "dfs_expertlocal_cbottle": {
+     "frozen_sha256": "43f0a557fce1228f6777e427c203060141f6e26595a5d30b5147c1f62dba601f",
+     "scored_sha256": "43f0a557fce1228f6777e427c203060141f6e26595a5d30b5147c1f62dba601f",
+     "loaded_from": "outputs/argo_P0_gulfstream/dfs_expertlocal_cbottle_s1234.pt",
+     "matches_freeze": true
+    },
+    "dfs_oi_expert_cbottle": {
+     "frozen_sha256": "11eb8e2c1e43eb12e39ff40019f43c730b4ede326ae1b09c8a2781eb658b4b38",
+     "scored_sha256": "c77769cc8a724108b47ae10165a557dab6a000902cc66f17a7aca9907b0f7e3d",
+     "loaded_from": "outputs/argo_P7_gulfstream/dfs_oi_expert_cbottle_s1234.pt",
+     "matches_freeze": false
+    },
+    "superob_expertlocal_cbottle": {
+     "frozen_sha256": "1e2419698b7c1cd6e7a5cb2695ad1ad017cda33813e71abafb0088deeb2a6556",
+     "scored_sha256": "1e2419698b7c1cd6e7a5cb2695ad1ad017cda33813e71abafb0088deeb2a6556",
+     "loaded_from": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1234.pt",
+     "matches_freeze": true
+    },
+    "thin_expertlocal_cbottle": {
+     "frozen_sha256": "7e244b7d3b4c76ef00e5e10d30039a5464ecbd8af81d5e7fc2f5935d88983cb8",
+     "scored_sha256": "7e244b7d3b4c76ef00e5e10d30039a5464ecbd8af81d5e7fc2f5935d88983cb8",
+     "loaded_from": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1234.pt",
+     "matches_freeze": true
+    },
+    "uniform_expertlocal_cbottle": {
+     "frozen_sha256": "50d0df4426b930299d2c73db31e26359dc054a5954140160dcdc0869d8f04796",
+     "scored_sha256": "50d0df4426b930299d2c73db31e26359dc054a5954140160dcdc0869d8f04796",
+     "loaded_from": "outputs/argo_P0_gulfstream/uniform_expertlocal_cbottle_s1234.pt",
+     "matches_freeze": true
+    },
+    "uniform_oi_expert_cbottle": {
+     "frozen_sha256": "b4dfc92128140789272c87cc6b6ec31205ff59081ba0aff193b14d6cca04d753",
+     "scored_sha256": "a39b45327a964af7c3621cba8c69660eec72ec65658181c8b171754ca492594d",
+     "loaded_from": "outputs/argo_P7_gulfstream/uniform_oi_expert_cbottle_s1234.pt",
+     "matches_freeze": false
+    }
+   },
+   "status": "ok"
+  },
+  "rows": {
+   "count_expertlocal_cbottle": {
+    "TEMP": 0.5798864992376404,
+    "SALT": 0.577149323899935,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5798864992376404,
+      "lo": 0.48642937426735466,
+      "hi": 0.6699151177978719,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5798864992376404,
+      "lo": 0.5265382512965197,
+      "hi": 0.6317919739591322,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "count_oi_expert_cbottle": {
+    "TEMP": 0.5638733144628671,
+    "SALT": 0.6894315889950203,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5638733144628671,
+      "lo": 0.47567310624582126,
+      "hi": 0.6435920385763524,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5638733144628671,
+      "lo": 0.5281287805756006,
+      "hi": 0.5942774022237367,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "dfs_expertlocal_cbottle": {
+    "TEMP": 0.5777904855478303,
+    "SALT": 0.5783569659860532,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5777904855478303,
+      "lo": 0.48913891469160176,
+      "hi": 0.662964600321805,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5777904855478303,
+      "lo": 0.5239508819056827,
+      "hi": 0.6270728452380355,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "dfs_oi_expert_cbottle": {
+    "TEMP": 0.5645731559591765,
+    "SALT": 0.6643657513595616,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5645731559591765,
+      "lo": 0.4761194363778885,
+      "hi": 0.6464158849684398,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5645731559591765,
+      "lo": 0.5300892823618893,
+      "hi": 0.5953187658302787,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "superob_expertlocal_cbottle": {
+    "TEMP": 0.6219829347305651,
+    "SALT": 0.6293310249622139,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.6219829347305651,
+      "lo": 0.5003475834993426,
+      "hi": 0.7373414772619314,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.6219829347305651,
+      "lo": 0.5724989595310553,
+      "hi": 0.6723531208152729,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "thin_expertlocal_cbottle": {
+    "TEMP": 0.6219720216968689,
+    "SALT": 0.6291162918523004,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.6219720216968689,
+      "lo": 0.49990423716092347,
+      "hi": 0.7379755737007133,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.6219720216968689,
+      "lo": 0.5720577069921217,
+      "hi": 0.6731984290724474,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "uniform_expertlocal_cbottle": {
+    "TEMP": 0.5804839882087109,
+    "SALT": 0.5780571472606176,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5804839882087109,
+      "lo": 0.4913173716708834,
+      "hi": 0.6669060573180875,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5804839882087109,
+      "lo": 0.5262246643868572,
+      "hi": 0.6312307891540879,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "uniform_oi_expert_cbottle": {
+    "TEMP": 0.5651330246707532,
+    "SALT": 0.6900685018589549,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.5651330246707532,
+      "lo": 0.4778040163984383,
+      "hi": 0.6448774456567724,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.5651330246707532,
+      "lo": 0.5291858242190105,
+      "hi": 0.5953213561327899,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "train_climatology": {
+    "TEMP": 1.2170110023847032,
+    "SALT": 1.2569716901247967,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 1.2170110023847032,
+      "lo": 1.019309072538299,
+      "hi": 1.416473995123148,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 1.2170110023847032,
+      "lo": 1.1575251728501648,
+      "hi": 1.2795385937101715,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "source_persistence": {
+    "TEMP": 0.9024273303663098,
+    "SALT": 0.986110239364372,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 0.9024273303663098,
+      "lo": 0.7662520166121414,
+      "hi": 1.0246819174062984,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 0.9024273303663098,
+      "lo": 0.8216973383270284,
+      "hi": 0.9767089965196892,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   },
+   "objective_interpolation": {
+    "TEMP": 1.0030296153303273,
+    "SALT": 1.0266510520408312,
+    "n_wmos": 50,
+    "n_targets": 12230,
+    "ci": {
+     "wmo": {
+      "point": 1.0030296153303273,
+      "lo": 0.8527843279702658,
+      "hi": 1.1572623226171903,
+      "n_clusters": 50,
+      "cluster_unit": "wmo"
+     },
+     "source_month": {
+      "point": 1.0030296153303273,
+      "lo": 0.9193041063807775,
+      "hi": 1.0982972753975138,
+      "n_clusters": 12,
+      "cluster_unit": "source_month"
+     }
+    }
+   }
+  },
+  "dfs_minus_uniform": {
+   "TEMP": {
+    "point": -0.0026935026608806423,
+    "lo": -0.007065209009583737,
+    "hi": 0.001753324223388428,
+    "n_clusters": 50,
+    "cluster_unit": "wmo",
+    "n_boot": 4000,
+    "alpha": 0.05,
+    "method_label": "DFS - Uniform",
+    "kind": "percentile",
+    "n_seeds": 1,
+    "excludes_zero": false
+   },
+   "SALT": {
+    "point": 0.0002998187254356077,
+    "lo": -0.005145434683476166,
+    "hi": 0.00597296848895205,
+    "n_clusters": 50,
+    "cluster_unit": "wmo",
+    "n_boot": 4000,
+    "alpha": 0.05,
+    "method_label": "DFS - Uniform",
+    "kind": "percentile",
+    "n_seeds": 1,
+    "excludes_zero": false
+   },
+   "point": -0.0026935026608806423,
+   "excludes_zero": false
+  },
+  "comparable": {
+   "rmse": {
+    "count_expertlocal_cbottle": {
+     "TEMP": 0.5798864992376404,
+     "SALT": 0.577149323899935
+    },
+    "count_oi_expert_cbottle": {
+     "TEMP": 0.5638733144628671,
+     "SALT": 0.6894315889950203
+    },
+    "dfs_expertlocal_cbottle": {
+     "TEMP": 0.5777904855478303,
+     "SALT": 0.5783569659860532
+    },
+    "dfs_oi_expert_cbottle": {
+     "TEMP": 0.5645731559591765,
+     "SALT": 0.6643657513595616
+    },
+    "superob_expertlocal_cbottle": {
+     "TEMP": 0.6219829347305651,
+     "SALT": 0.6293310249622139
+    },
+    "thin_expertlocal_cbottle": {
+     "TEMP": 0.6219720216968689,
+     "SALT": 0.6291162918523004
+    },
+    "uniform_expertlocal_cbottle": {
+     "TEMP": 0.5804839882087109,
+     "SALT": 0.5780571472606176
+    },
+    "uniform_oi_expert_cbottle": {
+     "TEMP": 0.5651330246707532,
+     "SALT": 0.6900685018589549
+    },
+    "train_climatology": {
+     "TEMP": 1.2170110023847032,
+     "SALT": 1.2569716901247967
+    },
+    "source_persistence": {
+     "TEMP": 0.9024273303663098,
+     "SALT": 0.986110239364372
+    },
+    "objective_interpolation": {
+     "TEMP": 1.0030296153303273,
+     "SALT": 1.0266510520408312
+    }
+   },
+   "per_seed_rmse": {
+    "count_expertlocal_cbottle": {
+     "TEMP": [
+      0.5798864992376404
+     ],
+     "SALT": [
+      0.577149323899935
+     ]
+    },
+    "count_oi_expert_cbottle": {
+     "TEMP": [
+      0.5638733144628671
+     ],
+     "SALT": [
+      0.6894315889950203
+     ]
+    },
+    "dfs_expertlocal_cbottle": {
+     "TEMP": [
+      0.5777904855478303
+     ],
+     "SALT": [
+      0.5783569659860532
+     ]
+    },
+    "dfs_oi_expert_cbottle": {
+     "TEMP": [
+      0.5645731559591765
+     ],
+     "SALT": [
+      0.6643657513595616
+     ]
+    },
+    "superob_expertlocal_cbottle": {
+     "TEMP": [
+      0.6219829347305651
+     ],
+     "SALT": [
+      0.6293310249622139
+     ]
+    },
+    "thin_expertlocal_cbottle": {
+     "TEMP": [
+      0.6219720216968689
+     ],
+     "SALT": [
+      0.6291162918523004
+     ]
+    },
+    "uniform_expertlocal_cbottle": {
+     "TEMP": [
+      0.5804839882087109
+     ],
+     "SALT": [
+      0.5780571472606176
+     ]
+    },
+    "uniform_oi_expert_cbottle": {
+     "TEMP": [
+      0.5651330246707532
+     ],
+     "SALT": [
+      0.6900685018589549
+     ]
+    },
+    "train_climatology": {
+     "TEMP": [
+      1.2170110023847032
+     ],
+     "SALT": [
+      1.2569716901247967
+     ]
+    },
+    "source_persistence": {
+     "TEMP": [
+      0.9024273303663098
+     ],
+     "SALT": [
+      0.986110239364372
+     ]
+    },
+    "objective_interpolation": {
+     "TEMP": [
+      1.0030296153303273
+     ],
+     "SALT": [
+      1.0266510520408312
+     ]
+    }
+   },
+   "n_wmos": 50,
+   "n_targets": 12230,
+   "n_months": 12,
+   "dfs_minus_uniform": {
+    "TEMP": {
+     "point": -0.0026935026608806423,
+     "lo": -0.007065209009583737,
+     "hi": 0.001753324223388428,
+     "excludes_zero": false
+    },
+    "SALT": {
+     "point": 0.0002998187254356077,
+     "lo": -0.005145434683476166,
+     "hi": 0.00597296848895205,
+     "excludes_zero": false
+    }
+   },
+   "ranking": [
+    "count_oi_expert_cbottle",
+    "dfs_oi_expert_cbottle",
+    "uniform_oi_expert_cbottle",
+    "dfs_expertlocal_cbottle",
+    "count_expertlocal_cbottle",
+    "uniform_expertlocal_cbottle",
+    "thin_expertlocal_cbottle",
+    "superob_expertlocal_cbottle",
+    "source_persistence",
+    "objective_interpolation",
+    "train_climatology"
+   ]
+  }
+ },
+ "seeds": [
+  1234,
+  1235,
+  1236
+ ],
+ "command": "experiments/51_track_b.py --package P7 --region gulfstream",
+ "checkpoint_hashes": {
+  "count_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/count_expertlocal_cbottle_s1234.pt",
+   "sha256": "07743ac7d36b29259f3633bc70d2fb8199b2ef68ff2d216992192522e8567e15",
+   "matches_track_a": true
+  },
+  "count_oi_expert_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/count_oi_expert_cbottle_s1234.pt",
+   "sha256": "b732db954fcab97c2241963d0ec3f51c26485b13ccb244de09355abb3af28e45",
+   "matches_track_a": true
+  },
+  "dfs_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/dfs_expertlocal_cbottle_s1234.pt",
+   "sha256": "43f0a557fce1228f6777e427c203060141f6e26595a5d30b5147c1f62dba601f",
+   "matches_track_a": true
+  },
+  "dfs_oi_expert_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/dfs_oi_expert_cbottle_s1234.pt",
+   "sha256": "11eb8e2c1e43eb12e39ff40019f43c730b4ede326ae1b09c8a2781eb658b4b38",
+   "matches_track_a": true
+  },
+  "superob_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/superob_expertlocal_cbottle_s1234.pt",
+   "sha256": "1e2419698b7c1cd6e7a5cb2695ad1ad017cda33813e71abafb0088deeb2a6556",
+   "matches_track_a": true
+  },
+  "thin_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/thin_expertlocal_cbottle_s1234.pt",
+   "sha256": "7e244b7d3b4c76ef00e5e10d30039a5464ecbd8af81d5e7fc2f5935d88983cb8",
+   "matches_track_a": true
+  },
+  "uniform_expertlocal_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/uniform_expertlocal_cbottle_s1234.pt",
+   "sha256": "50d0df4426b930299d2c73db31e26359dc054a5954140160dcdc0869d8f04796",
+   "matches_track_a": true
+  },
+  "uniform_oi_expert_cbottle_s1234": {
+   "path": "outputs/argo_P0_gulfstream/uniform_oi_expert_cbottle_s1234.pt",
+   "sha256": "b4dfc92128140789272c87cc6b6ec31205ff59081ba0aff193b14d6cca04d753",
+   "matches_track_a": true
+  }
+ },
+ "counts": {
+  "split_protocol": "main",
+  "targets": 12230,
+  "wmos": 50,
+  "months": 12,
+  "eval_split": "holdout",
+  "n_profiles": 24
+ },
+ "warnings": [
+  "P7: outputs/argo_P7_gulfstream/count_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes \u2014 resolving a pinned checkpoint by directory order rather than by hash would score the wrong model",
+  "P7: outputs/argo_P7_gulfstream/dfs_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes \u2014 resolving a pinned checkpoint by directory order rather than by hash would score the wrong model",
+  "P7: outputs/argo_P7_gulfstream/uniform_oi_expert_cbottle_s1234.pt shares the name of a frozen checkpoint but not its bytes \u2014 resolving a pinned checkpoint by directory order rather than by hash would score the wrong model",
+  "P7 PROTOCOL VIOLATION: Track A scored count_oi_expert_cbottle from outputs/argo_P7_gulfstream/count_oi_expert_cbottle_s1234.pt (f90808daf87fec1f), but the freeze record pins b732db954fcab97c. That row of the holdout table was produced by a model that was never frozen.",
+  "P7 PROTOCOL VIOLATION: Track A scored dfs_oi_expert_cbottle from outputs/argo_P7_gulfstream/dfs_oi_expert_cbottle_s1234.pt (c77769cc8a724108), but the freeze record pins 11eb8e2c1e43eb12. That row of the holdout table was produced by a model that was never frozen.",
+  "P7 PROTOCOL VIOLATION: Track A scored uniform_oi_expert_cbottle from outputs/argo_P7_gulfstream/uniform_oi_expert_cbottle_s1234.pt (a39b45327a964af7), but the freeze record pins b4dfc92128140789. That row of the holdout table was produced by a model that was never frozen.",
+  "Track B was written by the same author as Track A. It can catch implementation error; it cannot establish that a shared conception is correct. Agreement here is evidence of arithmetic, not of science.",
+  "git working tree was dirty: the recorded commit does not fully identify the code that produced these numbers"
+ ],
+ "notes": "Independent re-implementation of QC, aggregation and CI. Shares the frozen protocol, manifests, sample construction and checkpoints, as plan S2 requires.",
+ "protocol_version": "crosscheck_v1",
+ "protocol_hash_": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7",
+ "git_commit_": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "git_dirty_": true,
+ "data_manifests": {
+  "argo_cohort:gulfstream": "3be6704343edcbe0237a7a28d9fab36c9a6c6785cc483d831aacf3419877bcc8",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "collection_manifests": {
+  "godas_gulfstream": "0775e3cc95be48b825289716f8e596d1b682554ce6f7a1fe725acc38ba42c428",
+  "godas_npac_gyre": "3a185a12d15d9211842ffcdcefafdd3ca40d47965d73147f057376c7086995a9",
+  "argo": "484abc1334fc0267d24a635e8028964f37253385bb18a653635089ae352bf85f",
+  "argo_cohort": "277fedfeaeaf07144f5a0804391646d8709c05bb04e684b80ae6d902b95ae75b",
+  "reference_products": "373af02d9f9b7b24f88da97a1f1e4951ee5389f6f978962b97980b3b32e95775"
+ },
+ "created_utc": "2026-09-07T22:45:30Z",
+ "host": "brev-rct25klo4"
+}

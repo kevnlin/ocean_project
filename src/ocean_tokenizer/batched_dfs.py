@@ -97,6 +97,33 @@ BOX_EXTENT = box_extent()
 #: (x_km, y_km, z_m, t_months) — numerically equivalent to LENGTH_SCALES.
 LENGTH_SCALES_KM = tuple(l * e for l, e in zip(LENGTH_SCALES, BOX_EXTENT))
 
+#: Physical extent PER REGION.  ``BOX_EXTENT`` above is the Gulf Stream box and
+#: stays the default so nothing already run changes; but 51 degrees of longitude
+#: is not one distance.  It is 4,499 km at the Gulf Stream's mean latitude,
+#: 4,782 km in the North Pacific gyre and **5,671 km at the equator** — a 26 %
+#: spread.  Since the DFS support kernel's length scales are a fixed FRACTION of
+#: the box extent, using the Gulf Stream's number at the equator makes every
+#: correlation length ~26 % too short, so observations there look more
+#: independent than they are and evidence is over-counted.
+REGION_BOXES = {
+    "gulfstream": ((25.0, 50.0), (280.0, 331.0)),
+    "npac_gyre":  ((20.0, 45.0), (180.0, 231.0)),
+    "eq_pacific": ((-12.5, 12.5), (180.0, 231.0)),
+}
+
+
+def extent_for(region: str | None) -> tuple:
+    """Physical extent of a named region's box; the default box if unknown."""
+    if region is None or region not in REGION_BOXES:
+        return BOX_EXTENT
+    lat, lon = REGION_BOXES[region]
+    return box_extent(lat, lon, BOX_DEPTH_M)
+
+
+def length_scales_km_for(region: str | None) -> tuple:
+    """DFS kernel length scales in km for a named region."""
+    return tuple(l * e for l, e in zip(LENGTH_SCALES, extent_for(region)))
+
 
 def to_physical(coord: torch.Tensor, extent=BOX_EXTENT) -> torch.Tensor:
     """Normalised (x, y, z, t) in [0,1]^3 x months -> (km, km, m, months)."""

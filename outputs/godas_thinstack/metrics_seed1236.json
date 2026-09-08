@@ -1,6 +1,6 @@
 {
  "task": "godas_dfs_d4rt",
- "git_commit": "cc08855cce44d8e0a15d00dac798542551cc2417",
+ "git_commit": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
  "seed": 1236,
  "device": "cuda",
  "smoke": false,
@@ -39,8 +39,9 @@
   "holdout": 8
  },
  "args": {
-  "configs": "dfs_expertlocal_cbottle,uniform_expertlocal_cbottle,count_expertlocal_cbottle",
+  "configs": "superob_expertlocal_cbottle,thin_expertlocal_cbottle",
   "seed": 1236,
+  "provenance_rho": 0.0,
   "steps": 5000,
   "validation_interval": 500,
   "queries": 512,
@@ -58,245 +59,165 @@
   "audit_months": 6
  },
  "results": {
-  "dfs_expertlocal_cbottle": {
-   "row": "dfs_expertlocal_cbottle",
+  "superob_expertlocal_cbottle": {
+   "row": "superob_expertlocal_cbottle",
    "trainable": true,
    "n_params": 233859,
    "selected_step": 5000,
-   "validation_score": 0.6874867630572243,
+   "validation_score": 0.6821706511478287,
    "validation": {
-    "TEMP": 0.7976071282121475,
-    "SALT": 0.8838998777771117
+    "TEMP": 0.7984580882753093,
+    "SALT": 0.8691834235637155
    },
    "history": [
     {
      "step": 500,
-     "score": 0.856801038096411,
-     "TEMP": 0.9346472420515204,
-     "SALT": 1.1682840467125912
+     "score": 0.8944077266594856,
+     "TEMP": 0.9771340690698591,
+     "SALT": 1.2179191077015183
     },
     {
      "step": 1000,
-     "score": 0.7981866731055288,
-     "TEMP": 0.8644641322836988,
-     "SALT": 1.09537175381493
+     "score": 0.7958662875640742,
+     "TEMP": 0.8686354031339546,
+     "SALT": 1.0846812525525054
     },
     {
      "step": 1500,
-     "score": 0.788940411090344,
-     "TEMP": 0.8426406254001509,
-     "SALT": 1.0959443482997286
+     "score": 0.7825036610400786,
+     "TEMP": 0.8416514746826117,
+     "SALT": 1.0803934537202438
     },
     {
      "step": 2000,
-     "score": 0.7611385202865597,
-     "TEMP": 0.8367036095263588,
-     "SALT": 1.0306455500640572
+     "score": 0.7359481232252947,
+     "TEMP": 0.8157981063125646,
+     "SALT": 0.9889155423711293
     },
     {
      "step": 2500,
-     "score": 0.7303501946384935,
-     "TEMP": 0.8251060725381197,
-     "SALT": 0.9639727926907163
+     "score": 0.7215737502943536,
+     "TEMP": 0.8259266028197744,
+     "SALT": 0.9403333664129034
     },
     {
      "step": 3000,
-     "score": 0.7286170500696976,
-     "TEMP": 0.8296261566728664,
-     "SALT": 0.954410676654697
+     "score": 0.70406251782914,
+     "TEMP": 0.8218779652464067,
+     "SALT": 0.8995515964652703
     },
     {
      "step": 3500,
-     "score": 0.7038230023280841,
-     "TEMP": 0.8165082981815941,
-     "SALT": 0.9049614808097457
+     "score": 0.6899791186634338,
+     "TEMP": 0.8193667739048597,
+     "SALT": 0.8659163676253875
     },
     {
      "step": 4000,
-     "score": 0.7024720586705815,
-     "TEMP": 0.8227780409309567,
-     "SALT": 0.8944239182401327
+     "score": 0.6915914498748444,
+     "TEMP": 0.8310679659920095,
+     "SALT": 0.8569500505872336
     },
     {
      "step": 4500,
-     "score": 0.71479865681267,
-     "TEMP": 0.8254729018476111,
-     "SALT": 0.9233053786988195
+     "score": 0.6969988419769864,
+     "TEMP": 0.8121041786051452,
+     "SALT": 0.8922426106522925
     },
     {
      "step": 5000,
-     "score": 0.6874867630572243,
-     "TEMP": 0.7976071282121475,
-     "SALT": 0.8838998777771117
+     "score": 0.6821706511478287,
+     "TEMP": 0.7984580882753093,
+     "SALT": 0.8691834235637155
     }
    ],
-   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/dfs_expertlocal_cbottle_seed1236.pt",
-   "checkpoint_sha256": "96a8d79a3a94c9df4a363aeca166541d56a3c654ed368312cef99f5ab7a3da76",
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/superob_expertlocal_cbottle_seed1236.pt",
+   "checkpoint_sha256": "5978b7f1da657e3cc9254ce5943ad652f5bd566af8ddc73cf75ca0560a853e33",
    "holdout": {
-    "TEMP": 0.8394687303217114,
-    "SALT": 0.9268663742746995
+    "TEMP": 0.8817442765023104,
+    "SALT": 1.0752649276052422
    },
-   "wall_s": 248.9
+   "wall_s": 224.3
   },
-  "uniform_expertlocal_cbottle": {
-   "row": "uniform_expertlocal_cbottle",
+  "thin_expertlocal_cbottle": {
+   "row": "thin_expertlocal_cbottle",
    "trainable": true,
    "n_params": 233859,
    "selected_step": 5000,
-   "validation_score": 0.6755234562429073,
+   "validation_score": 0.6821287774402705,
    "validation": {
-    "TEMP": 0.7884399760396772,
-    "SALT": 0.8632268732085606
+    "TEMP": 0.7983480091435667,
+    "SALT": 0.8691986461089182
    },
    "history": [
     {
      "step": 500,
-     "score": 0.8872965363544658,
-     "TEMP": 0.9735454383335438,
-     "SALT": 1.2035415001254104
+     "score": 0.8944124031747877,
+     "TEMP": 0.9771413603836508,
+     "SALT": 1.2179230251684883
     },
     {
      "step": 1000,
-     "score": 0.8019724469924225,
-     "TEMP": 0.8602458686509421,
-     "SALT": 1.1099082142183954
+     "score": 0.7958651070512055,
+     "TEMP": 0.868641409931127,
+     "SALT": 1.0846714514287235
     },
     {
      "step": 1500,
-     "score": 0.7904484421701218,
-     "TEMP": 0.8433699850348787,
-     "SALT": 1.0990288830058366
+     "score": 0.7824938089881956,
+     "TEMP": 0.841659408550237,
+     "SALT": 1.0803590421289788
     },
     {
      "step": 2000,
-     "score": 0.736107526998345,
-     "TEMP": 0.822973967307142,
-     "SALT": 0.9812700190977318
+     "score": 0.735902659752339,
+     "TEMP": 0.8157418144777615,
+     "SALT": 0.988861072211708
     },
     {
      "step": 2500,
-     "score": 0.7196263861050188,
-     "TEMP": 0.8262028727792295,
-     "SALT": 0.9349823355392642
+     "score": 0.7216073021265855,
+     "TEMP": 0.8259541227955252,
+     "SALT": 0.9403893124399376
     },
     {
      "step": 3000,
-     "score": 0.7142078711719981,
-     "TEMP": 0.8360913828009107,
-     "SALT": 0.9098520793923317
+     "score": 0.7040165134625369,
+     "TEMP": 0.8219210164211208,
+     "SALT": 0.8993841688177199
     },
     {
      "step": 3500,
-     "score": 0.6868559847277069,
-     "TEMP": 0.8128190434352716,
-     "SALT": 0.8651848530213544
+     "score": 0.6899733480881187,
+     "TEMP": 0.8193582274868425,
+     "SALT": 0.8659110275821525
     },
     {
      "step": 4000,
-     "score": 0.6860341703159969,
-     "TEMP": 0.8210385776334783,
-     "SALT": 0.853827431549606
+     "score": 0.6916219753523695,
+     "TEMP": 0.8312316693753284,
+     "SALT": 0.8568452354806646
     },
     {
      "step": 4500,
-     "score": 0.7029026273864906,
-     "TEMP": 0.8260534310941269,
-     "SALT": 0.8918603503770707
+     "score": 0.6969901572381153,
+     "TEMP": 0.8121070880362276,
+     "SALT": 0.8922168628734397
     },
     {
      "step": 5000,
-     "score": 0.6755234562429073,
-     "TEMP": 0.7884399760396772,
-     "SALT": 0.8632268732085606
+     "score": 0.6821287774402705,
+     "TEMP": 0.7983480091435667,
+     "SALT": 0.8691986461089182
     }
    ],
-   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/uniform_expertlocal_cbottle_seed1236.pt",
-   "checkpoint_sha256": "eb7acbb91525f64962f74c4eee854171c46566b2a5b2bfcc4b11d03616f8993c",
+   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/thin_expertlocal_cbottle_seed1236.pt",
+   "checkpoint_sha256": "cd1e4687f90149da2f907c34e389a60ce57a8207b44e8f13695a0f33927c7ab7",
    "holdout": {
-    "TEMP": 0.8349693922540574,
-    "SALT": 1.0019467225344258
+    "TEMP": 0.8819137277014097,
+    "SALT": 1.075536602711317
    },
-   "wall_s": 242.3
-  },
-  "count_expertlocal_cbottle": {
-   "row": "count_expertlocal_cbottle",
-   "trainable": true,
-   "n_params": 233859,
-   "selected_step": 5000,
-   "validation_score": 0.6839675219690564,
-   "validation": {
-    "TEMP": 0.7961109813700857,
-    "SALT": 0.8764703484790044
-   },
-   "history": [
-    {
-     "step": 500,
-     "score": 0.9051819205050785,
-     "TEMP": 0.9751768333140429,
-     "SALT": 1.2480062155749323
-    },
-    {
-     "step": 1000,
-     "score": 0.8003346508453595,
-     "TEMP": 0.8672455690891474,
-     "SALT": 1.0978084209281116
-    },
-    {
-     "step": 1500,
-     "score": 0.765223431344954,
-     "TEMP": 0.8256628410623412,
-     "SALT": 1.0536176748075428
-    },
-    {
-     "step": 2000,
-     "score": 0.741599285279026,
-     "TEMP": 0.8262056423843784,
-     "SALT": 0.9918565367084148
-    },
-    {
-     "step": 2500,
-     "score": 0.7150470617194765,
-     "TEMP": 0.8214848162613145,
-     "SALT": 0.9284268063908744
-    },
-    {
-     "step": 3000,
-     "score": 0.7138389873449078,
-     "TEMP": 0.821988490603541,
-     "SALT": 0.9247340786654669
-    },
-    {
-     "step": 3500,
-     "score": 0.69212309467118,
-     "TEMP": 0.8134665385541143,
-     "SALT": 0.8780917722424255
-    },
-    {
-     "step": 4000,
-     "score": 0.6898416730689453,
-     "TEMP": 0.8233952244279183,
-     "SALT": 0.8610368325821881
-    },
-    {
-     "step": 4500,
-     "score": 0.6997095915136549,
-     "TEMP": 0.8179059923611973,
-     "SALT": 0.8927442878048607
-    },
-    {
-     "step": 5000,
-     "score": 0.6839675219690564,
-     "TEMP": 0.7961109813700857,
-     "SALT": 0.8764703484790044
-    }
-   ],
-   "checkpoint": "/home/nvidia/ocean_project/outputs/godas_thinstack/count_expertlocal_cbottle_seed1236.pt",
-   "checkpoint_sha256": "59510541f77eaedca542f131beb9b84363180741e34d88bc8319676feff4aef7",
-   "holdout": {
-    "TEMP": 0.8589293234593549,
-    "SALT": 1.0343272326351025
-   },
-   "wall_s": 227.1
+   "wall_s": 218.6
   }
  },
  "provenance_warning": "The mentor document's result tables, checkpoint hashes and test counts are targets that were never run. These are fresh measurements and must not be compared against them."

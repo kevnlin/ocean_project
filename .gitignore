@@ -43,3 +43,12 @@ venv/
 # --- OS / editor ---
 .DS_Store
 *.swp
+
+# --- Real-observation ingest & external code (regenerate; not tracked) ---
+# Argo GDAC floats (~9.7 GB), QC'd cohort, EN4/ECCO subsets and the NOAA weekly
+# file the Senseiver reproduction rebuilds live under /data/, already ignored.
+# Upstream clones + the ~1 GB sst_weekly.mat built for the official example:
+/external/
+# Real-Argo row checkpoints: many small .pt files, regenerate with
+# experiments/45_argo_real_data.py (the signed artifact_*.json ARE tracked).
+/outputs/argo_*/*.pt

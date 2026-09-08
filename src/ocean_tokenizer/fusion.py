@@ -566,7 +566,8 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
                        n_self_blocks: int = 4, patch=(10, 12),
                        seed: int | None = None,
                        anchor_grid: tuple[int, int] | None = None,
-                       with_ssh: bool = False, **kw):
+                       with_ssh: bool = False, patch_surf=None, patch_woa=None,
+                       **kw):
     """Wire the project's modality encoders into a fusion variant.
 
     With the same ``seed``, every variant starts from identical encoder,
@@ -577,19 +578,29 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
     own ``ssh_grid`` modality).  It is opt-in and appended LAST so that, at a
     fixed seed, every other encoder still draws the same initial weights as a
     run without it — an SSH ablation stays a controlled comparison.
+
+    ``patch_surf`` / ``patch_woa`` override the patch size per stream.  A
+    gridded token currently averages ``patch`` cells before the model sees it
+    (10x12 = 120 cells at 1 deg), and the modality-dropout audit found that
+    dropping BOTH gridded streams costs ~0.2 % — i.e. the dense fields are
+    effectively unused.  Refining only the stream under test keeps the token
+    count, and therefore the O(Q*N) query refiner, affordable.
     """
     from .token_api import ProfileEncoder, GridPatchEncoder
     if seed is not None:
         torch.manual_seed(seed)
     encoders = {
         "profiles": ProfileEncoder(grid.depth, c_vars=2, d_model=d_model),
-        "surf": GridPatchEncoder(2, d_model=d_model, patch=patch,
+        "surf": GridPatchEncoder(2, d_model=d_model,
+                                 patch=(patch_surf or patch),
                                  modality="surf_grid"),
-        "woa": GridPatchEncoder(2, d_model=d_model, patch=patch,
+        "woa": GridPatchEncoder(2, d_model=d_model,
+                                patch=(patch_woa or patch),
                                 modality="woa_grid"),
     }
     if with_ssh:
-        encoders["ssh"] = GridPatchEncoder(1, d_model=d_model, patch=patch,
+        encoders["ssh"] = GridPatchEncoder(1, d_model=d_model,
+                                           patch=(patch_surf or patch),
                                            modality="ssh_grid")
     cls = VARIANTS[variant]
     return cls(encoders, d_model=d_model, n_latent=n_latent, n_heads=n_heads,

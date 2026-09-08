@@ -1,0 +1,63 @@
+{
+ "tag": "en4_smoke",
+ "task": "real_argo_global_2d_reconstruction",
+ "variant": "d4rt",
+ "params": 445703,
+ "split": {
+  "train": [
+   2016,
+   2021
+  ],
+  "val": [
+   2022,
+   2022
+  ],
+  "test": [
+   2023,
+   2023
+  ]
+ },
+ "n_profiles": 200,
+ "eq_sigma": 15.0,
+ "eq_uniform_frac": 0.25,
+ "test": {
+  "TEMP": 1.2196692167602776,
+  "SALT": 0.2390470358311057
+ },
+ "woa_floor": {
+  "TEMP": 1.2425951494712981,
+  "SALT": 0.23757283819405048
+ },
+ "skill": {
+  "TEMP": 0.01845004201149114,
+  "SALT": -0.006205244876735794
+ },
+ "bin_deg": 1,
+ "min_obs": 3,
+ "cells_scored": 7445,
+ "cells_total": 64800,
+ "history": [
+  {
+   "step": 20,
+   "loss": 0.8999473452568054,
+   "TEMP": 1.2104796763413763,
+   "SALT": 0.19729736829330832,
+   "skill": -0.004012502429616482
+  },
+  {
+   "step": 40,
+   "loss": 1.1048948764801025,
+   "TEMP": 1.2104537455640083,
+   "SALT": 0.19584029002296968,
+   "skill": -0.000246493289316696
+  }
+ ],
+ "en4_agreement": {
+  "TEMP": 0.7377236784821019,
+  "SALT": 0.22503009266642288
+ },
+ "en4_max_unc": 1.0,
+ "en4_cells": 46029,
+ "git_commit": "59076c12e91177e4e84899a3a46ec356bfcb53d3",
+ "protocol_hash": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7"
+}

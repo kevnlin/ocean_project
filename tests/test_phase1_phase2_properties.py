@@ -248,3 +248,51 @@ def test_thinning_keeps_one_member_per_bin():
     n1 = superob_tokens(duplicate_profile_attack(s, 1), "thin")["mask"].shape[0]
     n8 = superob_tokens(duplicate_profile_attack(s, 8), "thin")["mask"].shape[0]
     assert n1 == n8
+
+
+# --------------------------------------------------------------------------
+# reproducibility of the redundancy construction
+# --------------------------------------------------------------------------
+def test_jitter_is_reproducible_across_processes():
+    """`jittered`'s offsets must not depend on Python's per-process str hash.
+
+    `duplicate_rows` seeded its RNG with `abs(hash(family))`, which
+    PYTHONHASHSEED randomizes, so the one family whose construction draws random
+    numbers was the one that could not be reproduced between runs. Two tracks
+    running the same experiment concurrently disagreed on `jittered` while
+    agreeing exactly on the other four families, which is how it surfaced.
+
+    This runs the draw in a SUBPROCESS with a different hash seed, because an
+    in-process check cannot see the bug at all.
+    """
+    import os
+    import subprocess
+    import sys
+    import textwrap
+
+    prog = textwrap.dedent("""
+        import numpy as np, sys
+        sys.path.insert(0, "src")
+        from ocean_tokenizer.argo_experiments import REDUNDANCY_FAMILIES
+        rng = np.random.default_rng(
+            [1234, 264, 8, REDUNDANCY_FAMILIES.index("jittered")])
+        print(repr(rng.normal(0.0, 25.0, size=4).tolist()))
+    """)
+    outs = set()
+    for hashseed in ("0", "1", "12345"):
+        env = {**os.environ, "PYTHONHASHSEED": hashseed}
+        r = subprocess.run([sys.executable, "-c", prog], capture_output=True,
+                           text=True, env=env, cwd=os.path.join(
+                               os.path.dirname(__file__), ".."))
+        assert r.returncode == 0, r.stderr
+        outs.add(r.stdout.strip())
+    assert len(outs) == 1, f"jitter draw varies with PYTHONHASHSEED: {outs}"
+
+
+def test_family_seeds_are_distinct():
+    """Different families must still get different streams, not one shared one."""
+    from ocean_tokenizer.argo_experiments import REDUNDANCY_FAMILIES
+    draws = {f: np.random.default_rng(
+        [1234, 264, 8, REDUNDANCY_FAMILIES.index(f)]).normal(size=3).tolist()
+        for f in REDUNDANCY_FAMILIES}
+    assert len({tuple(v) for v in draws.values()}) == len(REDUNDANCY_FAMILIES)
