@@ -15,7 +15,7 @@ recomputes them under protocol_v1 exactly:
 The MLP has no validation-based model selection (fixed 30-epoch schedule), so
 the 36 val months are simply unused here — no protocol contact.
 
-Run:  CUDA_VISIBLE_DEVICES=6 python experiments/21_baselines_protocol_v1.py
+Run:  CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/21_baselines_protocol_v1.py
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

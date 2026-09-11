@@ -34,8 +34,8 @@ Floor: TEMP 0.5870 degC · SALT 0.1126 PSU
 
 ## Notes
 
-* Eval-only reduction measures robustness of the existing models; the training-regime companion (retrain at a fixed density, extrapolate) is `experiments/37_obs_stress.py` / `reports/obs_stress_d4rt.md`.
+* Eval-only reduction measures robustness of the existing models; the training-regime companion (retrain at a fixed density, extrapolate) is `experiments/synthetic/37_obs_stress.py` / `reports/synthetic/obs_stress_d4rt.md`.
 
-* The Perceiver control collapsed to climatology during training (`reports/obs_stress_perceiver.md`), so its flat curve is the ignore-the-observations reference, not robustness.
+* The Perceiver control collapsed to climatology during training (`reports/synthetic/obs_stress_perceiver.md`), so its flat curve is the ignore-the-observations reference, not robustness.
 
 Run record: `outputs/cache/profile_reduction_s1234.json`

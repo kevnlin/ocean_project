@@ -53,8 +53,8 @@ skipped, so an interrupted run resumes without corrupting anything — same
 contract as ``13_download_godas.py``.
 
 Run:
-    .venv/bin/python experiments/42_download_argo.py                 # both boxes
-    .venv/bin/python experiments/42_download_argo.py --smoke         # 25 floats
+    .venv/bin/python experiments/data/42_download_argo.py                 # both boxes
+    .venv/bin/python experiments/data/42_download_argo.py --smoke         # 25 floats
 """
 from __future__ import annotations
 

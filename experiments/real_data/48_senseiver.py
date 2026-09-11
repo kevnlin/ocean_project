@@ -38,8 +38,8 @@ Senseiver **requires** a gridded training field where the DFS model does not.
 Giving it GODAS is the most favourable honest choice available, since GODAS has
 assimilated Argo and so encodes more than our model ever sees.
 
-  .venv/bin/python experiments/48_senseiver.py --stage prepare
-  .venv/bin/python experiments/48_senseiver.py --stage reproduce
+  .venv/bin/python experiments/real_data/48_senseiver.py --stage prepare
+  .venv/bin/python experiments/real_data/48_senseiver.py --stage reproduce
 """
 from __future__ import annotations
 
@@ -199,7 +199,7 @@ ARGO_DATASET = '''
 def godas_argo():
     """GODAS T/S with depth folded into channels.
 
-    Written by ocean_project/experiments/48_senseiver.py, NOT by the Senseiver
+    Written by ocean_project/experiments/real_data/48_senseiver.py, NOT by the Senseiver
     authors. Shape (T, H, W, 2*D): one pixel per grid cell, one channel per
     (variable, depth). An Argo float measures the WHOLE COLUMN at one location,
     which is exactly what a Senseiver sensor is -- a pixel whose every channel

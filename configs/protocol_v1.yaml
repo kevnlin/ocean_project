@@ -4,7 +4,7 @@
 # This file is the single source of truth for the primary experiment.
 # Any run that deviates from it must say so explicitly and must NOT be
 # reported in the headline table.  Human-readable rationale:
-# reports/protocol_v1.md
+# reports/synthetic/protocol_v1.md
 #
 # Frozen: 2026-07-17 (before the Monday group meeting)
 # =============================================================================
@@ -50,7 +50,7 @@ depth:
   note: >
     The primary target reaches ~985 m: there is NO >1000 m layer in
     protocol_v1.  The extended 23-level grid to 1400 m is a separate,
-    clearly-labelled secondary protocol (see reports/layered_depth_eval.md)
+    clearly-labelled secondary protocol (see reports/synthetic/layered_depth_eval.md)
     and is never mixed into the primary headline table.
   depth_bands_primary:      # for banded reporting on the 20-level task
     - {name: 0-100m,   lo: 0.0,   hi: 100.0}

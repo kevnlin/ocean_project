@@ -15,7 +15,7 @@ Data / protocol
 ---------------
 CESM2-LE 1x1deg (``data/cesm2_le_full_standard.zarr``) is the ground truth and
 WOA23 decav91C0 monthly 1deg (``data/woa23_standard.zarr``) is the
-climatological background — both built by ``experiments/standardize.py``.  The
+climatological background — both built by ``experiments/data/standardize.py``.  The
 model therefore sees the full protocol_v1 input set: sparse profiles + SST/SSS
 + the WOA background that DFS-Attention measures its evidence against.
 ``--no-woa`` drops the background modality (the background branch is then
@@ -35,14 +35,14 @@ own input back out.
 
 Outputs
 -------
-    reports/fig_d4rt_recon_heatmap.png   the figure
-    reports/d4rt_recon_heatmap.md        the written-up numbers
+    reports/synthetic/fig_d4rt_recon_heatmap.png   the figure
+    reports/synthetic/d4rt_recon_heatmap.md        the written-up numbers
     outputs/cache/<tag>.json             run record + per-band RMSE
     outputs/ckpt/<tag>.pt                best-validation weights
 
 Run:
-    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/36_d4rt_recon_heatmap.py --smoke
-    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/36_d4rt_recon_heatmap.py --steps 20000
+    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/synthetic/36_d4rt_recon_heatmap.py --smoke
+    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/synthetic/36_d4rt_recon_heatmap.py --steps 20000
 """
 import sys, os, json, time, argparse, subprocess, math
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -65,7 +65,7 @@ from ocean_tokenizer.fullrun import (FullRunData, VARS, BANDS,
 CONTEXT = 1                         # surface months in the input window
 UNITS = {"TEMP": "degC", "SALT": "PSU"}
 # map panels: oceanographic layers + the pooled column, matching the layout of
-# experiments/11_layered_heatmap.py so the two figures read the same way
+# experiments/synthetic/11_layered_heatmap.py so the two figures read the same way
 LAYERS = [("0-100 m", 0.0, 100.0), ("100-300 m", 100.0, 300.0),
           ("300-985 m", 300.0, 1e9)]
 
@@ -85,7 +85,7 @@ ap.add_argument("--no-woa", action="store_true",
                      "(DFS-Attention then has no background to reference)")
 ap.add_argument("--ssh", action="store_true", default=True,
                 help="include the pseudo-SSH (steric height) modality; needs "
-                     "outputs/cache/ssh_dyn.npz from experiments/28_make_ssh.py")
+                     "outputs/cache/ssh_dyn.npz from experiments/synthetic/28_make_ssh.py")
 ap.add_argument("--no-ssh", dest="ssh", action="store_false")
 ap.add_argument("--variant", default="d4rt", choices=["d4rt", "dfs"])
 ap.add_argument("--seed", type=int, default=C.SEED)
@@ -182,7 +182,7 @@ if "ssh" in INCLUDE:
     ssh_path = os.path.join(C.CACHE, "ssh_dyn.npz")
     if not os.path.exists(ssh_path):
         raise SystemExit(f"{ssh_path} missing — build it first:\n"
-                         f"  .venv/bin/python experiments/28_make_ssh.py "
+                         f"  .venv/bin/python experiments/synthetic/28_make_ssh.py "
                          f"--years {TRAIN_YEARS[0]},{TEST_YEARS[1]}")
     ssh_all, ssh_ti = load_ssh_cache(ssh_path)
     sshnorm = SSHAnom(ssh_for_indices(ssh_all, ssh_ti, tr_idx), tr_months)

@@ -108,4 +108,4 @@ Regional margin over OI: +38.3 % vs +30.9 % globally — consistent with the glo
 
 ---
 
-Rerun: `python experiments/27_oi_vs_unet.py --verify-unet` then `python experiments/30_oi_report.py`
+Rerun: `python experiments/synthetic/27_oi_vs_unet.py --verify-unet` then `python experiments/synthetic/30_oi_report.py`

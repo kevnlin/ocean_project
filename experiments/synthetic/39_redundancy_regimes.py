@@ -31,7 +31,7 @@ accuracy half of Phase 2 (representation shift, the control ladder, RMSE
 triples) needs a trained model and is not attempted here.
 
 Run:
-    .venv/bin/python experiments/39_redundancy_regimes.py
+    .venv/bin/python experiments/synthetic/39_redundancy_regimes.py
 """
 from __future__ import annotations
 

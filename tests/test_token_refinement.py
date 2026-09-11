@@ -10,7 +10,7 @@ Two regimes per the brief:
     conserved — and MBCA's shift stays below standard attention's.
 Reported: prediction difference, latent difference (Task-6 required outputs;
 the RMSE difference on trained models lives in the Stage-A toy results, see
-reports/invariance_test_summary.md).
+reports/synthetic/invariance_test_summary.md).
 """
 import numpy as np
 import pytest

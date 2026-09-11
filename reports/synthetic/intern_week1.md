@@ -1,7 +1,7 @@
 # Intern week 1 — OI baseline, SSH modality, architecture spec
 
 *2026-08-08/09. Branch `intern/oi-multimodal/setup`. Execution of
-[Plan_OI_MultiModal_RealData.md](../Plan_OI_MultiModal_RealData.md).*
+[Plan_OI_MultiModal_RealData.md](../../Plan_OI_MultiModal_RealData.md).*
 
 **Headline**
 
@@ -45,19 +45,19 @@ report"), every conflict below was resolved in favour of the code.
 
 ```bash
 # Phase 1 (M1) — CPU, ~2 h end to end
-bash experiments/run_oi_queue.sh          # tune on val -> score test -> stability check
-python experiments/30_oi_report.py        # -> reports/oi_{tuning,baseline}.md + figures
+bash experiments/synthetic/run_oi_queue.sh          # tune on val -> score test -> stability check
+python experiments/synthetic/30_oi_report.py        # -> reports/oi_{tuning,baseline}.md + figures
 
 # Phase 4.1 — CPU, 13 min
-python experiments/28_make_ssh.py         # -> outputs/cache/ssh_dyn.npz (47 MB, gitignored)
+python experiments/synthetic/28_make_ssh.py         # -> outputs/cache/ssh_dyn.npz (47 MB, gitignored)
 
 # Phase 4.2 + Phase 2 — GPU, ~2 h per queue on a shared card
-bash experiments/run_seeds_queue.sh ssh 4       # seeds 1235,1236
-bash experiments/run_seeds_queue.sh density 5   # seeds 1235,1236
-python experiments/merge_density_json.py --seeds 1234,1235,1236
+bash experiments/synthetic/run_seeds_queue.sh ssh 4       # seeds 1235,1236
+bash experiments/synthetic/run_seeds_queue.sh density 5   # seeds 1235,1236
+python experiments/synthetic/merge_density_json.py --seeds 1234,1235,1236
 
 # Phase 2 fit — CPU, seconds
-python experiments/31_density_powerlaw.py # -> reports/fig_density_powerlaw.png
+python experiments/synthetic/31_density_powerlaw.py # -> reports/synthetic/fig_density_powerlaw.png
 
 # whole suite
 python -m pytest tests/ -q                # 160 passed (114 before, +46 new)
@@ -67,14 +67,14 @@ python -m pytest tests/ -q                # 160 passed (114 before, +46 new)
 
 **The repo had no OI.** `predict_nearest` is a distance-gated nearest fill with
 no covariance model, so it cannot handle observation redundancy — two profiles
-5 km apart count twice. [`src/ocean_tokenizer/oi.py`](../src/ocean_tokenizer/oi.py)
+5 km apart count twice. [`src/ocean_tokenizer/oi.py`](../../src/ocean_tokenizer/oi.py)
 implements the real thing (Bretherton et al. 1976), level-by-level in z-scored
 anomaly space so it shares the anomaly target, the normalisation and the
 scoring mask with the U-Net:
 
 $$\hat z_g = C_{go}\,(C_{oo} + \gamma I)^{-1} d, \qquad C(r) = e^{-r^2/2L^2}$$
 
-* **22 unit tests** ([tests/test_oi.py](../tests/test_oi.py)), all analytic
+* **22 unit tests** ([tests/test_oi.py](../../tests/test_oi.py)), all analytic
   rather than regression snapshots: single-obs shrinkage `d/(1+γ)`, duplicate-obs
   saturation `2d/(2+γ)` (the redundancy handling a weighted average lacks),
   relaxation to background far from data, and exactness of the k-NN localisation
@@ -179,18 +179,18 @@ derived satellite field is a great deal cheaper than doubling the float array.
 I also removed a footgun: `08_density_ablation.py` wrote to a fixed cache path,
 so an extension run would have silently overwritten committed week-2 results. It
 now takes `--out-suffix` (default empty = unchanged), and
-[merge_density_json.py](../experiments/merge_density_json.py) folds extensions
+[merge_density_json.py](../../experiments/synthetic/merge_density_json.py) folds extensions
 back in — idempotently, refusing to merge runs whose `run_config` essentials
 differ, and writing `.bak_premerge` on first touch.
 
 ## 4. Phase 3 — the specification
 
-[doc/architecture_spec.md](../doc/architecture_spec.md): data pipeline (with
+[doc/architecture_spec.md](../../doc/architecture_spec.md): data pipeline (with
 dataflow diagram), **normalization with every formula and its provenance**,
 tokenization per modality with token counts, the model/loss as implemented, the
 final-vision architecture marked exists-vs-missing, and the four cBottle
 takeaways. It ends with an appendix listing the corrections it makes to the
-plan. Companion reading note: [reading_cbottle.md](reading_cbottle.md), grounded
+plan. Companion reading note: [reading_cbottle.md](../notes/reading_cbottle.md), grounded
 in the fetched abstract rather than recollection.
 
 The token-imbalance number worth remembering: at 1500 profiles/month the WOA
@@ -202,7 +202,7 @@ fusion-rule comparison exists to study.
 
 There was no SSH anywhere in the pipeline. Built the steric-height (dynamic
 height, TEOS-10) pseudo-SSH from the T/S fields:
-[ssh.py](../src/ocean_tokenizer/ssh.py) + [28_make_ssh.py](../experiments/28_make_ssh.py),
+[ssh.py](../../src/ocean_tokenizer/ssh.py) + [28_make_ssh.py](../../experiments/synthetic/28_make_ssh.py),
 360 monthly fields, 11 physical unit tests (warm column stands taller than cold,
 fresh taller than salty, short columns undefined, train-only statistics).
 
@@ -263,7 +263,7 @@ there even though memory was not. Three changes made the runs fit in ~4 GB:
 1. **`--cpu-tensors`** (`baselines.train_predict_unet(hold_device=...)`) keeps
    the ~17 GB training stack in host memory and ships one batch at a time.
    Strictly opt-in: the default is unchanged and
-   [tests/test_unet_hold_device.py](../tests/test_unet_hold_device.py) pins that
+   [tests/test_unet_hold_device.py](../../tests/test_unet_hold_device.py) pins that
    the offload path is bit-identical and does not move the RNG stream.
 2. **`--fwd-batch 16`** — inference peaks *higher* than training (whole batch
    resident, no autograd freeing): batch 64 reserves 6.9 GB, batch 16 only 1.7.
@@ -302,7 +302,7 @@ Still outstanding:
 
 **New**: `src/ocean_tokenizer/{oi,ssh}.py` · `tests/test_{oi,ssh,unet_channels_ssh}.py`
 · `experiments/{26_oi_tuning,27_oi_vs_unet,28_make_ssh,29_ssh_ablation,30_oi_report,31_density_powerlaw,merge_density_json}.py`
-· `experiments/run_oi_queue.sh` · `doc/architecture_spec.md`
+· `experiments/synthetic/run_oi_queue.sh` · `doc/architecture_spec.md`
 · `reports/{oi_tuning,oi_baseline,reading_cbottle,ssh_ablation,density_4000_6000,intern_week1}.md`
 
 **Modified**: `config.py` (ROOT via `OCEAN_ROOT`) · `baselines.py` (additive

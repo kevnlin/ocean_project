@@ -11,10 +11,10 @@ Per-(lat,lon) layer RMSE pools squared errors over the band's depths and the
 held-out test months, scored on UNOBSERVED columns only (profile columns
 excluded, consistent with the headline metric).
 
-Output: reports/fig_layered_heatmap.png  (rows = TEMP/SALT, cols = 4 layers)
+Output: reports/synthetic/fig_layered_heatmap.png  (rows = TEMP/SALT, cols = 4 layers)
 
 Run:
-    CUDA_VISIBLE_DEVICES=6 python experiments/11_layered_heatmap.py [--smoke]
+    CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/11_layered_heatmap.py [--smoke]
 """
 import sys, os, argparse, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

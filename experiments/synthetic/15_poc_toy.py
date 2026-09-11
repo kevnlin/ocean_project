@@ -14,7 +14,7 @@ token representation):
 Reported: relative output change ||y' - y|| / ||y||, plus held-out RMSE for
 each representation.
 
-Run:  python experiments/15_poc_toy.py [--steps 2000] [--device cuda]
+Run:  python experiments/synthetic/15_poc_toy.py [--steps 2000] [--device cuda]
 """
 import sys, os, json, time, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

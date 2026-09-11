@@ -135,11 +135,11 @@ predictions. All tables above are from the corrected run.
 ## 7. Reproduce
 
 ```bash
-.venv/bin/python experiments/13_download_godas.py --start-year 2000 --end-year 2025
+.venv/bin/python experiments/data/13_download_godas.py --start-year 2000 --end-year 2025
 ALL=objective_interpolation,count_expertlocal_cbottle,uniform_expertlocal_cbottle,\
 dfs_expertlocal_cbottle,count_oi_expert_cbottle,uniform_oi_expert_cbottle,dfs_oi_expert_cbottle
 for s in 1234 1235 1236; do
-  CUDA_VISIBLE_DEVICES=$((s-1234)) .venv/bin/python experiments/14_godas_dfs_d4rt.py \
+  CUDA_VISIBLE_DEVICES=$((s-1234)) .venv/bin/python experiments/real_data/14_godas_dfs_d4rt.py \
       --configs "$ALL" --seed $s --steps 5000 --validation-interval 500 \
       --queries 512 --eval-queries 1024 --output outputs/godas_v2_s$s
 done
@@ -397,7 +397,7 @@ versus both controls, **with a paired interval excluding parity**.
 ROWS=dfs_oi_expert_cbottle,uniform_oi_expert_cbottle,count_oi_expert_cbottle,\
 dfs_expertlocal_cbottle,uniform_expertlocal_cbottle,count_expertlocal_cbottle
 for s in 1234 1235 1236; do
-  CUDA_VISIBLE_DEVICES=$((s-1234)) .venv/bin/python experiments/14_godas_dfs_d4rt.py \
+  CUDA_VISIBLE_DEVICES=$((s-1234)) .venv/bin/python experiments/real_data/14_godas_dfs_d4rt.py \
       --configs "$ROWS" --seed $s --steps 5000 --validation-interval 500 \
       --queries 512 --eval-queries 1024 --audit --audit-months 8 \
       --output outputs/godas_v3_s$s

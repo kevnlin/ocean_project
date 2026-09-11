@@ -17,7 +17,7 @@ Also adds the JOINT-DEPTH U-Net (whole water column as channels) as the strong
 baseline the shared-latent method must beat.
 
 Run:
-    python experiments/06_week1_audit.py [--smoke]
+    python experiments/synthetic/06_week1_audit.py [--smoke]
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -202,5 +202,5 @@ with open(report_path, "w") as f:
     f.write("\n".join(lines))
 
 print(f"\nDONE in {time.time()-t0:.1f}s")
-print(f"  -> reports/week1_audit.md")
+print(f"  -> reports/synthetic/week1_audit.md")
 print(f"  -> outputs/cache/week1_results.json")

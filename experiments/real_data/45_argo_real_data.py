@@ -28,8 +28,8 @@ Every package writes a signed `ResultArtifact` (protocol hash, git commit, data
 manifest hashes, counts) so a Track B run can be compared against it mechanically
 by `ocean_tokenizer.crosscheck` rather than by reading two markdown tables.
 
-  .venv/bin/python experiments/45_argo_real_data.py --package P0 --smoke
-  .venv/bin/python experiments/45_argo_real_data.py --package P0 \
+  .venv/bin/python experiments/real_data/45_argo_real_data.py --package P0 --smoke
+  .venv/bin/python experiments/real_data/45_argo_real_data.py --package P0 \
       --rows dfs_expertlocal_cbottle,uniform_expertlocal_cbottle --seed 1234
 """
 from __future__ import annotations
@@ -925,7 +925,7 @@ def run_P5():
 
 RUN = {"P0": run_P0, "P1": run_P1, "P3": run_P0, "P5": run_P5}
 if args.package == "P2":
-    raise SystemExit("P2 runs from experiments/46_argo_redundancy.py")
+    raise SystemExit("P2 runs from experiments/real_data/46_argo_redundancy.py")
 RUN[args.package]()
 
 art = P.ResultArtifact(

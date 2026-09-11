@@ -52,10 +52,10 @@ its checkpoints from Track A's SIGNED artifact and re-hashes them, so the two
 tracks demonstrably score the same models rather than two models that happen to
 share a filename.
 
-  .venv/bin/python experiments/51_track_b.py --stage verify
-  .venv/bin/python experiments/51_track_b.py --package P0 --region gulfstream
-  .venv/bin/python experiments/51_track_b.py --package P1 --region gulfstream
-  .venv/bin/python experiments/51_track_b.py --package P7 --region npac_gyre
+  .venv/bin/python experiments/real_data/51_track_b.py --stage verify
+  .venv/bin/python experiments/real_data/51_track_b.py --package P0 --region gulfstream
+  .venv/bin/python experiments/real_data/51_track_b.py --package P1 --region gulfstream
+  .venv/bin/python experiments/real_data/51_track_b.py --package P7 --region npac_gyre
 """
 from __future__ import annotations
 

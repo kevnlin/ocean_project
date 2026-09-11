@@ -1,8 +1,8 @@
 # Phase 0 — operating point calibration: gate result
 
-Registered rule: [`doc/phase0_registration.md`](../doc/phase0_registration.md),
+Registered rule: [`doc/phase0_registration.md`](../../doc/phase0_registration.md),
 commit `6f300e3`, committed **before** any number below was read.
-Instrument: `experiments/29_dfs_operating_point.py`.
+Instrument: `experiments/synthetic/29_dfs_operating_point.py`.
 Run record: `outputs/cache/dfs_operating_point.json`.
 
 > **Correction notice.** An earlier revision of this report concluded the gate

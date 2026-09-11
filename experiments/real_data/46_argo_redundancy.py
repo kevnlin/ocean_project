@@ -36,8 +36,8 @@ Two quantities are reported per (family, k):
     Needs a checkpoint, and is the number that decides whether the evidence
     story matters.
 
-  .venv/bin/python experiments/46_argo_redundancy.py --smoke
-  .venv/bin/python experiments/46_argo_redundancy.py --checkpoint <path> --seed 1234
+  .venv/bin/python experiments/real_data/46_argo_redundancy.py --smoke
+  .venv/bin/python experiments/real_data/46_argo_redundancy.py --checkpoint <path> --seed 1234
 """
 from __future__ import annotations
 

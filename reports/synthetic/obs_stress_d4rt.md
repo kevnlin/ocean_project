@@ -1,6 +1,6 @@
 # Observation stress test — `d4rt`
 
-One model, trained once at a **fixed 1000 synthetic Argo profiles/month**, then frozen and pushed off that density. This is the counterpart `experiments/08_density_ablation.py` names in its own docstring (that sweep retrains every baseline per density; this one never refits).
+One model, trained once at a **fixed 1000 synthetic Argo profiles/month**, then frozen and pushed off that density. This is the counterpart `experiments/synthetic/08_density_ablation.py` names in its own docstring (that sweep retrains every baseline per density; this one never refits).
 
 Model: d4rt (423,687 params), inputs profiles + surf + woa, test 2005 (12 months), unobserved columns only, anomaly target. Floor = predicting zero anomaly (the train-only monthly climatology), recomputed per cell because the scored pool changes with density.
 

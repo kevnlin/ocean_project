@@ -2,7 +2,7 @@
 
 *Request: "for the most successful model you have, can you give me RMSE and
 target variance for SST and SSH respectively". Generated 2026-08-09 from
-`experiments/33_variance_table.py`; full per-level numbers in
+`experiments/synthetic/33_variance_table.py`; full per-level numbers in
 `outputs/cache/variance_table.json`.*
 
 ---
@@ -115,5 +115,5 @@ terms ([ssh_ablation.md](ssh_ablation.md) §1).
 ## Reproduce
 
 ```bash
-python experiments/33_variance_table.py      # ~5 min, CPU
+python experiments/synthetic/33_variance_table.py      # ~5 min, CPU
 ```

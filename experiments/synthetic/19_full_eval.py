@@ -1,8 +1,8 @@
 """Task 8b (Week 4) — post-training evaluation of one full-run checkpoint.
 
-For a completed experiments/18_full_train.py run (its best-validation
+For a completed experiments/synthetic/18_full_train.py run (its best-validation
 checkpoint), produces the remaining two report items of
-reports/full_training_plan.md:
+reports/synthetic/full_training_plan.md:
 
   (2) Task-6-style sensitivity probes on REAL data — duplicate half the
       profiles / feed the same grids at 2x resolution / resample profiles to
@@ -15,7 +15,7 @@ reports/full_training_plan.md:
 
 Writes outputs/cache/full_eval_<tag>.json.
 
-Run:  CUDA_VISIBLE_DEVICES=7 python experiments/19_full_eval.py --tag full_mbca_s1234
+Run:  CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/19_full_eval.py --tag full_mbca_s1234
 """
 import sys, os, json, time, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

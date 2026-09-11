@@ -1,6 +1,6 @@
 # Week-4 Report — First Full-Scale Training of the Shared-Latent Variants
 
-*Task 8 of the Week-4 plan (reports/full_training_plan.md): three fusion variants, identical everything except the fusion rule, trained under protocol_v1 with profile-count augmentation U{0..3000}; validation-selected checkpoints; pinned test months scored once per run.  Metric: **unobserved-only anomaly RMSE** (degC / PSU), pooled over the 12 pinned test months.*
+*Task 8 of the Week-4 plan (reports/synthetic/full_training_plan.md): three fusion variants, identical everything except the fusion rule, trained under protocol_v1 with profile-count augmentation U{0..3000}; validation-selected checkpoints; pinned test months scored once per run.  Metric: **unobserved-only anomaly RMSE** (degC / PSU), pooled over the 12 pinned test months.*
 
 ## Setup deviations from the week-3 plan (declared)
 
@@ -28,7 +28,7 @@ protocol_v1 (split, metric, inputs, eval) is unchanged.  The week-3 POC froze th
 | Standard Perceiver — unanchored 128-latent ablation (seed 1234) | 0.5346 | 0.1226 | 0.6232 | 0.5723 | 0.2072 |
 | Fixed-budget resampler — unanchored 128-latent ablation (seed 1234) | 0.5258 | 0.1212 | 0.6155 | 0.5606 | 0.1994 |
 
-Skill vs floor = 1 − RMSE/floor.  The pointwise MLP and nearest-profile rows are recomputed under protocol_v1 (276 train / 12 pinned test, 1500 profiles, `profiles_woa_surf`, unobserved-only anomaly RMSE, 3 seeds — experiments/21_baselines_protocol_v1.py); the certified U-Net numbers are the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count augmentation).  The shared-latent rows carry count augmentation and are additionally capable of the section-3/4 sweeps with the same checkpoint. All ML baselines (MLP, both U-Nets) still beat the shared latent on this reconstruction metric — the accuracy gap of the training-dynamics finding above; the shared latent's contribution is the flexibility axis (§3) and the fusion-rule/invariance comparison (§2, gate §5).
+Skill vs floor = 1 − RMSE/floor.  The pointwise MLP and nearest-profile rows are recomputed under protocol_v1 (276 train / 12 pinned test, 1500 profiles, `profiles_woa_surf`, unobserved-only anomaly RMSE, 3 seeds — experiments/synthetic/21_baselines_protocol_v1.py); the certified U-Net numbers are the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count augmentation).  The shared-latent rows carry count augmentation and are additionally capable of the section-3/4 sweeps with the same checkpoint. All ML baselines (MLP, both U-Nets) still beat the shared latent on this reconstruction metric — the accuracy gap of the training-dynamics finding above; the shared latent's contribution is the flexibility axis (§3) and the fusion-rule/invariance comparison (§2, gate §5).
 
 ## 2. Sensitivity at the selected checkpoint (Task-6 protocol, real data)
 
@@ -66,7 +66,7 @@ Relative output change under information-preserving token manipulations (validat
 | 1500 | 0.5522 | 0.5221 | 0.5250 | 0.5232 | 0.1207 | 0.1215 | 0.1218 |
 | 3000 | 0.5520 | 0.5220 | 0.5243 | 0.5231 | 0.1207 | 0.1215 | 0.1219 |
 
-The week-2 ablation retrained the depthwise U-Net *per density* (reports/week2_density_ablation.md); every shared-latent number above comes from a single checkpoint per seed.
+The week-2 ablation retrained the depthwise U-Net *per density* (reports/synthetic/week2_density_ablation.md); every shared-latent number above comes from a single checkpoint per seed.
 
 ### 3b. Missing-modality matrix (test months, headline masks fixed)
 

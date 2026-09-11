@@ -19,8 +19,8 @@ actually contains:
     if it only tracks SST it adds nothing beyond the SST channel we already have
 
 Run:
-    python experiments/28_make_ssh.py                 # 1985-2014, ~15 min CPU
-    python experiments/28_make_ssh.py --smoke         # 6 months
+    python experiments/synthetic/28_make_ssh.py                 # 1985-2014, ~15 min CPU
+    python experiments/synthetic/28_make_ssh.py --smoke         # 6 months
 """
 import argparse
 import json

@@ -34,7 +34,7 @@ WMO-disjoint float that appears in no training month. Evaluation observations
 are drawn by the same seeded rule `45_argo_real_data.py` uses, so the two model
 families are scored on identical inputs at identical queries.
 
-  .venv/bin/python experiments/58_argo_fusion_tables.py --region gulfstream \
+  .venv/bin/python experiments/real_data/58_argo_fusion_tables.py --region gulfstream \
       --seed 1234 --n-profiles 128
 """
 from __future__ import annotations

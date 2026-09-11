@@ -1,17 +1,17 @@
 """Phase-1: aggregate the layered depth evaluation into a report + figure.
 
 Consumes outputs/cache/layered_depth_seed*.json (+ *_level.npz) from
-experiments/10_layered_depth_eval.py, aggregates across seeds (mean +- std),
+experiments/synthetic/10_layered_depth_eval.py, aggregates across seeds (mean +- std),
 and writes:
 
-    reports/layered_depth_eval.md
-    reports/fig_layered_rmse.png        per-layer RMSE bars (TEMP/SALT)
+    reports/synthetic/layered_depth_eval.md
+    reports/synthetic/fig_layered_rmse.png        per-layer RMSE bars (TEMP/SALT)
 
 The per-layer heatmap figure is produced separately by 11_layered_heatmap.py and
 embedded in the report if present.
 
 Run:
-    python experiments/12_layered_report.py
+    python experiments/synthetic/12_layered_report.py
 """
 import sys, os, json, glob
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

@@ -135,7 +135,7 @@ upper references that have already seen the answer, not peers.
 
 Upstream: `OrchardLANL/Senseiver`, commit `e443eb0`, the code accompanying
 Santos et al., *Nature Machine Intelligence* 2023.
-Harness: `experiments/48_senseiver.py`.
+Harness: `experiments/real_data/48_senseiver.py`.
 
 The plan's rule — *never use a homemade approximation and label it Senseiver* —
 is respected structurally: **every line of model code executed is the authors'.**
@@ -165,7 +165,7 @@ The authors' `train.py` then runs to convergence on their NOAA configuration
 
 ### Scored at held-out float positions — and what it shows
 
-`experiments/56_senseiver_score.py` carries the trained model's predictions
+`experiments/real_data/56_senseiver_score.py` carries the trained model's predictions
 through the same WMO-clustered held-out-float evaluation every DFS row uses, so
 the Senseiver finally has a row rather than only a training curve. Gulf Stream,
 36 development months, 60 held-out floats:

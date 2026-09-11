@@ -24,7 +24,7 @@ it was **drafted forward as a target and never run**. Confirmed with the author
 Verified 2026-08-16 that the system those sections describe does not exist in
 this repository: no `/DATA2`, no `src/dfs_attention/`, no `godas.py`,
 `oi_residual.py`, `local_attention.py`, `objective_interpolation.py`, or
-`losses.py`, no `experiments/13_download_godas.py` / `14_godas_dfs_d4rt.py` /
+`losses.py`, no `experiments/data/13_download_godas.py` / `14_godas_dfs_d4rt.py` /
 `16_summarize_refined_godas.py`, on any of the six branches, in any commit
 (`git log --all -S"godas"` is empty), with zero GODAS files on the host.
 
@@ -60,7 +60,7 @@ guarantees, not accuracy.
 ## 2. Data and protocol mapping
 
 The mentor doc specifies GODAS. This work runs on protocol_v1
-(`configs/protocol_v1.yaml`, `reports/protocol_v1.md`), which is frozen and not
+(`configs/protocol_v1.yaml`, `reports/synthetic/protocol_v1.md`), which is frozen and not
 modified here.
 
 | Item | protocol_v1 value |
@@ -263,9 +263,9 @@ editing `dfs.py` would tangle the two workstreams. Recorded as future work.
 | `src/ocean_tokenizer/fusion.py` | edited | reference slots, wiring of the decoder and refiner, `lead` threaded through `decode`/`forward` |
 | `src/ocean_tokenizer/fullrun.py` | edited | two-month context assembly; lead-aware query/target packs |
 | `tests/test_query_decoder.py` | new | the gates in §5 |
-| `experiments/34_d4rt_lead_train.py` | new | training with the reconstruction/forecast query mix |
-| `experiments/35_d4rt_lead_eval.py` | new | leads 0–3 vs persistence and climatology |
-| `reports/d4rt_lead_probe.md` | new | results, written only from real runs |
+| `experiments/synthetic/34_d4rt_lead_train.py` | new | training with the reconstruction/forecast query mix |
+| `experiments/synthetic/35_d4rt_lead_eval.py` | new | leads 0–3 vs persistence and climatology |
+| `reports/synthetic/d4rt_lead_probe.md` | new | results, written only from real runs |
 
 Each unit is independently testable: the refiner is a pure function of
 (query features, token features, τ, offsets); the decoder is a pure function of

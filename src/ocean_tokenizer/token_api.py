@@ -99,7 +99,7 @@ def coord_features(coord: torch.Tensor) -> torch.Tensor:
     features only, attention cannot form spatially selective patterns; the
     full-scale Week-4 runs collapsed to the zero-anomaly solution (train loss
     pinned at 1.0 even when queries were sampled AT observed profile columns —
-    the copy diagnostic of experiments/18_full_train.py --probe-observed).
+    the copy diagnostic of experiments/synthetic/18_full_train.py --probe-observed).
     """
     lat, lon, depth, month = coord.unbind(-1)
     lat_r = torch.deg2rad(lat)

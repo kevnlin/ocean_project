@@ -17,7 +17,7 @@ Route B (download true CESM2-LE SSH from NCAR and reproduce the original 1°
 regrid exactly) is on the backlog — it needs the regrid recipe, which nobody has
 written down. Route A, implemented here, derives the **steric / baroclinic**
 component of sea-surface height from the T/S fields already in the store, via
-TEOS-10 dynamic height ([src/ocean_tokenizer/ssh.py](../src/ocean_tokenizer/ssh.py)):
+TEOS-10 dynamic height ([src/ocean_tokenizer/ssh.py](../../src/ocean_tokenizer/ssh.py)):
 
 ```
 p   = p_from_z(-z, lat)                        # dbar
@@ -48,8 +48,8 @@ in real dynamic-height maps.
 
 360 monthly (180, 360) fields covering 1985–2014 (every protocol_v1 split),
 `outputs/cache/ssh_dyn.npz` (47 MB, gitignored — regenerate with
-`experiments/28_make_ssh.py`, 13 min CPU). Diagnostics from
-[ssh_dyn_meta.json](../outputs/cache/ssh_dyn_meta.json):
+`experiments/synthetic/28_make_ssh.py`, 13 min CPU). Diagnostics from
+[ssh_dyn_meta.json](../../outputs/cache/ssh_dyn_meta.json):
 
 | diagnostic | value | reading |
 |---|---:|---|
@@ -91,7 +91,7 @@ does not peek at the outcome of §3.
 
 ## 4. Experimental design
 
-[experiments/29_ssh_ablation.py](../experiments/29_ssh_ablation.py). Arms
+[experiments/synthetic/29_ssh_ablation.py](../../experiments/synthetic/29_ssh_ablation.py). Arms
 identical in **every** respect except the cfg:
 
 | arm | cfg | c_in | role |
@@ -112,7 +112,7 @@ training months only** (`ssh.SSHAnom`), consistent with everything else in
 protocol_v1.
 
 The `ssh` cfg token is strictly additive:
-[tests/test_unet_channels_ssh.py](../tests/test_unet_channels_ssh.py) pins that
+[tests/test_unet_channels_ssh.py](../../tests/test_unet_channels_ssh.py) pins that
 every pre-existing config is **bit-identical** with the SSH code present, so the
 certified checkpoints keep their c_in = 10 and every historical number stays
 reproducible.
@@ -127,7 +127,7 @@ rather than OOM-killing a co-tenant. Measured peak: **3.9 GB**.
 
 ```bash
 CUDA_VISIBLE_DEVICES=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  python experiments/29_ssh_ablation.py --ssh-cache outputs/cache/ssh_dyn.npz \
+  python experiments/synthetic/29_ssh_ablation.py --ssh-cache outputs/cache/ssh_dyn.npz \
   --cpu-tensors --fwd-batch 16 --mem-cap-gb 5.5 \
   --arms control_pws,treat_pws_ssh,profiles_only
 ```

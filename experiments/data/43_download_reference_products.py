@@ -1,6 +1,6 @@
 """EN4 and ECCO — the external gridded reference products for plan P0/P4.
 
-Both were already *cited* in this repo (`oi.py`, `reports/oi_baseline.md`) as the
+Both were already *cited* in this repo (`oi.py`, `reports/synthetic/oi_baseline.md`) as the
 operational ancestors of our OI baseline.  Neither had ever been downloaded or
 scored.  A citation is not a baseline; this script fetches the actual products so
 the P0 table can carry a real EN4 and ECCO row.
@@ -40,9 +40,9 @@ Output
 ``data/reference/manifest.json``
 
 Run:
-    .venv/bin/python experiments/43_download_reference_products.py --products en4
-    .venv/bin/python experiments/43_download_reference_products.py --products ecco
-    .venv/bin/python experiments/43_download_reference_products.py --smoke
+    .venv/bin/python experiments/data/43_download_reference_products.py --products en4
+    .venv/bin/python experiments/data/43_download_reference_products.py --products ecco
+    .venv/bin/python experiments/data/43_download_reference_products.py --smoke
 """
 from __future__ import annotations
 
@@ -190,7 +190,7 @@ def fetch_en4(year: int) -> list[dict]:
         ds = xr.concat(months, dim="time").sortby("time")
         ds.attrs.update(source="EN.4.2.2 objective analyses, UK Met Office Hadley Centre",
                         bias_correction=args.en4_correction, region=region,
-                        subset_by="experiments/43_download_reference_products.py",
+                        subset_by="experiments/data/43_download_reference_products.py",
                         acknowledgement=("Good, Martin & Rayner (2013), JGR Oceans; "
                                          "EN4 data (c) British Crown Copyright, Met "
                                          "Office, provided under a Non-Commercial "
@@ -232,7 +232,7 @@ def fetch_ecco(years_: list[int]) -> list[dict]:
                 sub = _cut(ds, region, latname="latitude", lonname="longitude").load()
                 sub.attrs.update(source=f"NASA/JPL ECCO Central Estimate V4r4 ({ECCO_SHORT})",
                                  region=region,
-                                 subset_by="experiments/43_download_reference_products.py",
+                                 subset_by="experiments/data/43_download_reference_products.py",
                                  note=f"V4r4 ends {ECCO_LAST_YEAR}; absent from later rows",
                                  acknowledgement="ECCO Consortium, Fukumori et al., PO.DAAC")
                 _write_atomic(sub, want[region])

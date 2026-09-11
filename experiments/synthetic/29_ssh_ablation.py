@@ -37,9 +37,9 @@ stack in pinned host memory and ships one batch at a time, which fits in well
 under 4 GB of device memory at some throughput cost.  Check `nvidia-smi` first.
 
 Run:
-    CUDA_VISIBLE_DEVICES=N python experiments/29_ssh_ablation.py
-    CUDA_VISIBLE_DEVICES=N python experiments/29_ssh_ablation.py --cpu-tensors
-    python experiments/29_ssh_ablation.py --smoke        # CPU, minutes
+    CUDA_VISIBLE_DEVICES=N python experiments/synthetic/29_ssh_ablation.py
+    CUDA_VISIBLE_DEVICES=N python experiments/synthetic/29_ssh_ablation.py --cpu-tensors
+    python experiments/synthetic/29_ssh_ablation.py --smoke        # CPU, minutes
 """
 import argparse
 import json
@@ -131,7 +131,7 @@ norm = AnomNorm(clim, ftrain, surf_train)
 ssh_path = args.ssh_cache or os.path.join(
     C.CACHE, "ssh_dyn_smoke.npz" if args.smoke else "ssh_dyn.npz")
 if not os.path.exists(ssh_path):
-    raise SystemExit(f"missing {ssh_path} — run experiments/28_make_ssh.py first")
+    raise SystemExit(f"missing {ssh_path} — run experiments/synthetic/28_make_ssh.py first")
 ssh_all, ssh_idx = load_ssh_cache(ssh_path)
 ssh_tr = ssh_for_indices(ssh_all, ssh_idx, tr_idx)
 sshnorm = SSHAnom(ssh_tr, ftrain["months"])

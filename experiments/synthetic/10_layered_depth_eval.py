@@ -23,8 +23,8 @@ already characterised at 985 m in week 2.  One process per seed (parallel GPUs).
 Outputs are namespaced (layered_depth_*) so the 985 m week-2 results are intact.
 
 Run (one seed per GPU):
-    CUDA_VISIBLE_DEVICES=6 python experiments/10_layered_depth_eval.py --seed 1234
-    CUDA_VISIBLE_DEVICES=7 python experiments/10_layered_depth_eval.py --seed 1235
+    CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/10_layered_depth_eval.py --seed 1234
+    CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/10_layered_depth_eval.py --seed 1235
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

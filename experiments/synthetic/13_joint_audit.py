@@ -8,12 +8,12 @@ to certify the joint-depth baseline as fairly trained (plateaued validation
 curve, matched optimizer-step budget, documented LR schedule).
 
 Runs (one per GPU, sequential per GPU is fine):
-    CUDA_VISIBLE_DEVICES=6 python experiments/13_joint_audit.py --model depthwise --epochs 40  --schedule const  --tag depthwise_e40
-    CUDA_VISIBLE_DEVICES=7 python experiments/13_joint_audit.py --model joint     --epochs 200 --schedule const  --tag joint_e200_const
-    CUDA_VISIBLE_DEVICES=6 python experiments/13_joint_audit.py --model joint     --epochs 200 --schedule cosine --tag joint_e200_cos
-    CUDA_VISIBLE_DEVICES=7 python experiments/13_joint_audit.py --model joint     --epochs 400 --schedule cosine --tag joint_e400_cos
+    CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/13_joint_audit.py --model depthwise --epochs 40  --schedule const  --tag depthwise_e40
+    CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/13_joint_audit.py --model joint     --epochs 200 --schedule const  --tag joint_e200_const
+    CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/13_joint_audit.py --model joint     --epochs 200 --schedule cosine --tag joint_e200_cos
+    CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/13_joint_audit.py --model joint     --epochs 400 --schedule cosine --tag joint_e400_cos
 
-Then:  python experiments/14_joint_audit_report.py
+Then:  python experiments/synthetic/14_joint_audit_report.py
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

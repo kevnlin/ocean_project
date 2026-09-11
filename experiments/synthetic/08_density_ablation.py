@@ -21,8 +21,8 @@ Design choices (kept fixed so cells are comparable):
   contrast.)
 
 Run (one seed per GPU):
-    CUDA_VISIBLE_DEVICES=6 python experiments/08_density_ablation.py --seed 1234
-    CUDA_VISIBLE_DEVICES=7 python experiments/08_density_ablation.py --seed 1235
+    CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/08_density_ablation.py --seed 1234
+    CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/08_density_ablation.py --seed 1235
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -41,7 +41,7 @@ ap.add_argument("--out-suffix", default="",
                      "suffix reproduces the original week-2 behaviour and "
                      "OVERWRITES density_ablation_seed<seed>.json; pass e.g. "
                      "--out-suffix _ext when extending the sweep, then merge "
-                     "with experiments/merge_density_json.py")
+                     "with experiments/synthetic/merge_density_json.py")
 ap.add_argument("--methods", default="woa_prior,clim_floor,mlp,unet_depthwise,unet_joint",
                 help="subset to run.  The default is every method, i.e. the "
                      "original behaviour.  Extending the sweep only needs the "

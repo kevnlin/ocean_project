@@ -21,7 +21,7 @@ What this run does, per step:
   * masked MSE in anomaly z-space.
 
 Smoke:
-  CUDA_VISIBLE_DEVICES=6 .venv/bin/python experiments/34_d4rt_lead_train.py --smoke
+  CUDA_VISIBLE_DEVICES=6 .venv/bin/python experiments/synthetic/34_d4rt_lead_train.py --smoke
 """
 import sys, os, json, time, argparse, subprocess, math
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

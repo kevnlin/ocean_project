@@ -1,7 +1,7 @@
 """Task 8 (Week 4) — first full-scale training run of a shared-latent fusion variant.
 
 Trains ONE (variant, seed) pair under protocol_v1 (configs/protocol_v1.yaml)
-following reports/full_training_plan.md exactly:
+following reports/synthetic/full_training_plan.md exactly:
 
   * 276 train / 36 val / 12 pinned test months; climatology, anomaly z-stats
     and the RMSE floor from the 276 TRAIN months only.
@@ -15,11 +15,11 @@ following reports/full_training_plan.md exactly:
   * Pinned test months scored ONCE from the best-val checkpoint.
 
 Gates that had to be green before this run (both verified):
-  * Task-6 invariance suite on MBCA — reports/invariance_test_summary.md
+  * Task-6 invariance suite on MBCA — reports/synthetic/invariance_test_summary.md
   * Task-7 tiny-overfit gate      — outputs/cache/poc_ocean.json
 
-Queue (all 9 runs): python experiments/run_full_queue.py
-Single run:         CUDA_VISIBLE_DEVICES=7 python experiments/18_full_train.py \
+Queue (all 9 runs): python experiments/synthetic/run_full_queue.py
+Single run:         CUDA_VISIBLE_DEVICES=7 python experiments/synthetic/18_full_train.py \
                         --variant mbca --seed 1234
 """
 import sys, os, json, time, argparse, subprocess, math

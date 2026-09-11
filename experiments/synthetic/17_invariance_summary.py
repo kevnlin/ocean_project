@@ -8,9 +8,9 @@ Combines:
     duplication / refinement RMSE of trained standard vs resampler vs MBCA;
   * the pytest verdicts of the Task-5/6 suites.
 
-Writes reports/invariance_test_summary.md.
+Writes reports/synthetic/invariance_test_summary.md.
 
-Run:  python experiments/17_invariance_summary.py
+Run:  python experiments/synthetic/17_invariance_summary.py
 """
 import sys, os, json, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

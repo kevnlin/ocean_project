@@ -16,7 +16,7 @@ climate is the (fully known) ground truth, so reconstructions can be scored exac
   MBCA — hand-designed physical weights + log-weighted attention — is retained as
   the baseline it is compared against.
 - **Unified data pipeline** — CESM2-LE (ground truth) + WOA23 (prior) standardized to a
-  common 1° / 20-level grid as Zarr (`experiments/standardize.py`, `ocean_tokenizer.data`).
+  common 1° / 20-level grid as Zarr (`experiments/data/standardize.py`, `ocean_tokenizer.data`).
 - **Four lossless tokenizers** — grid-patch, volume-patch, vertical-profile, point-query
   (`decode(encode(field)) == field` exactly; `ocean_tokenizer.tokenizers`).
 - **Synthetic Argo sampling + baseline sweep** — climatology, nearest-profile, pointwise
@@ -35,9 +35,9 @@ floor. The surface-focused reference models (OSnet et al.) lead in the upper
 ocean; no single method is best everywhere. The re-implemented literature
 models are **SSH-ablated adaptations** (no SSH/ADT input) — numbers here do not
 support superiority claims over the published originals.
-Protocol: [`reports/protocol_v1.md`](reports/protocol_v1.md) ·
-Audit: [`reports/week1_audit.md`](reports/week1_audit.md) ·
-Bands: [`reports/depth_band_eval.md`](reports/depth_band_eval.md).
+Protocol: [`reports/synthetic/protocol_v1.md`](reports/synthetic/protocol_v1.md) ·
+Audit: [`reports/synthetic/week1_audit.md`](reports/synthetic/week1_audit.md) ·
+Bands: [`reports/synthetic/depth_band_eval.md`](reports/synthetic/depth_band_eval.md).
 Scope: contemporaneous reconstruction only — no forecasting, no
 super-resolution claims.
 
@@ -68,23 +68,23 @@ pip install -r requirements.txt
 
 ```bash
 # DFS-Attention
-python experiments/23_dfs_evidence_probes.py   # -> reports/dfs_evidence_probes.md
-python experiments/18_full_train.py --variant dfs --seed 1234 --tag fullA_dfs_s1234
-python experiments/19_full_eval.py  --tag fullA_dfs_s1234
-python experiments/25_dfs_report.py            # -> reports/dfs_success_criterion.md
+python experiments/synthetic/23_dfs_evidence_probes.py   # -> reports/synthetic/dfs_evidence_probes.md
+python experiments/synthetic/18_full_train.py --variant dfs --seed 1234 --tag fullA_dfs_s1234
+python experiments/synthetic/19_full_eval.py  --tag fullA_dfs_s1234
+python experiments/synthetic/25_dfs_report.py            # -> reports/synthetic/dfs_success_criterion.md
 
 # core pipeline
-python experiments/00_data_cards.py            # data cards + common grid
-python experiments/01_tokenizer_roundtrip.py   # lossless round-trip check
-python experiments/02_synth_argo.py            # synthetic Argo example
-python experiments/03_baselines.py             # baseline sweep (--smoke for a fast check)
-python experiments/05_band_table.py            # -> reports/baseline_table.md
+python experiments/synthetic/00_data_cards.py            # data cards + common grid
+python experiments/synthetic/01_tokenizer_roundtrip.py   # lossless round-trip check
+python experiments/synthetic/02_synth_argo.py            # synthetic Argo example
+python experiments/synthetic/03_baselines.py             # baseline sweep (--smoke for a fast check)
+python experiments/synthetic/05_band_table.py            # -> reports/synthetic/baseline_table.md
 
 # reference baselines (each --smoke for a quick check)
 python src/baselines/nesperso_pcamlp.py
 python src/baselines/osnet_mlp.py
 python src/baselines/nardelli_lstm.py
-python src/baselines/build_comparison_table.py # -> reports/baseline_comparison.{md,csv}
+python src/baselines/build_comparison_table.py # -> reports/synthetic/baseline_comparison.{md,csv}
 ```
 
 See [`src/baselines/README.md`](src/baselines/README.md) for the reference-model details
@@ -104,7 +104,7 @@ and their documented departures from the original papers (chiefly: no SSH/ADT in
 
 The raw NetCDF (`data/`, ~4.7 GB) and standardized Zarr stores (`processed/`, ~42 GB) are
 **not tracked in git**. Place the source CESM2-LE / WOA23 files under `data/` and run
-`python experiments/standardize.py` to regenerate `processed/`. The large per-cell
+`python experiments/data/standardize.py` to regenerate `processed/`. The large per-cell
 prediction arrays (`predictions/*.npz`) are also untracked (they exceed GitHub's file-size
 limit); the RMSE tables/CSVs and the trained checkpoints that produce them are included.
 

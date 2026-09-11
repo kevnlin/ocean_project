@@ -35,8 +35,8 @@ rest of the ocean is still represented. The default is a 15 deg Gaussian with
 
 Period is 2016-2023, bounded by the satellite streams, not by Argo.
 
-  .venv/bin/python experiments/53_argo_global_recon.py --smoke
-  .venv/bin/python experiments/53_argo_global_recon.py --steps 12000
+  .venv/bin/python experiments/real_data/53_argo_global_recon.py --smoke
+  .venv/bin/python experiments/real_data/53_argo_global_recon.py --steps 12000
 """
 from __future__ import annotations
 
@@ -157,7 +157,7 @@ print(f"  WOA23 prior on the analysis grid: {woa['TEMP'].shape}", flush=True)
 cpath = args.cohort or os.path.join(ROOT, "data", "argo_cohort", "global_global.nc")
 if not os.path.exists(cpath):
     raise SystemExit(f"missing {cpath}\n  build it with:\n"
-                     f"  .venv/bin/python experiments/44_build_argo_cohort.py "
+                     f"  .venv/bin/python experiments/data/44_build_argo_cohort.py "
                      f"--regions global --grid global --levels protocol "
                      f"--suffix _global")
 ds = xr.open_dataset(cpath)

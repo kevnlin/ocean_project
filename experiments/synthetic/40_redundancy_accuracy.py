@@ -28,8 +28,8 @@ which is Phase 1c: the OI background already merges duplicate supports into
 superobservations, so comparing on top of it asks whether redundancy handling
 helps something that has already de-duplicated the observations.
 
-Run (after experiments/14_godas_dfs_d4rt.py has trained the rows):
-    .venv/bin/python experiments/40_redundancy_accuracy.py \
+Run (after experiments/real_data/14_godas_dfs_d4rt.py has trained the rows):
+    .venv/bin/python experiments/synthetic/40_redundancy_accuracy.py \
         --checkpoints outputs/godas_thinstack --data data/godas_gulfstream
 """
 from __future__ import annotations
@@ -211,7 +211,7 @@ for row in ROWS:
     torch.cuda.empty_cache()
 
 if not results:
-    raise SystemExit("no checkpoints found — run experiments/14_godas_dfs_d4rt.py first")
+    raise SystemExit("no checkpoints found — run experiments/real_data/14_godas_dfs_d4rt.py first")
 
 # ============================================================== the contrast
 print("\n" + "=" * 68, flush=True)

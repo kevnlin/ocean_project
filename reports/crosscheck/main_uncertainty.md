@@ -1,6 +1,6 @@
 # P6 — Post-hoc predictive uncertainty
 
-<!-- generated alongside experiments/54_argo_uncertainty.py -->
+<!-- generated alongside experiments/real_data/54_argo_uncertainty.py -->
 
 > **Two tracks.** Track B independently recomputes the calibration metrics
 > below with a Monte-Carlo CRPS and empirical quantile counts, sharing no

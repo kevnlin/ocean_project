@@ -86,4 +86,4 @@ for var in ["TEMP", "SALT"]:
 
 with open(os.path.join(C.REPORTS_SYNTHETIC, "baseline_table.md"), "w") as f:
     f.write("\n".join(L))
-print("wrote reports/baseline_table.md")
+print("wrote reports/synthetic/baseline_table.md")

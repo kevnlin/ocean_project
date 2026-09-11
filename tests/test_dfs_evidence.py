@@ -120,7 +120,7 @@ def test_clustered_profiles_are_discounted_relative_to_spread(enc):
 
 def _column(kind, z, amp=1.0):
     """Anomaly column in z-units, matched in RMS: only the vertical structure
-    differs (see experiments/23_dfs_evidence_probes.py)."""
+    differs (see experiments/synthetic/23_dfs_evidence_probes.py)."""
     t = (np.cos(np.pi * z / 2000.0) if kind == "smooth"
          else np.tanh((z - 120.0) / 12.0) * np.exp(-((z - 120.0) / 90.0) ** 2))
     t = t / max(np.sqrt((t ** 2).mean()), 1e-9) * amp

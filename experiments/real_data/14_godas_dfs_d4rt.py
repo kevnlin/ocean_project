@@ -20,7 +20,7 @@ split — one context month back, and the target at t_src — which is why the r
 Selection score (doc §6.2) is the mean over channels of RMSE divided by the
 validation climatology RMSE, so no channel can dominate the choice.
 
-  .venv/bin/python experiments/14_godas_dfs_d4rt.py --smoke \
+  .venv/bin/python experiments/real_data/14_godas_dfs_d4rt.py --smoke \
       --configs dfs_oi_expert_cbottle
 """
 import sys, os, json, time, argparse, subprocess, hashlib

@@ -59,8 +59,8 @@ Output
                                    the SHA-256 of every input manifest it read
 
 Run:
-    .venv/bin/python experiments/44_build_argo_cohort.py
-    .venv/bin/python experiments/44_build_argo_cohort.py --smoke   # 60 floats
+    .venv/bin/python experiments/data/44_build_argo_cohort.py
+    .venv/bin/python experiments/data/44_build_argo_cohort.py --smoke   # 60 floats
 """
 from __future__ import annotations
 

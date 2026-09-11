@@ -70,11 +70,11 @@ belongs in any table claiming a learned method is useful, including the paper's.
 
 | | |
 |---|---|
-| Report | `reports/oi_baseline.md` (headline, bands, region, figures) |
-| Tuning | `reports/oi_tuning.md` (4×3 grid, k-sweep, stability check) |
+| Report | `reports/synthetic/oi_baseline.md` (headline, bands, region, figures) |
+| Tuning | `reports/synthetic/oi_tuning.md` (4×3 grid, k-sweep, stability check) |
 | Numbers | `outputs/cache/oi_vs_unet_seed1234.json`, `oi_tuning_val.json`, `oi_tuning_train.json` |
 | `profiles_only` row | `outputs/cache/ssh_ablation_s*.json` → `results.profiles_only` (3 seeds: 0.1814 ± 0.0021) |
-| Figures | `reports/fig_oi_rmse_bars.png`, `reports/fig_oi_vs_unet_error_map.png` |
+| Figures | `reports/synthetic/fig_oi_rmse_bars.png`, `reports/synthetic/fig_oi_vs_unet_error_map.png` |
 
 ---
 
@@ -109,10 +109,10 @@ today's real volume, and the gap is about **coverage**, not count.
 
 | | |
 |---|---|
-| Report | `reports/density_4000_6000.md` (§2 answer, §3 the correction) |
+| Report | `reports/synthetic/density_4000_6000.md` (§2 answer, §3 the correction) |
 | Numbers | `outputs/cache/density_powerlaw.json` (fit, local slopes, crossings) |
 | Raw | `outputs/cache/density_ablation_seed{1234,1235,1236}.json` |
-| Figure | `reports/fig_density_powerlaw.png` |
+| Figure | `reports/synthetic/fig_density_powerlaw.png` |
 
 ---
 
@@ -146,7 +146,7 @@ what the fusion-rule comparison exists to study.
 | | |
 |---|---|
 | Spec | `doc/architecture_spec.md` (§A–F + an appendix of corrections to the plan) |
-| cBottle note | `reports/reading_cbottle.md` (grounded in the fetched abstract) |
+| cBottle note | `reports/notes/reading_cbottle.md` (grounded in the fetched abstract) |
 
 ---
 
@@ -186,7 +186,7 @@ for a variance claim.)*
 
 | | |
 |---|---|
-| Report | `reports/ssh_ablation.md` (§3 hypothesis, unedited since before the run; §5 results) |
+| Report | `reports/synthetic/ssh_ablation.md` (§3 hypothesis, unedited since before the run; §5 results) |
 | Numbers | `outputs/cache/ssh_ablation_s{1234,1235,1236}.json` |
 | Modality diagnostics | `outputs/cache/ssh_dyn_meta.json` |
 | Code | `src/ocean_tokenizer/ssh.py`, `experiments/{28_make_ssh,29_ssh_ablation}.py` |
@@ -224,7 +224,7 @@ fusion core is where a thermocline constraint should pay off most.
 
 | | |
 |---|---|
-| Week-4 results | `reports/full_training_report.md` (§1 headline, training-dynamics finding) |
+| Week-4 results | `reports/synthetic/full_training_report.md` (§1 headline, training-dynamics finding) |
 | Code | `src/ocean_tokenizer/fusion.py` |
 | Context in spec | `doc/architecture_spec.md` §E (exists-vs-missing table) |
 
@@ -262,7 +262,7 @@ claims; the claim surgery deleted "temporal" and it stays deleted.)*
 | | |
 |---|---|
 | Design | `doc/architecture_spec.md` §E.1 |
-| Competing design | `reports/reading_cbottle.md` §3.4 |
+| Competing design | `reports/notes/reading_cbottle.md` §3.4 |
 
 ---
 
@@ -270,7 +270,7 @@ claims; the claim surgery deleted "temporal" and it stays deleted.)*
 
 The advisor may be working from the plan's numbers, which describe a **week-2
 snapshot**. The tree is at week 4 with DFS-Attention merged. Eleven conflicts
-are tabulated in `reports/intern_week1.md` §0. The four most likely to come up:
+are tabulated in `reports/synthetic/intern_week1.md` §0. The four most likely to come up:
 
 | Plan says | Reality |
 |---|---|
@@ -281,7 +281,7 @@ are tabulated in `reports/intern_week1.md` §0. The four most likely to come up:
 
 | | |
 |---|---|
-| Full table | `reports/intern_week1.md` §0 (all 11) |
+| Full table | `reports/synthetic/intern_week1.md` §0 (all 11) |
 | Spec appendix | `doc/architecture_spec.md` — final section |
 
 ---

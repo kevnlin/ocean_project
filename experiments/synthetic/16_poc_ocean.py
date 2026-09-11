@@ -17,7 +17,7 @@ Success criteria (Monday brief): all three overfit; MBCA exact-partition test
 passes (unit suite); MBCA more stable under duplication; no NaNs; missing-
 modality batches run.
 
-Run:  CUDA_VISIBLE_DEVICES=6 python experiments/16_poc_ocean.py
+Run:  CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/16_poc_ocean.py
 """
 import sys, os, json, time, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

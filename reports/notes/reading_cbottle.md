@@ -6,7 +6,7 @@
 
 Advisor-assigned reference. This note records what the paper actually claims,
 where it differs from our task, and the four ideas worth importing. The design
-implications live in [doc/architecture_spec.md](../doc/architecture_spec.md) §F.
+implications live in [doc/architecture_spec.md](../../doc/architecture_spec.md) §F.
 
 ---
 
@@ -54,7 +54,7 @@ sampling toward physically credible TC states.
 | Observation operator | none | central — the whole problem is that observations are sparse and heterogeneous |
 | Representation | pixel-space diffusion on HEALPix | tokens → shared latent → coordinate query decoder |
 | Metric | distributional (variability, extremes, modes) | pointwise unobserved-only anomaly RMSE against a known truth |
-| Baseline to beat | prior generative emulators | **optimal interpolation** ([oi.py](../src/ocean_tokenizer/oi.py)) |
+| Baseline to beat | prior generative emulators | **optimal interpolation** ([oi.py](../../src/ocean_tokenizer/oi.py)) |
 
 The gap that matters: cBottle answers *"what does a plausible atmosphere look
 like?"*; we answer *"given these 1500 profiles, what is the ocean actually doing
@@ -75,7 +75,7 @@ it is present.
 
 *For us*: our sparse profiles are an extreme case of a heavily-masked channel
 (~3.5 % coverage against dense SST/SSS and a dense WOA prior). The current loss
-([baselines.py:361](../src/ocean_tokenizer/baselines.py#L361)) renormalises by
+([baselines.py:361](../../src/ocean_tokenizer/baselines.py#L361)) renormalises by
 the spatial weight mask but does **not** renormalise per modality, and the
 token-count imbalance (~10 k grid tokens vs ~6 k profile tokens) is a known open
 problem. Per-modality renormalisation is a cheap, principled candidate — it is

@@ -164,5 +164,5 @@ def ssh_for_indices(ssh, time_index, wanted):
     if missing:
         raise KeyError(f"pseudo-SSH cache is missing time indices {missing[:8]}"
                        f"{' ...' if len(missing) > 8 else ''}; regenerate with "
-                       f"experiments/28_make_ssh.py --years <range>")
+                       f"experiments/synthetic/28_make_ssh.py --years <range>")
     return ssh[[pos[int(t)] for t in np.asarray(wanted)]]

@@ -23,7 +23,7 @@ WARNING: the mentor document's result tables are placeholders (never run).
 Numbers produced here are fresh measurements and must not be merged with or
 compared against them.
 
-  CUDA_VISIBLE_DEVICES=6 .venv/bin/python experiments/35_d4rt_lead_eval.py \
+  CUDA_VISIBLE_DEVICES=6 .venv/bin/python experiments/synthetic/35_d4rt_lead_eval.py \
       --ckpt outputs/ckpt/d4rt_s1234.pt
 """
 import sys, os, json, time, argparse, subprocess

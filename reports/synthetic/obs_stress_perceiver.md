@@ -8,7 +8,7 @@
 
 > What the density axis *does* establish is the collapse itself: identical output at 0 and 3000 profiles is direct evidence the observation pathway is unused. A single-density evaluation would have reported 'near the floor' and hidden that.
 
-One model, trained once at a **fixed 1000 synthetic Argo profiles/month**, then frozen and pushed off that density. This is the counterpart `experiments/08_density_ablation.py` names in its own docstring (that sweep retrains every baseline per density; this one never refits).
+One model, trained once at a **fixed 1000 synthetic Argo profiles/month**, then frozen and pushed off that density. This is the counterpart `experiments/synthetic/08_density_ablation.py` names in its own docstring (that sweep retrains every baseline per density; this one never refits).
 
 Model: perceiver (241,346 params), inputs profiles + surf + woa, test 2005 (12 months), unobserved columns only, anomaly target. Floor = predicting zero anomaly (the train-only monthly climatology), recomputed per cell because the scored pool changes with density.
 

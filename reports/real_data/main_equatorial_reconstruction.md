@@ -1,6 +1,6 @@
 # Equatorial Pacific — 2-D reconstruction, and what more Argo buys
 
-<!-- generated alongside experiments/52_argo_recon_map.py -->
+<!-- generated alongside experiments/real_data/52_argo_recon_map.py -->
 
 > **One track.** Track A only; Track B has not run this package.
 > Input is real QC'd Argo; targets are real measurements from **WMO-disjoint

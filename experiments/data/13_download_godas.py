@@ -31,7 +31,7 @@ Parallelism uses PROCESSES, not threads: netCDF4/HDF5 is not thread-safe and a
 thread pool calling ``to_netcdf`` concurrently segfaults the interpreter
 (observed here as "dumped core" before this was changed).
 
-  .venv/bin/python experiments/13_download_godas.py --start-year 2000 --end-year 2025
+  .venv/bin/python experiments/data/13_download_godas.py --start-year 2000 --end-year 2025
 """
 import sys, os, json, time, hashlib, argparse, tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -101,7 +101,7 @@ def _strip_reserved(ds: xr.Dataset, src: str) -> xr.Dataset:
                       if not k.startswith("_") and not k.startswith("DODS_EXTRA")}
     ds.attrs = drop(ds.attrs)
     ds.attrs["subset_source"] = src
-    ds.attrs["subset_by"] = "experiments/13_download_godas.py (mentor doc §4)"
+    ds.attrs["subset_by"] = "experiments/data/13_download_godas.py (mentor doc §4)"
     for name in ds.variables:
         ds[name].attrs = drop(ds[name].attrs)
         ds[name].encoding.pop("chunksizes", None)

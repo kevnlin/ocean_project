@@ -14,8 +14,8 @@ Sources (all produced by earlier scripts; nothing is recomputed here):
                                                         density sweep, evidence
   outputs/cache/dfs_evidence_probes.json                Section-11 probes
 
-Run:  python experiments/25_dfs_report.py [--prefix fullA] [--seeds 1234,1235,1236]
-Out:  reports/dfs_success_criterion.md
+Run:  python experiments/synthetic/25_dfs_report.py [--prefix fullA] [--seeds 1234,1235,1236]
+Out:  reports/synthetic/dfs_success_criterion.md
 """
 import sys, os, json, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

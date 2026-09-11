@@ -32,9 +32,9 @@ Unobserved-only anomaly RMSE, globally and over the North Atlantic box
 protocol_v1 depth band.  Per-cell error maps are cached for the figure script.
 
 Run:
-    python experiments/27_oi_vs_unet.py                       # CPU, ~10 min
-    python experiments/27_oi_vs_unet.py --verify-unet         # + ckpt check
-    CUDA_VISIBLE_DEVICES=N python experiments/27_oi_vs_unet.py \
+    python experiments/synthetic/27_oi_vs_unet.py                       # CPU, ~10 min
+    python experiments/synthetic/27_oi_vs_unet.py --verify-unet         # + ckpt check
+    CUDA_VISIBLE_DEVICES=N python experiments/synthetic/27_oi_vs_unet.py \
         --train-profiles-only                                 # needs a free GPU
 """
 import argparse

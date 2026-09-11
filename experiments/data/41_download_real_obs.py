@@ -37,8 +37,8 @@ Output: ``data/real_obs/<stream>_native/`` (as delivered) and
 store: dims time/lat/lon, lon 0-360).
 
 Run:
-    .venv/bin/python experiments/41_download_real_obs.py --start 2016 --end 2023
-    .venv/bin/python experiments/41_download_real_obs.py --smoke     # 3 months
+    .venv/bin/python experiments/data/41_download_real_obs.py --start 2016 --end 2023
+    .venv/bin/python experiments/data/41_download_real_obs.py --smoke     # 3 months
 """
 from __future__ import annotations
 

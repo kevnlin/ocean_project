@@ -1,7 +1,7 @@
 """GODAS loading, unit conversion and train-only normalisation (mentor §4).
 
 Source: NOAA PSL GODAS monthly, https://psl.noaa.gov/data/gridded/data.godas.html
-Downloaded by ``experiments/13_download_godas.py``.
+Downloaded by ``experiments/data/13_download_godas.py``.
 
 The doc calls for "checked GODAS loading": the checks here are not decoration.
 A silent unit error (Kelvin read as Celsius) or a missing month shifts every
@@ -195,7 +195,7 @@ SPACE_STRIDE = 2
 
 def load_godas(directory: str, years: tuple[int, int] | None = None,
                stride: int = SPACE_STRIDE) -> dict:
-    """Load the regional subset written by experiments/13_download_godas.py.
+    """Load the regional subset written by experiments/data/13_download_godas.py.
 
     Returns ``{months, TEMP (T,Z,Y,X), SALT, SSH (T,Y,X), lat, lon, depth}``
     in degC / g/kg / m, with land left as NaN.
@@ -218,7 +218,7 @@ def load_godas(directory: str, years: tuple[int, int] | None = None,
             raise FileNotFoundError(
                 f"no {src}.*.nc in {directory}"
                 + (f" for years {years}" if years else "")
-                + " — run experiments/13_download_godas.py")
+                + " — run experiments/data/13_download_godas.py")
         ds = xr.open_mfdataset(paths, combine="by_coords") if len(paths) > 1 \
             else xr.open_dataset(paths[0])
         arr = ds[src]

@@ -14,11 +14,11 @@ matching the schema/attrs/chunking of the existing processed/*_standard.zarr.
 
 Usage
 -----
-    python experiments/standardize.py --datasets all            # all -> processed/
-    python experiments/standardize.py --datasets cesm2 woa23    # subset
-    python experiments/standardize.py --datasets cesm2_le_full --max-time 36   # quick test
-    python experiments/standardize.py --datasets all --out processed_rebuilt --overwrite
-    python experiments/standardize.py --datasets cesm2_le_full --out data \
+    python experiments/data/standardize.py --datasets all            # all -> processed/
+    python experiments/data/standardize.py --datasets cesm2 woa23    # subset
+    python experiments/data/standardize.py --datasets cesm2_le_full --max-time 36   # quick test
+    python experiments/data/standardize.py --datasets all --out processed_rebuilt --overwrite
+    python experiments/data/standardize.py --datasets cesm2_le_full --out data \
         --start-year 1985 --end-year 2014                # -> data/cesm2_le_full_standard.zarr
 
 By default existing stores are NOT overwritten (use --overwrite). The full LE

@@ -30,8 +30,8 @@ The primary endpoint, registered here rather than chosen later
     cluster unit    WMO/platform (primary), source_month (also reported)
     split           the holdout year, used exactly once
 
-  .venv/bin/python experiments/50_prospective_test.py --stage freeze
-  .venv/bin/python experiments/50_prospective_test.py --stage open
+  .venv/bin/python experiments/real_data/50_prospective_test.py --stage freeze
+  .venv/bin/python experiments/real_data/50_prospective_test.py --stage open
 """
 from __future__ import annotations
 

@@ -9,10 +9,10 @@ Two rows:
   * thermocline layer : same but at the ~105 m level where error peaks
 
 Colour: 'hot' — **lighter = more error**, darker = better reconstruction.
-Land is drawn grey (no data).  Output: reports/error_map.png
+Land is drawn grey (no data).  Output: reports/synthetic/error_map.png
 
 Run:
-    python experiments/07_error_map.py [--smoke]
+    python experiments/synthetic/07_error_map.py [--smoke]
 """
 import sys, os, argparse, time
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

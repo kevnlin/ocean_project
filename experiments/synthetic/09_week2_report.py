@@ -1,18 +1,18 @@
 """Week-2 report: aggregate the multi-seed density ablation into tables + figures.
 
 Consumes outputs/cache/density_ablation_seed*.json (+ *_depth.npz) written by
-experiments/08_density_ablation.py, aggregates across seeds (mean +- std,
+experiments/synthetic/08_density_ablation.py, aggregates across seeds (mean +- std,
 min-max bands), and writes:
 
-    reports/week2_density_ablation.md
-    reports/fig_week2_density_rmse.png     RMSE vs profile density (TEMP/SALT)
-    reports/fig_week2_depth_rmse.png       RMSE by depth at the standard density
+    reports/synthetic/week2_density_ablation.md
+    reports/synthetic/fig_week2_density_rmse.png     RMSE vs profile density (TEMP/SALT)
+    reports/synthetic/fig_week2_depth_rmse.png       RMSE by depth at the standard density
 
 Tolerates partial sweeps: cells are aggregated over whichever seeds have
 finished them, and the per-cell seed count is reported.
 
 Run:
-    python experiments/09_week2_report.py
+    python experiments/synthetic/09_week2_report.py
 """
 import sys, os, json, glob, argparse
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

@@ -40,7 +40,7 @@ rather than the most flattering.  The full ranking is printed so the choice is
 auditable, and `--month <i>` overrides it.
 
 Run:
-    python experiments/32_reconstruction_figure.py
+    python experiments/synthetic/32_reconstruction_figure.py
 """
 import argparse
 import glob
@@ -353,7 +353,7 @@ if ssh_ok:
                 "The pseudo-SSH is derived from the same T/S being reconstructed, so "
                 "this is an UPPER BOUND on what real altimetry would give.\n"
                 f"Global 3-seed effect: 0.1572 → 0.1368 degC (+13.0 %), largest in this "
-                f"very band (+15.1 ± 0.8 %) — see reports/ssh_ablation.md.",
+                f"very band (+15.1 ± 0.8 %) — see reports/synthetic/ssh_ablation.md.",
                 fontsize=8.0, color="#333", va="top", linespacing=1.55)
         out2 = os.path.join(C.REPORTS_SYNTHETIC, "fig_reconstruction_na_ssh.png")
         f2.savefig(out2, dpi=155)

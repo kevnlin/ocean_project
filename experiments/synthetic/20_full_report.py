@@ -5,10 +5,10 @@ outputs/cache/full_eval_full_<variant>_s<seed>.json (probes + flexibility),
 and the certified week-3 baselines (audit_depthwise_e40 / audit_joint_e400_cos),
 then writes:
 
-    reports/full_training_report.md
-    reports/fig_full_val_curves.png
-    reports/fig_full_rmse_depth.png
-    reports/fig_full_count_sweep.png
+    reports/synthetic/full_training_report.md
+    reports/synthetic/fig_full_val_curves.png
+    reports/synthetic/fig_full_rmse_depth.png
+    reports/synthetic/fig_full_count_sweep.png
 
 Robust to partial availability: aggregates whatever exists (so it can be run
 mid-queue), and states what is missing.
@@ -70,7 +70,7 @@ lines = []
 A = lines.append
 A("# Week-4 Report — First Full-Scale Training of the Shared-Latent Variants")
 A("")
-A("*Task 8 of the Week-4 plan (reports/full_training_plan.md): three fusion "
+A("*Task 8 of the Week-4 plan (reports/synthetic/full_training_plan.md): three fusion "
   "variants, identical everything except the fusion rule, trained under "
   "protocol_v1 with profile-count augmentation U{0..3000}; validation-selected "
   "checkpoints; pinned test months scored once per run.  Metric: "
@@ -191,7 +191,7 @@ A("")
 A("Skill vs floor = 1 − RMSE/floor.  The pointwise MLP and nearest-profile "
   "rows are recomputed under protocol_v1 (276 train / 12 pinned test, 1500 "
   "profiles, `profiles_woa_surf`, unobserved-only anomaly RMSE, 3 seeds — "
-  "experiments/21_baselines_protocol_v1.py); the certified U-Net numbers are "
+  "experiments/synthetic/21_baselines_protocol_v1.py); the certified U-Net numbers are "
   "the week-3 audit checkpoints (seed 1234, fixed 1500 profiles, no count "
   "augmentation).  The shared-latent rows carry count augmentation and are "
   "additionally capable of the section-3/4 sweeps with the same checkpoint. "
@@ -259,7 +259,7 @@ if evals:
             A("".join(row) + "|")
         A("")
         A("The week-2 ablation retrained the depthwise U-Net *per density* "
-          "(reports/week2_density_ablation.md); every shared-latent number "
+          "(reports/synthetic/week2_density_ablation.md); every shared-latent number "
           "above comes from a single checkpoint per seed.")
         A("")
     A("### 3b. Missing-modality matrix (test months, headline masks fixed)")

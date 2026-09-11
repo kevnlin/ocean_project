@@ -23,7 +23,7 @@ nearest *input* profile (the axis withheld-profile skill actually rides on).
     needs the external Argo dataset and must additionally guard against
     reanalysis-assimilation leakage; that is deferred until the data lands.
 
-Run:  CUDA_VISIBLE_DEVICES=6 python experiments/22_withheld_profile_eval.py
+Run:  CUDA_VISIBLE_DEVICES=6 python experiments/synthetic/22_withheld_profile_eval.py
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))

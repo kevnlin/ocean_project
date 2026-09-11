@@ -54,8 +54,8 @@ absent this script reports the calibration curve and refuses to pick ``s*``,
 per the registration's fallback clause.
 
 Run:
-    .venv/bin/python experiments/29_dfs_operating_point.py            # all
-    .venv/bin/python experiments/29_dfs_operating_point.py --convergence
+    .venv/bin/python experiments/synthetic/29_dfs_operating_point.py            # all
+    .venv/bin/python experiments/synthetic/29_dfs_operating_point.py --convergence
 """
 from __future__ import annotations
 

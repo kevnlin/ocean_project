@@ -1,6 +1,6 @@
 """Observation stress test on ONE frozen checkpoint (the DFS-Attention claim).
 
-Fills the gap experiments/08_density_ablation.py names in its own docstring:
+Fills the gap experiments/synthetic/08_density_ablation.py names in its own docstring:
 that sweep RETRAINS every baseline at every profile density and calls itself
 "the retrain-required contrast" to a shared-latent model "evaluated across all
 densities".  This is that missing counterpart — one model, trained once, pushed
@@ -51,9 +51,9 @@ Reading the result
   estimator is not discounting redundancy, which undercuts the DFS premise.
 
 Run (DFS/D4RT and the no-evidence control in parallel on two GPUs):
-    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/37_obs_stress.py --variant d4rt
-    CUDA_VISIBLE_DEVICES=4 .venv/bin/python experiments/37_obs_stress.py --variant perceiver
-    .venv/bin/python experiments/37_obs_stress.py --smoke        # 2 min wiring check
+    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/synthetic/37_obs_stress.py --variant d4rt
+    CUDA_VISIBLE_DEVICES=4 .venv/bin/python experiments/synthetic/37_obs_stress.py --variant perceiver
+    .venv/bin/python experiments/synthetic/37_obs_stress.py --smoke        # 2 min wiring check
 """
 import sys, os, json, time, argparse, subprocess, math
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -550,7 +550,7 @@ if COLLAPSED:
 L += [
      f"One model, trained once at a **fixed {args.train_density} synthetic Argo "
      f"profiles/month**, then frozen and pushed off that density. This is the "
-     "counterpart `experiments/08_density_ablation.py` names in its own "
+     "counterpart `experiments/synthetic/08_density_ablation.py` names in its own "
      "docstring (that sweep retrains every baseline per density; this one never "
      "refits).\n",
      f"Model: {args.variant} ({n_params:,} params), inputs {' + '.join(FULL)}, "

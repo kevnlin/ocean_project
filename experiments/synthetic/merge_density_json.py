@@ -17,8 +17,8 @@ merge silently corrupts every downstream figure.  So it
   * is idempotent: running it twice changes nothing the second time.
 
 Run:
-    python experiments/merge_density_json.py                      # all 3 seeds
-    python experiments/merge_density_json.py --seeds 1234 --dry-run
+    python experiments/synthetic/merge_density_json.py                      # all 3 seeds
+    python experiments/synthetic/merge_density_json.py --seeds 1234 --dry-run
 """
 import argparse
 import json

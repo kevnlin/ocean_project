@@ -26,7 +26,7 @@ REPORTS_SYNTHETIC = os.path.join(REPORTS, "synthetic")
 ZARR = {
     "cesm2":         os.path.join(PROCESSED, "cesm2_standard.zarr"),         # single member (curvilinear placeholder grid)
     "woa23":         os.path.join(DATA, "woa23_standard.zarr"),              # observational climatology (prior/baseline) — WOA23 decav91C0 monthly 1deg, standardized from data/woa23/*.nc
-    "cesm2_le_full": os.path.join(DATA, "cesm2_le_full_standard.zarr"),      # full LE simulation, regular 1deg (ground truth) — standardized from cesm2-le-ocean-sample via experiments/standardize.py
+    "cesm2_le_full": os.path.join(DATA, "cesm2_le_full_standard.zarr"),      # full LE simulation, regular 1deg (ground truth) — standardized from cesm2-le-ocean-sample via experiments/data/standardize.py
 }
 
 # --------------------------------------------------------------------------

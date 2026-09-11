@@ -1,7 +1,7 @@
 # protocol_v1 — Frozen Main-Experiment Protocol
 
 *Frozen 2026-07-17, before the Monday group meeting. Machine-readable twin:
-[`configs/protocol_v1.yaml`](../configs/protocol_v1.yaml). Any deviation must be
+[`configs/protocol_v1.yaml`](../../configs/protocol_v1.yaml). Any deviation must be
 declared and keeps a run out of the headline table.*
 
 ## Task

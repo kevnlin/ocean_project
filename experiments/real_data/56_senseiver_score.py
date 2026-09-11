@@ -21,7 +21,7 @@ that in front of it.
 Every line of model code executed is the authors'. This script only loads their
 checkpoint, calls their `test()`, and scores the output.
 
-  .venv/bin/python experiments/56_senseiver_score.py --region gulfstream
+  .venv/bin/python experiments/real_data/56_senseiver_score.py --region gulfstream
 """
 from __future__ import annotations
 
@@ -68,7 +68,7 @@ for d in sorted(glob.glob(os.path.join(REPO, "lightning_logs", "version_*"))):
             cands.append((int(d.rsplit("_", 1)[1]), d, ck[-1], h))
 if not cands:
     raise SystemExit("no trained godas_argo run under lightning_logs; run "
-                     "experiments/48_senseiver.py --stage argo first")
+                     "experiments/real_data/48_senseiver.py --stage argo first")
 ver, vdir, ckpt, hp = (cands[-1] if args.version is None
                        else next(c for c in cands if c[0] == args.version))
 print(f"senseiver run version_{ver}\n  {os.path.relpath(ckpt, ROOT)}", flush=True)

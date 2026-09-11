@@ -1,7 +1,7 @@
 # --- Large data (regenerate; not tracked in git) ---
 # raw CESM2-LE / WOA23 NetCDF (~4.7 GB)
 /data/
-# standardized Zarr stores (~42 GB) — regenerate via experiments/standardize.py
+# standardized Zarr stores (~42 GB) — regenerate via experiments/data/standardize.py
 /processed/
 
 # --- Large per-cell prediction arrays exceed GitHub's 100 MB file limit ---
@@ -26,7 +26,7 @@
 /outputs/logs/
 /outputs/cache/synthetic_argo_example.npz
 # Pseudo-SSH archive: 360 monthly (180,360) fields, ~90 MB — regenerate with
-# experiments/28_make_ssh.py (its *_meta.json diagnostics ARE tracked).
+# experiments/synthetic/28_make_ssh.py (its *_meta.json diagnostics ARE tracked).
 /outputs/cache/ssh_dyn*.npz
 # Local safety copies written by merge_density_json.py before it first edits a
 # committed cache. The pre-merge state is already in git history, so these are
@@ -52,5 +52,5 @@ venv/
 # Upstream clones + the ~1 GB sst_weekly.mat built for the official example:
 /external/
 # Real-Argo row checkpoints: many small .pt files, regenerate with
-# experiments/45_argo_real_data.py (the signed artifact_*.json ARE tracked).
+# experiments/real_data/45_argo_real_data.py (the signed artifact_*.json ARE tracked).
 /outputs/argo_*/*.pt

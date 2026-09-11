@@ -2,8 +2,8 @@
 
 One class, ``FullRunData``, owns the GPU-resident z-space tensors and the
 observation/query assembly used by BOTH the trainer
-(experiments/18_full_train.py) and the post-training evaluation
-(experiments/19_full_eval.py), so the two can never drift apart.  All values
+(experiments/synthetic/18_full_train.py) and the post-training evaluation
+(experiments/synthetic/19_full_eval.py), so the two can never drift apart.  All values
 are anomaly z-scores from a train-only ``AnomNorm`` (protocol_v1); NaN is
 preserved end-to-end (encoders turn it into finite-flags).
 

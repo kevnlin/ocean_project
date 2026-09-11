@@ -24,8 +24,8 @@ input thins or keeps quoting the density it was trained at.
 
 Scores are clustered by held-out WMO like every other number in the study.
 
-  .venv/bin/python experiments/54_argo_uncertainty.py --region gulfstream
-  .venv/bin/python experiments/54_argo_uncertainty.py --smoke
+  .venv/bin/python experiments/real_data/54_argo_uncertainty.py --region gulfstream
+  .venv/bin/python experiments/real_data/54_argo_uncertainty.py --smoke
 """
 from __future__ import annotations
 

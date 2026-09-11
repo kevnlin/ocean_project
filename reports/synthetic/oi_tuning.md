@@ -64,4 +64,4 @@ If the optimum moved between splits, the choice would be fitting noise rather th
 
 ---
 
-Rerun: `python experiments/26_oi_tuning.py --split val`
+Rerun: `python experiments/synthetic/26_oi_tuning.py --split val`

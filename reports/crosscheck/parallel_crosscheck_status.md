@@ -163,7 +163,7 @@ not a result.
 
 ## Track B — what an independent implementation found
 
-Track B (`experiments/51_track_b.py`) re-implements the evaluation path: QC
+Track B (`experiments/real_data/51_track_b.py`) re-implements the evaluation path: QC
 re-derived from the raw GDAC files, aggregation by pandas groupby instead of
 `np.bincount`, bootstrap by multinomial weights instead of index resampling,
 pooled RMSE by streaming accumulation. It shares the frozen protocol, manifests,

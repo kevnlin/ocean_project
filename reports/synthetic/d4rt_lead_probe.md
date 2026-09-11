@@ -1,7 +1,7 @@
 # D4RT causal space-time query decoder — lead-0..3 probe on protocol_v1
 
 Run date: 2026-08-16 | Branch: `intern/d4rt-query-decoder`
-Spec: [docs/superpowers/specs/2026-08-16-d4rt-query-decoder-design.md](../docs/superpowers/specs/2026-08-16-d4rt-query-decoder-design.md)
+Spec: [docs/superpowers/specs/2026-08-16-d4rt-query-decoder-design.md](../../docs/superpowers/specs/2026-08-16-d4rt-query-decoder-design.md)
 Mentor source: `dfs_d4rt_intern_plan.md` §2.3, §2.4, §6.2
 
 ---
@@ -153,12 +153,12 @@ show is truncated on this domain — is the first thing to rule out.
 
 ```bash
 # train (per seed)
-CUDA_VISIBLE_DEVICES=<gpu> .venv/bin/python experiments/34_d4rt_lead_train.py \
+CUDA_VISIBLE_DEVICES=<gpu> .venv/bin/python experiments/synthetic/34_d4rt_lead_train.py \
     --seed <1234|1235|1236> --steps 5000 --queries 512 --val-every 500 \
     --min-steps 0 --tag d4rt_m62_s<seed>
 
 # evaluate (per seed)
-CUDA_VISIBLE_DEVICES=<gpu> .venv/bin/python experiments/35_d4rt_lead_eval.py \
+CUDA_VISIBLE_DEVICES=<gpu> .venv/bin/python experiments/synthetic/35_d4rt_lead_eval.py \
     --ckpt outputs/ckpt/d4rt_m62_s<seed>.pt --seed <seed> \
     --n-profiles 1500 --tag d4rt_lead_eval_m62_s<seed>
 ```

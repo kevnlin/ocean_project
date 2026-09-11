@@ -19,7 +19,7 @@ How comparability is enforced (the two clauses that matter):
   contained in the full set, those cells stay unobserved at every reduction, so
   every point of every curve is scored on identical (location, depth, month)
   targets and the climatology floor is a single horizontal line.  This is
-  deliberately different from experiments/37_obs_stress.py, which re-derives
+  deliberately different from experiments/synthetic/37_obs_stress.py, which re-derives
   the pool (and floor) per density because its densities are not nested.
 
 Relation to 37: that script retrains at a fixed density and measures
@@ -41,8 +41,8 @@ zero-padded to the current 5-modality shapes on load (the ssh row is never
 exercised — these models are fed no ssh tokens).
 
 Run:
-    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/38_profile_reduction.py
-    .venv/bin/python experiments/38_profile_reduction.py --smoke
+    CUDA_VISIBLE_DEVICES=0 .venv/bin/python experiments/synthetic/38_profile_reduction.py
+    .venv/bin/python experiments/synthetic/38_profile_reduction.py --smoke
 """
 import sys, os, json, time, argparse, subprocess
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -337,9 +337,9 @@ L += ["## Figure\n", f"![profile reduction]({os.path.basename(fig_path)})\n",
       "## Notes\n",
       "* Eval-only reduction measures robustness of the existing models; the "
       "training-regime companion (retrain at a fixed density, extrapolate) is "
-      "`experiments/37_obs_stress.py` / `reports/obs_stress_d4rt.md`.\n",
+      "`experiments/synthetic/37_obs_stress.py` / `reports/synthetic/obs_stress_d4rt.md`.\n",
       "* The Perceiver control collapsed to climatology during training "
-      "(`reports/obs_stress_perceiver.md`), so its flat curve is the "
+      "(`reports/synthetic/obs_stress_perceiver.md`), so its flat curve is the "
       "ignore-the-observations reference, not robustness.\n",
       f"Run record: `outputs/cache/{tag}.json`\n"]
 with open(os.path.join(C.REPORTS_SYNTHETIC, "profile_reduction.md"), "w") as f:

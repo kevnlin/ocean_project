@@ -24,9 +24,9 @@ alongside so the coverage behind every panel is visible.
 Panels follow the global figure: rows are TEMP and SALT, columns are the depth
 bands plus the pooled full column, dark = accurate, grey = unscored.
 
-  .venv/bin/python experiments/52_argo_recon_map.py --region eq_pacific \
+  .venv/bin/python experiments/real_data/52_argo_recon_map.py --region eq_pacific \
       --checkpoint outputs/argo_P0_eq_pacific_pall/dfs_expertlocal_cbottle_s1234.pt
-  .venv/bin/python experiments/52_argo_recon_map.py --region eq_pacific --compare
+  .venv/bin/python experiments/real_data/52_argo_recon_map.py --region eq_pacific --compare
 """
 from __future__ import annotations
 

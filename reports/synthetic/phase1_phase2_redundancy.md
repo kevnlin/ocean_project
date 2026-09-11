@@ -1,7 +1,7 @@
 # Phases 1 & 2 — operative mechanism, and an evaluation that contains the disease
 
-Follows [`reports/phase0_operating_point.md`](phase0_operating_point.md).
-Instruments: `experiments/39_redundancy_regimes.py`; properties asserted in
+Follows [`reports/synthetic/phase0_operating_point.md`](phase0_operating_point.md).
+Instruments: `experiments/synthetic/39_redundancy_regimes.py`; properties asserted in
 `tests/test_phase1_phase2_properties.py` (10 tests).
 Run record: `outputs/cache/redundancy_regimes.json`.
 

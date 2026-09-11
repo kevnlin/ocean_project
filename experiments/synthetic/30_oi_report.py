@@ -5,12 +5,12 @@ Reads
     outputs/cache/oi_tuning_train.json   (optional stability check)
     outputs/cache/oi_vs_unet_seed<seed>.json + _maps.npz
 Writes
-    reports/oi_tuning.md
-    reports/oi_baseline.md
-    reports/fig_oi_rmse_bars.png
-    reports/fig_oi_vs_unet_error_map.png
+    reports/synthetic/oi_tuning.md
+    reports/synthetic/oi_baseline.md
+    reports/synthetic/fig_oi_rmse_bars.png
+    reports/synthetic/fig_oi_vs_unet_error_map.png
 
-Run:  python experiments/30_oi_report.py
+Run:  python experiments/synthetic/30_oi_report.py
 """
 import argparse
 import glob
@@ -61,10 +61,10 @@ tun_tr = load(os.path.join(C.CACHE, f"oi_tuning_train{SFX}.json"))
 cmp_path = os.path.join(C.CACHE, f"oi_vs_unet_seed{args.seed}{SFX}.json")
 cmp = load(cmp_path)
 if tun is None and cmp is None:
-    raise SystemExit("no OI caches found — run experiments/run_oi_queue.sh first")
+    raise SystemExit("no OI caches found — run experiments/synthetic/run_oi_queue.sh first")
 
 # =========================================================================
-# reports/oi_tuning.md
+# reports/synthetic/oi_tuning.md
 # =========================================================================
 if tun is not None:
     L = sorted({r["L_km"] for r in tun["stage_a"]["TEMP"]})
@@ -135,13 +135,13 @@ if tun is not None:
         out.append("")
 
     out += ["---", "",
-            f"Rerun: `python experiments/26_oi_tuning.py --split "
+            f"Rerun: `python experiments/synthetic/26_oi_tuning.py --split "
             f"{tun['selection_split']}`", ""]
     open(os.path.join(C.REPORTS_SYNTHETIC, f"oi_tuning{SFX}.md"), "w").write("\n".join(out))
     print(f"wrote reports/oi_tuning{SFX}.md")
 
 # =========================================================================
-# reports/oi_baseline.md  + figures
+# reports/synthetic/oi_baseline.md  + figures
 # =========================================================================
 if cmp is not None:
     g = cmp["results"]["global"]
@@ -278,7 +278,7 @@ if cmp is not None:
         else:
             out += ["> The `profiles_only` U-Net row (the like-for-like "
                     "information comparison) still needs a free GPU: "
-                    "`CUDA_VISIBLE_DEVICES=N python experiments/27_oi_vs_unet.py "
+                    "`CUDA_VISIBLE_DEVICES=N python experiments/synthetic/27_oi_vs_unet.py "
                     "--train-profiles-only`. Until it lands, the comparison above "
                     "confounds *better interpolator* with *more inputs*.", ""]
 
@@ -426,8 +426,8 @@ if cmp is not None:
             "* Good, Martin & Rayner (2013), *EN4*, JGR Oceans.",
             "* Gaillard et al. (2016), *ISAS*, J. Climate.", "",
             "---", "",
-            f"Rerun: `python experiments/27_oi_vs_unet.py --verify-unet` then "
-            f"`python experiments/30_oi_report.py`", ""]
+            f"Rerun: `python experiments/synthetic/27_oi_vs_unet.py --verify-unet` then "
+            f"`python experiments/synthetic/30_oi_report.py`", ""]
     open(os.path.join(C.REPORTS_SYNTHETIC, f"oi_baseline{SFX}.md"), "w").write("\n".join(out))
     print(f"wrote reports/oi_baseline{SFX}.md")
 

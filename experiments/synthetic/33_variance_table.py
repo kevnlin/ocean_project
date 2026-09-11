@@ -26,7 +26,7 @@ Two variances are reported because "target variance" is ambiguous:
 All statistics are over the protocol_v1 scoring set: the 12 pinned test months,
 unobserved ocean cells only (profile columns excluded at every level).
 
-Run:  python experiments/33_variance_table.py
+Run:  python experiments/synthetic/33_variance_table.py
 """
 import argparse
 import json

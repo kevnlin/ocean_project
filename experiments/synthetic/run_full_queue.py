@@ -1,7 +1,7 @@
 """Queue runner for the full-scale runs (variants x seeds; 12 by default,
 4 fusion variants x 3 seeds -- DFS-Attention included).
 
-Dispatches experiments/18_full_train.py jobs with bounded concurrency:
+Dispatches experiments/synthetic/18_full_train.py jobs with bounded concurrency:
 up to --per-gpu concurrent runs on GPU 7 (always ours) and on GPU 6 only
 while it is free (memory below --free-mib, checked twice 20 s apart before
 every dispatch — it may be occupied by someone else's job).
@@ -12,7 +12,7 @@ skipped, so the queue is safe to restart.  Extra args after ``--`` are
 passed through to every training run (single source of truth for the
 final config), e.g.:
 
-    nohup python experiments/run_full_queue.py -- --warmup 1000 \
+    nohup python experiments/synthetic/run_full_queue.py -- --warmup 1000 \
         --obs-query-frac 0.25 > outputs/queue.log 2>&1 &
 """
 import os, sys, json, time, subprocess

@@ -12,7 +12,7 @@ reader can judge whether extrapolating is defensible at all).  Re-run after
 Density 0 is excluded from the fit: log(0) is undefined, and the zero-profile
 point is the no-observation limit, which no power law in N should describe.
 
-Run:  python experiments/31_density_powerlaw.py
+Run:  python experiments/synthetic/31_density_powerlaw.py
 """
 import argparse
 import collections
@@ -174,4 +174,4 @@ for ax, v in zip(axes, VARS):
     ax.legend(fontsize=8); ax.grid(alpha=.3, which="both")
 fig.tight_layout()
 fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_density_powerlaw.png"), dpi=140)
-print(f"\nwrote {path} and reports/fig_density_powerlaw.png")
+print(f"\nwrote {path} and reports/synthetic/fig_density_powerlaw.png")

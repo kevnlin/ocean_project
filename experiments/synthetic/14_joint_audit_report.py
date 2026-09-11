@@ -4,14 +4,14 @@ Consumes the audit_<tag>.json runs written by 13_joint_audit.py, reloads each
 frozen best checkpoint, re-scores the pinned protocol_v1 test months (asserting
 agreement with the stored numbers), and writes:
 
-  reports/joint_unet_audit.md      Task 1: budget table, convergence curves,
+  reports/synthetic/joint_unet_audit.md      Task 1: budget table, convergence curves,
                                    answers to the five audit questions
-  reports/depth_band_eval.md       Task 8: 20-level depth-band + per-level RMSE
-  reports/fig_audit_curves.png     train loss + val RMSE vs optimizer steps
-  reports/fig_audit_rmse_depth.png per-level test RMSE, all models + floor
+  reports/synthetic/depth_band_eval.md       Task 8: 20-level depth-band + per-level RMSE
+  reports/synthetic/fig_audit_curves.png     train loss + val RMSE vs optimizer steps
+  reports/synthetic/fig_audit_rmse_depth.png per-level test RMSE, all models + floor
 
 Run (after the four audit runs finish):
-    python experiments/14_joint_audit_report.py
+    python experiments/synthetic/14_joint_audit_report.py
 """
 import sys, os, json, glob
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
@@ -75,7 +75,7 @@ axes[1].legend(frameon=False, fontsize=8)
 fig.tight_layout()
 fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_audit_curves.png"), bbox_inches="tight")
 plt.close(fig)
-print("-> reports/fig_audit_curves.png")
+print("-> reports/synthetic/fig_audit_curves.png")
 
 # ==========================================================================
 # Rebuild the exact protocol_v1 test samples (replay the audit RNG sequence)
@@ -176,7 +176,7 @@ fig.tight_layout()
 fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_audit_rmse_depth.png"),
             bbox_inches="tight")
 plt.close(fig)
-print("-> reports/fig_audit_rmse_depth.png")
+print("-> reports/synthetic/fig_audit_rmse_depth.png")
 
 # ==========================================================================
 # Report 1 — Task 1 audit closure
@@ -253,7 +253,7 @@ L.append("- [x] training/validation curves (fig_audit_curves.png)")
 L.append("- [x] final baseline table (above)")
 L.append("- [x] frozen best checkpoints: " + ", ".join(
     f"`outputs/ckpt/audit_{t}.pt`" for t in runs))
-L.append("- [x] reproducible commands: header of `experiments/13_joint_audit.py`")
+L.append("- [x] reproducible commands: header of `experiments/synthetic/13_joint_audit.py`")
 best_joint = min((t for t in runs if runs[t]["model"] == "joint"),
                  key=lambda t: runs[t]["test"]["TEMP"], default=None)
 if best_joint:
@@ -261,7 +261,7 @@ if best_joint:
              f"`audit_{best_joint}.pt` as the joint-depth reference and stop "
              f"tuning.")
 open(os.path.join(C.REPORTS_SYNTHETIC, "joint_unet_audit.md"), "w").write("\n".join(L))
-print("-> reports/joint_unet_audit.md")
+print("-> reports/synthetic/joint_unet_audit.md")
 
 # ==========================================================================
 # Report 2 — Task 8 depth-band evaluation (frozen 20-level grid)
@@ -325,4 +325,4 @@ if dwb:
     L.append("- This is supporting analysis for the baseline table, not the "
              "core novelty result (the MBCA invariance work is).")
 open(os.path.join(C.REPORTS_SYNTHETIC, "depth_band_eval.md"), "w").write("\n".join(L))
-print("-> reports/depth_band_eval.md")
+print("-> reports/synthetic/depth_band_eval.md")

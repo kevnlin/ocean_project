@@ -97,11 +97,11 @@ Trained on 48 LE months (1985–2010), evaluated on 12 held-out months (2011–2
 ## 5. Reproduce
 ```bash
 cd /home/nvidia/ocean_project
-python experiments/00_data_cards.py        # data cards + common grid
-python experiments/01_tokenizer_roundtrip.py
-python experiments/02_synth_argo.py
-python experiments/03_baselines.py         # (--smoke for a fast check)
-python experiments/04_report.py            # baseline_table.md
+python experiments/synthetic/00_data_cards.py        # data cards + common grid
+python experiments/synthetic/01_tokenizer_roundtrip.py
+python experiments/synthetic/02_synth_argo.py
+python experiments/synthetic/03_baselines.py         # (--smoke for a fast check)
+python experiments/synthetic/04_report.py            # baseline_table.md
 ```
 Package: `src/ocean_tokenizer/` (config, data, tokenizers, argo, baselines, unet, metrics).
 Knobs (depths, #profiles, train/test split, epochs) live in `src/ocean_tokenizer/config.py`.

@@ -24,9 +24,9 @@ them once per (month, variable, depth) and every (L, gamma) reuses them.
 Stage B builds the largest k once and slices the smaller ones out of it.
 
 Run:
-    python experiments/26_oi_tuning.py                     # full sweep, ~1 h CPU
-    python experiments/26_oi_tuning.py --smoke             # 1 month, 2x2 grid
-    python experiments/26_oi_tuning.py --split train       # stability check
+    python experiments/synthetic/26_oi_tuning.py                     # full sweep, ~1 h CPU
+    python experiments/synthetic/26_oi_tuning.py --smoke             # 1 month, 2x2 grid
+    python experiments/synthetic/26_oi_tuning.py --split train       # stability check
 """
 import argparse
 import json
