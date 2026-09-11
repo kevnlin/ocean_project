@@ -107,7 +107,7 @@ fig.suptitle(f"Per-layer reconstruction RMSE at {density} profiles/month "
              f"(extended 1400 m grid, mean±std over {len(seeds)} seeds)",
              color=INK, fontsize=12)
 fig.tight_layout()
-figp = os.path.join(C.REPORTS, "fig_layered_rmse.png")
+figp = os.path.join(C.REPORTS_SYNTHETIC, "fig_layered_rmse.png")
 fig.savefig(figp, dpi=160, bbox_inches="tight")
 plt.close(fig)
 print(f"wrote {figp}")
@@ -138,7 +138,7 @@ for v in VARS:
 
 L.append("## Per-layer RMSE\n")
 L.append("![Per-layer RMSE](fig_layered_rmse.png)\n")
-if os.path.exists(os.path.join(C.REPORTS, "fig_layered_heatmap.png")):
+if os.path.exists(os.path.join(C.REPORTS_SYNTHETIC, "fig_layered_heatmap.png")):
     L.append("## Spatial error structure by layer\n")
     L.append("![Per-layer error heatmap](fig_layered_heatmap.png)\n")
 
@@ -169,7 +169,7 @@ L.append(f"- **Method ranking holds at every depth:** depthwise U-Net < joint-de
          f"consistent with the 985 m week-2 result — the joint-depth 'strong baseline' is still the "
          f"weaker U-Net layer by layer.\n")
 
-out = os.path.join(C.REPORTS, "layered_depth_eval.md")
+out = os.path.join(C.REPORTS_SYNTHETIC, "layered_depth_eval.md")
 with open(out, "w") as f:
     f.write("\n".join(L))
 print(f"wrote {out}")

@@ -282,7 +282,7 @@ fig.suptitle(f"Robustness to reduced Argo input — frozen models, identical "
              f"targets and nested profile subsets per month "
              f"({len(months_setup)} test months {TEST_YEARS[0]}, "
              f"{int(n_level.sum()):,} fixed targets)", fontsize=12)
-fig_path = os.path.join(C.REPORTS, "fig_profile_reduction.png")
+fig_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_profile_reduction.png")
 fig.savefig(fig_path, dpi=140, bbox_inches="tight")
 print("wrote", fig_path, flush=True)
 
@@ -342,7 +342,7 @@ L += ["## Figure\n", f"![profile reduction]({os.path.basename(fig_path)})\n",
       "(`reports/obs_stress_perceiver.md`), so its flat curve is the "
       "ignore-the-observations reference, not robustness.\n",
       f"Run record: `outputs/cache/{tag}.json`\n"]
-with open(os.path.join(C.REPORTS, "profile_reduction.md"), "w") as f:
+with open(os.path.join(C.REPORTS_SYNTHETIC, "profile_reduction.md"), "w") as f:
     f.write("\n".join(L))
-print("wrote", os.path.join(C.REPORTS, "profile_reduction.md"), flush=True)
+print("wrote", os.path.join(C.REPORTS_SYNTHETIC, "profile_reduction.md"), flush=True)
 print(f"TOTAL {(time.time()-t_start)/60:.1f} min", flush=True)

@@ -34,6 +34,6 @@ lines = ["# Synthetic Argo Profiles (from CESM2-LE)\n",
          "(lat,lon) locations — emulating sparse Argo float sampling of the dense "
          "simulated ocean state.  Saved to `outputs/cache/synthetic_argo_example.npz`.",
          ""]
-with open(os.path.join(C.REPORTS, "synthetic_argo.md"), "w") as fp:
+with open(os.path.join(C.REPORTS_SYNTHETIC, "synthetic_argo.md"), "w") as fp:
     fp.write("\n".join(lines))
 print("\n".join(lines))

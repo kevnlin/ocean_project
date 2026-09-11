@@ -178,7 +178,7 @@ L.append("- **Profile resampling** is absorbed by the encoder (fixed physical "
          "independent; residual band-mass shift <10% from boundary "
          "half-intervals (test_profile_resampling).")
 
-out = os.path.join(C.REPORTS, "invariance_test_summary.md")
+out = os.path.join(C.REPORTS_SYNTHETIC, "invariance_test_summary.md")
 open(out, "w").write("\n".join(L))
 print(f"-> {out}")
 print("\n".join(L[8:20]))

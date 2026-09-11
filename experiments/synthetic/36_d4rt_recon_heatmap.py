@@ -469,7 +469,7 @@ fig.suptitle(
     "\ndark = accurate reconstruction, red / orange / white = more error; "
     "grey = land or unscored",
     fontsize=12)
-fig_path = os.path.join(C.REPORTS, "fig_d4rt_recon_heatmap.png")
+fig_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_d4rt_recon_heatmap.png")
 fig.savefig(fig_path, dpi=140, bbox_inches="tight")
 print("wrote", fig_path, flush=True)
 
@@ -507,7 +507,7 @@ for a in ax2.ravel():
 fig2.suptitle("Full-column reconstruction vs the climatology floor "
               f"({TEST_YEARS[0]} held-out months, unobserved columns only)",
               fontsize=12.5)
-fig2_path = os.path.join(C.REPORTS, "fig_d4rt_recon_skill.png")
+fig2_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_d4rt_recon_skill.png")
 fig2.savefig(fig2_path, dpi=140, bbox_inches="tight")
 print("wrote", fig2_path, flush=True)
 
@@ -608,7 +608,7 @@ L += ["", "## Against the climatology floor\n",
       "physical units with each level's anomaly std, so a cell's number is a "
       "physical RMSE.\n",
       f"Run record: `outputs/cache/{tag}.json`\n"]
-md_path = os.path.join(C.REPORTS, "d4rt_recon_heatmap.md")
+md_path = os.path.join(C.REPORTS_SYNTHETIC, "d4rt_recon_heatmap.md")
 with open(md_path, "w") as f:
     f.write("\n".join(L))
 print("wrote", md_path, flush=True)

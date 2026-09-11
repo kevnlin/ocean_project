@@ -71,7 +71,7 @@ print("point query masked", e)
 
 lines.append("")
 lines.append(f"**All un-masked tokenizers exact:** {'YES ✅' if ok else 'NO ❌'}")
-with open(os.path.join(C.REPORTS, "tokenizer_roundtrip.md"), "w") as fp:
+with open(os.path.join(C.REPORTS_SYNTHETIC, "tokenizer_roundtrip.md"), "w") as fp:
     fp.write("\n".join(lines))
 print("\nAll exact (unmasked):", ok)
 assert ok, "round-trip not exact!"

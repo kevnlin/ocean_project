@@ -137,7 +137,7 @@ if tun is not None:
     out += ["---", "",
             f"Rerun: `python experiments/26_oi_tuning.py --split "
             f"{tun['selection_split']}`", ""]
-    open(os.path.join(C.REPORTS, f"oi_tuning{SFX}.md"), "w").write("\n".join(out))
+    open(os.path.join(C.REPORTS_SYNTHETIC, f"oi_tuning{SFX}.md"), "w").write("\n".join(out))
     print(f"wrote reports/oi_tuning{SFX}.md")
 
 # =========================================================================
@@ -428,7 +428,7 @@ if cmp is not None:
             "---", "",
             f"Rerun: `python experiments/27_oi_vs_unet.py --verify-unet` then "
             f"`python experiments/30_oi_report.py`", ""]
-    open(os.path.join(C.REPORTS, f"oi_baseline{SFX}.md"), "w").write("\n".join(out))
+    open(os.path.join(C.REPORTS_SYNTHETIC, f"oi_baseline{SFX}.md"), "w").write("\n".join(out))
     print(f"wrote reports/oi_baseline{SFX}.md")
 
     # ---------------- figure 1: RMSE bars ----------------
@@ -452,7 +452,7 @@ if cmp is not None:
         ax.set_title(f"{v} — global, 12 pinned test months")
         ax.legend(fontsize=8)
     fig.tight_layout()
-    fig.savefig(os.path.join(C.REPORTS, f"fig_oi_rmse_bars{SFX}.png"), dpi=140)
+    fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, f"fig_oi_rmse_bars{SFX}.png"), dpi=140)
     plt.close(fig)
     print(f"wrote reports/fig_oi_rmse_bars{SFX}.png")
 
@@ -487,7 +487,7 @@ if cmp is not None:
                 ax.plot([275, 335, 335, 275, 275], [20, 20, 55, 55, 20],
                         c="w", lw=1.2, ls="--")
             fig.tight_layout()
-            fig.savefig(os.path.join(C.REPORTS, f"fig_oi_vs_unet_error_map{SFX}.png"),
+            fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, f"fig_oi_vs_unet_error_map{SFX}.png"),
                         dpi=140)
             plt.close(fig)
             print(f"wrote reports/fig_oi_vs_unet_error_map{SFX}.png")

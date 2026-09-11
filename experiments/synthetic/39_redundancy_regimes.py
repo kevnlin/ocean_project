@@ -357,7 +357,7 @@ ax[1].set_title("Dual-stream collapse vs n_eff theory")
 ax[1].legend(fontsize=8); ax[1].grid(alpha=.3)
 fig.suptitle("Phase 2 — redundancy regimes (geometry only, frozen estimator)",
              fontsize=12)
-fig_path = os.path.join(C.REPORTS, "fig_redundancy_regimes.png")
+fig_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_redundancy_regimes.png")
 fig.savefig(fig_path, dpi=140, bbox_inches="tight")
 print(f"\nwrote {fig_path}", flush=True)
 

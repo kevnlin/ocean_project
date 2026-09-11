@@ -73,7 +73,7 @@ for ax in axes:
     ax.grid(alpha=0.25, lw=0.5); ax.spines[["top", "right"]].set_visible(False)
 axes[1].legend(frameon=False, fontsize=8)
 fig.tight_layout()
-fig.savefig(os.path.join(C.REPORTS, "fig_audit_curves.png"), bbox_inches="tight")
+fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_audit_curves.png"), bbox_inches="tight")
 plt.close(fig)
 print("-> reports/fig_audit_curves.png")
 
@@ -173,7 +173,7 @@ for k, v in enumerate(VARS):
     ax.grid(alpha=0.25, lw=0.5); ax.spines[["top", "right"]].set_visible(False)
 axes[0].legend(frameon=False, fontsize=8)
 fig.tight_layout()
-fig.savefig(os.path.join(C.REPORTS, "fig_audit_rmse_depth.png"),
+fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_audit_rmse_depth.png"),
             bbox_inches="tight")
 plt.close(fig)
 print("-> reports/fig_audit_rmse_depth.png")
@@ -260,7 +260,7 @@ if best_joint:
     L.append(f"- [x] conclusion: joint-depth baseline **closed** — use "
              f"`audit_{best_joint}.pt` as the joint-depth reference and stop "
              f"tuning.")
-open(os.path.join(C.REPORTS, "joint_unet_audit.md"), "w").write("\n".join(L))
+open(os.path.join(C.REPORTS_SYNTHETIC, "joint_unet_audit.md"), "w").write("\n".join(L))
 print("-> reports/joint_unet_audit.md")
 
 # ==========================================================================
@@ -324,5 +324,5 @@ if dwb:
                  f"stronger baseline.")
     L.append("- This is supporting analysis for the baseline table, not the "
              "core novelty result (the MBCA invariance work is).")
-open(os.path.join(C.REPORTS, "depth_band_eval.md"), "w").write("\n".join(L))
+open(os.path.join(C.REPORTS_SYNTHETIC, "depth_band_eval.md"), "w").write("\n".join(L))
 print("-> reports/depth_band_eval.md")

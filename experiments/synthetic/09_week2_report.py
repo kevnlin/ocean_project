@@ -153,7 +153,7 @@ fig.suptitle(f"Profile-density ablation - anomaly target, unobserved-only RMSE "
              f"(band = min-max over {len(seeds)} seeds)",
              color=INK, fontsize=12, y=1.0)
 fig.tight_layout()
-fig1_path = os.path.join(C.REPORTS, "fig_week2_density_rmse.png")
+fig1_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_week2_density_rmse.png")
 fig.savefig(fig1_path, dpi=160, bbox_inches="tight")
 plt.close(fig)
 print(f"wrote {fig1_path}")
@@ -188,7 +188,7 @@ fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False,
 fig.suptitle(f"RMSE by depth at {STD_DENSITY} profiles/month "
              f"(seed mean, unobserved-only)", color=INK, fontsize=12)
 fig.tight_layout()
-fig2_path = os.path.join(C.REPORTS, "fig_week2_depth_rmse.png")
+fig2_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_week2_depth_rmse.png")
 fig.savefig(fig2_path, dpi=160, bbox_inches="tight")
 plt.close(fig)
 print(f"wrote {fig2_path}")
@@ -276,7 +276,7 @@ L.append("- `tests/test_token_api.py` — 19 tests covering variable profile cou
 L.append("- **Deliberately deferred to Weeks 3-4:** the Perceiver-style fusion core and "
          "the dense-grid-vs-sparse-profile token-imbalance handling.\n")
 
-out = os.path.join(C.REPORTS, "week2_density_ablation.md")
+out = os.path.join(C.REPORTS_SYNTHETIC, "week2_density_ablation.md")
 with open(out, "w") as f:
     f.write("\n".join(L))
 print(f"wrote {out}")

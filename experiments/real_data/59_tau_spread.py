@@ -118,8 +118,8 @@ L += ["", "**Reading it.** A CV near zero means the estimator finds the "
       "tables under those conditions is a real negative result about the "
       "mechanism rather than an artefact of the input density.", ""]
 
-os.makedirs(os.path.join(ROOT, "reports"), exist_ok=True)
-p_md = os.path.join(ROOT, "reports", "tau_spread.md")
+os.makedirs(os.path.join(ROOT, "reports", "real_data"), exist_ok=True)
+p_md = os.path.join(ROOT, "reports", "real_data", "tau_spread.md")
 open(p_md, "w").write("\n".join(L))
 p_js = os.path.join(ROOT, "outputs", "tau_spread.json")
 os.makedirs(os.path.dirname(p_js), exist_ok=True)

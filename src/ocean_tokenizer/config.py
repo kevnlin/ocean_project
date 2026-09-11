@@ -20,6 +20,8 @@ OUTPUTS = os.path.join(ROOT, "outputs")
 CACHE = os.path.join(OUTPUTS, "cache")
 CKPT = os.path.join(OUTPUTS, "ckpt")
 REPORTS = os.path.join(ROOT, "reports")
+#: outputs of the CESM2-LE-era experiments (experiments/synthetic/)
+REPORTS_SYNTHETIC = os.path.join(REPORTS, "synthetic")
 
 ZARR = {
     "cesm2":         os.path.join(PROCESSED, "cesm2_standard.zarr"),         # single member (curvilinear placeholder grid)
@@ -90,3 +92,4 @@ DEVICE = "cuda"
 os.makedirs(CACHE, exist_ok=True)
 os.makedirs(CKPT, exist_ok=True)
 os.makedirs(REPORTS, exist_ok=True)
+os.makedirs(REPORTS_SYNTHETIC, exist_ok=True)

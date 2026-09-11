@@ -126,6 +126,6 @@ for r, v in enumerate(B.VARS):
 
 fig.suptitle("Reconstruction error by depth layer — joint-depth U-Net "
              "(prof+WOA+SST/SSS), unobserved-only, anomaly target", fontsize=13)
-out = os.path.join(C.REPORTS, "fig_layered_heatmap.png")
+out = os.path.join(C.REPORTS_SYNTHETIC, "fig_layered_heatmap.png")
 fig.savefig(out, dpi=140, bbox_inches="tight")
 print(f"\nDONE in {time.time()-t0:.1f}s -> {out}", flush=True)

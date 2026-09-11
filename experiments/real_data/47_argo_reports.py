@@ -60,7 +60,7 @@ args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 OUTPUTS = args.outputs or os.path.join(ROOT, "outputs")
-REPORTS = args.reports or os.path.join(ROOT, "reports")
+REPORTS = args.reports or os.path.join(ROOT, "reports", "crosscheck")
 os.makedirs(REPORTS, exist_ok=True)
 
 NA = "—"

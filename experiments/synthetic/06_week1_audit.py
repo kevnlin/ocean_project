@@ -197,7 +197,7 @@ for r in results:
     sS = 1 - r["SALT_unobs"] / floor_S if floor_S else np.nan
     lines.append(f"| {r['method']} | {r['config']} | {sT:+.3f} | {sS:+.3f} |")
 lines.append("")
-report_path = os.path.join(C.REPORTS, "week1_audit.md")
+report_path = os.path.join(C.REPORTS_SYNTHETIC, "week1_audit.md")
 with open(report_path, "w") as f:
     f.write("\n".join(lines))
 

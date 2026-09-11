@@ -111,7 +111,7 @@ for ax, (var, label, field) in zip(axes.ravel(), panels):
 fig.suptitle("Reconstruction error — depthwise U-Net (profiles + WOA + SST/SSS), "
              f"anomaly target, {te_idx.size} held-out months",
              fontsize=13)
-out = os.path.join(C.REPORTS, "error_map.png")
+out = os.path.join(C.REPORTS_SYNTHETIC, "error_map.png")
 fig.savefig(out, dpi=140)
 print(f"\nDONE in {time.time()-t0:.1f}s -> {out}")
 print("  field RMSE ranges:")

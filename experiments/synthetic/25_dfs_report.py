@@ -289,6 +289,6 @@ if os.path.exists(pp):
              + " DFS for Δz = "
              + " → ".join(f"{x['dz_m']:.0f}" for x in sw) + " m.")
 
-path = os.path.join(C.REPORTS, "dfs_success_criterion.md")
+path = os.path.join(C.REPORTS_SYNTHETIC, "dfs_success_criterion.md")
 open(path, "w").write("\n".join(L) + "\n")
 print("wrote", path)

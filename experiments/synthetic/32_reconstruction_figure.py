@@ -308,7 +308,7 @@ fig.text(.045, .085,
          f"(range {min(r['gain'] for r in rows):.0f}–{max(r['gain'] for r in rows):.0f} %) "
          f"— representative, not the most favourable.",
          fontsize=8.0, color="#333", va="top", linespacing=1.55)
-out1 = os.path.join(C.REPORTS, "fig_reconstruction_na_thermocline.png")
+out1 = os.path.join(C.REPORTS_SYNTHETIC, "fig_reconstruction_na_thermocline.png")
 fig.savefig(out1, dpi=155)
 plt.close(fig)
 print(f"\nwrote {out1}", flush=True)
@@ -355,7 +355,7 @@ if ssh_ok:
                 f"Global 3-seed effect: 0.1572 → 0.1368 degC (+13.0 %), largest in this "
                 f"very band (+15.1 ± 0.8 %) — see reports/ssh_ablation.md.",
                 fontsize=8.0, color="#333", va="top", linespacing=1.55)
-        out2 = os.path.join(C.REPORTS, "fig_reconstruction_na_ssh.png")
+        out2 = os.path.join(C.REPORTS_SYNTHETIC, "fig_reconstruction_na_ssh.png")
         f2.savefig(out2, dpi=155)
         plt.close(f2)
         print(f"wrote {out2}   (no-SSH {r_c:.4f} -> with-SSH {r_t:.4f} {UNIT}, "

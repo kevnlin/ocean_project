@@ -76,7 +76,7 @@ ap.add_argument("--reports", default=None)
 args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-REPORTS = args.reports or os.path.join(ROOT, "reports")
+REPORTS = args.reports or os.path.join(ROOT, "reports", "real_data")
 os.makedirs(REPORTS, exist_ok=True)
 seeds = [int(x) for x in args.seeds.split(",") if x.strip()]
 dev = "cuda" if torch.cuda.is_available() else "cpu"

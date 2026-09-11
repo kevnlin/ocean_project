@@ -27,7 +27,7 @@ VNAMES = {"mbca": "MBCA (method)", "perceiver": "Standard Perceiver",
           "resampler": "Fixed-budget resampler"}
 SEEDS = (1234, 1235, 1236)
 VARS = ("TEMP", "SALT")
-REPORTS = C.REPORTS
+REPORTS = C.REPORTS_SYNTHETIC
 
 
 def load(path):

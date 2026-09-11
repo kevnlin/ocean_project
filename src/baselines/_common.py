@@ -48,7 +48,7 @@ ROOT = C.ROOT
 CKPT_DIR = os.path.join(ROOT, "checkpoints")
 PRED_DIR = os.path.join(ROOT, "predictions")
 CACHE = C.CACHE          # outputs/cache  (per-depth RMSE for the combined table)
-REPORTS = C.REPORTS
+REPORTS = C.REPORTS_SYNTHETIC
 for _d in (CKPT_DIR, PRED_DIR, CACHE, REPORTS):
     os.makedirs(_d, exist_ok=True)
 

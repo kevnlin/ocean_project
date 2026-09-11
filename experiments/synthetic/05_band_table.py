@@ -173,6 +173,6 @@ for var in ["TEMP", "SALT"]:
         L.append("| " + " | ".join(row) + " |")
     L.append("")
 
-with open(os.path.join(C.REPORTS, "baseline_table.md"), "w") as f:
+with open(os.path.join(C.REPORTS_SYNTHETIC, "baseline_table.md"), "w") as f:
     f.write("\n".join(L))
 print("wrote reports/baseline_table.md (banded format)")

@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 import warnings; warnings.filterwarnings("ignore")
 from ocean_tokenizer import data, config as C
 
-os.makedirs(C.REPORTS, exist_ok=True)
+os.makedirs(C.REPORTS_SYNTHETIC, exist_ok=True)
 
 names = {"woa23": "data_card_woa23.md",
          "cesm2": "data_card_cesm2.md",
@@ -12,12 +12,12 @@ names = {"woa23": "data_card_woa23.md",
 
 for name, fn in names.items():
     card = data.data_card(name)
-    with open(os.path.join(C.REPORTS, fn), "w") as f:
+    with open(os.path.join(C.REPORTS_SYNTHETIC, fn), "w") as f:
         f.write(card)
     print("wrote", fn)
 
 grid = data.CommonGrid()
-with open(os.path.join(C.REPORTS, "common_grid.md"), "w") as f:
+with open(os.path.join(C.REPORTS_SYNTHETIC, "common_grid.md"), "w") as f:
     f.write("# Common Analysis Grid\n\n")
     f.write(f"- ground truth source: `{C.GT_SOURCE}`\n")
     f.write(f"- lat: {grid.nlat} pts ({grid.lat.min():.1f}..{grid.lat.max():.1f})\n")

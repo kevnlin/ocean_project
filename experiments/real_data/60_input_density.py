@@ -86,8 +86,8 @@ L += ["", "**Consequence for the tables.** The arm labelled 128 delivers a "
       "reach its cap in essentially every month, so only the upper arm is "
       "overstated by its label.", ""]
 
-os.makedirs(os.path.join(ROOT, "reports"), exist_ok=True)
-p_md = os.path.join(ROOT, "reports", "input_density.md")
+os.makedirs(os.path.join(ROOT, "reports", "real_data"), exist_ok=True)
+p_md = os.path.join(ROOT, "reports", "real_data", "input_density.md")
 open(p_md, "w").write("\n".join(L))
 p_js = os.path.join(ROOT, "outputs", "input_density.json")
 json.dump(out, open(p_js, "w"), indent=1)

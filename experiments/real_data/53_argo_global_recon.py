@@ -124,7 +124,7 @@ ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-REPORTS = os.path.join(ROOT, "reports"); os.makedirs(REPORTS, exist_ok=True)
+REPORTS = os.path.join(ROOT, "reports", "real_data"); os.makedirs(REPORTS, exist_ok=True)
 CKPT = os.path.join(ROOT, "outputs", "ckpt"); os.makedirs(CKPT, exist_ok=True)
 CACHE = os.path.join(ROOT, "outputs", "cache"); os.makedirs(CACHE, exist_ok=True)
 tag = args.tag or f"argo_global_{args.variant}_s{args.seed}"

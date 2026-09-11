@@ -253,7 +253,7 @@ if adv:
                  f"k={args.dup_k} copies of {100*args.dup_frac:.0f}% of columns",
                  fontsize=11)
     ax.legend(); ax.grid(alpha=.3, axis="y")
-    fig_path = os.path.join(C.REPORTS, "fig_redundancy_accuracy.png")
+    fig_path = os.path.join(C.REPORTS_SYNTHETIC, "fig_redundancy_accuracy.png")
     fig.savefig(fig_path, dpi=140, bbox_inches="tight")
     print(f"\nwrote {fig_path}", flush=True)
 else:

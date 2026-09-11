@@ -173,5 +173,5 @@ for ax, v in zip(axes, VARS):
     ax.set_title(f"{v} vs profile density")
     ax.legend(fontsize=8); ax.grid(alpha=.3, which="both")
 fig.tight_layout()
-fig.savefig(os.path.join(C.REPORTS, "fig_density_powerlaw.png"), dpi=140)
+fig.savefig(os.path.join(C.REPORTS_SYNTHETIC, "fig_density_powerlaw.png"), dpi=140)
 print(f"\nwrote {path} and reports/fig_density_powerlaw.png")

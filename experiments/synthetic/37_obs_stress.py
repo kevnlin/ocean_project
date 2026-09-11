@@ -491,7 +491,7 @@ fig.suptitle(f"Observation stress test — {args.variant} "
              f"({n_params:,} params) trained at a FIXED {args.train_density} "
              f"profiles/month, then frozen.  {len(t_months)} held-out months "
              f"({TEST_YEARS[0]}), unobserved columns only.", fontsize=11.5)
-fig_path = os.path.join(C.REPORTS, f"fig_obs_stress_{args.variant}.png")
+fig_path = os.path.join(C.REPORTS_SYNTHETIC, f"fig_obs_stress_{args.variant}.png")
 fig.savefig(fig_path, dpi=140, bbox_inches="tight")
 print("\nwrote", fig_path, flush=True)
 
@@ -612,7 +612,7 @@ L += ["", "## Figure\n", f"![observation stress]({os.path.basename(fig_path)})\n
       "* Duplicated profiles moving the prediction means the evidence estimator "
       "is not discounting redundancy, which is the DFS premise.\n",
       f"Run record: `outputs/cache/{tag}.json`\n"]
-md = os.path.join(C.REPORTS, f"obs_stress_{args.variant}.md")
+md = os.path.join(C.REPORTS_SYNTHETIC, f"obs_stress_{args.variant}.md")
 with open(md, "w") as f:
     f.write("\n".join(L))
 print("wrote", md, flush=True)
