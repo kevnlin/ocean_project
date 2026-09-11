@@ -487,11 +487,27 @@ class EvidenceResampler(nn.Module):
     and the slot content is the evidence-weighted mean of the tokens assigned
     to it, so a slot's value and its outgoing mass describe the same evidence.
     Empty slots get zero mass and are masked out downstream.
+
+    ``mode="count"`` is the MATCHED COUNT CONTROL. It keeps every parameter --
+    the same slots, wq/wk/wv/wo -- and changes exactly two things: the softmax
+    runs over TOKENS instead of slots, so each slot becomes a weighted average
+    of whatever it attends to and token multiplicity feeds straight through;
+    and the outgoing mass is the token count rather than the transported
+    evidence. That is the same `count` semantics `batched_dfs.PerceiverResampler`
+    implements for the other model family, so the two lines stay comparable.
+
+    The distinction from ``uniform`` matters and is easy to blur: uniform keeps
+    this conservative transport and only replaces the evidence with unit mass,
+    so duplicates still compete for a fixed budget. Count removes the
+    competition itself. Passing unit tau to the conservative transport would
+    make count a copy of uniform rather than a separate mechanism.
     """
 
     def __init__(self, d_model: int, k_slots: int = 32, n_heads: int = 4,
-                 per_modality: bool = True):
+                 per_modality: bool = True, mode: str = "conservative"):
         super().__init__()
+        assert mode in ("conservative", "count")
+        self.mode = mode
         self.k = k_slots
         self.h = n_heads
         self.dh = d_model // n_heads
@@ -521,10 +537,21 @@ class EvidenceResampler(nn.Module):
             # logits (B, h, N, k): each TOKEN is a distribution over slots
             lg = torch.einsum("bnhd,bkhd->bhnk", kh, q) / math.sqrt(self.dh)
             lg = lg.masked_fill(~sel[:, None, :, None], -float("inf"))
-            A = torch.softmax(lg, dim=-1)
-            A = torch.nan_to_num(A, nan=0.0) * sel[:, None, :, None]
-            w = A * tau[:, None, :, None]                       # (B,h,N,k)
-            nu = w.sum(dim=2).mean(dim=1)                       # (B,k) heads agree
+            if self.mode == "count":
+                # normalise over TOKENS: each slot is a weighted average, so
+                # duplicating a token gives its content more of the slot
+                A = torch.softmax(lg, dim=2)
+                A = torch.nan_to_num(A, nan=0.0) * sel[:, None, :, None]
+                w = A                                            # unit weights
+                # mass is the token count the slot drew on: diagnostic only,
+                # and multiplicity flows straight into it
+                nu = (A.sum(dim=2).mean(dim=1)
+                      * sel.sum(dim=1, keepdim=True).to(A.dtype))
+            else:
+                A = torch.softmax(lg, dim=-1)
+                A = torch.nan_to_num(A, nan=0.0) * sel[:, None, :, None]
+                w = A * tau[:, None, :, None]                   # (B,h,N,k)
+                nu = w.sum(dim=2).mean(dim=1)                   # (B,k) heads agree
             num = torch.einsum("bhnk,bnhd->bkhd", w, vh)
             den = w.sum(dim=2).clamp(min=_EPS)[..., None]       # (B,h,k,1)
             out = self.wo((num / den.transpose(1, 2)).reshape(B, self.k, -1))
