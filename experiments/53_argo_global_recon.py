@@ -112,6 +112,13 @@ ap.add_argument("--en4-max-unc", type=float, default=1.0,
 ap.add_argument("--min-obs", type=int, default=3,
                 help="scored values needed before a cell is drawn")
 ap.add_argument("--no-ssh", action="store_true")
+ap.add_argument("--demean", action="store_true",
+                help="score the model-minus-EN4 difference about its own annual "
+                     "mean at each cell and level, so a constant year-round "
+                     "offset drops out and only the time-varying disagreement "
+                     "is mapped")
+ap.add_argument("--from-checkpoint", default=None,
+                help="load a saved state_dict and skip training (re-plot only)")
 ap.add_argument("--tag", default=None)
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
@@ -427,6 +434,16 @@ def dense_en4_map(model, months):
     npanel = len(BANDS) + 1
     ss = {v: np.zeros((npanel, He, We)) for v in VARS}
     cc = {v: np.zeros((npanel, He, We)) for v in VARS}
+    # For --demean the annual mean has to be removed at the (level, cell) the
+    # difference actually lives on, BEFORE anything is pooled into a depth
+    # band. De-meaning a band average instead would subtract a mean taken
+    # across depths as well as months, which removes vertical structure rather
+    # than the year-round offset.
+    sd = sq = nl = None
+    if args.demean:
+        sd = {v: np.zeros((De, He, We)) for v in VARS}   # sum of d
+        sq = {v: np.zeros((De, He, We)) for v in VARS}   # sum of d^2
+        nl = {v: np.zeros((De, He, We)) for v in VARS}   # months contributing
 
     # query grid, built once: every EN4 cell at every level
     yy, xx = np.meshgrid(np.arange(He), np.arange(We), indexing="ij")
@@ -475,12 +492,33 @@ def dense_en4_map(model, months):
                   & (unc <= args.en4_max_unc))
             if not ok.any():
                 continue
-            e2 = (phys[ok] - truth[ok]) ** 2
+            d = phys[ok] - truth[ok]
             cy, cx = cell[ok] // We, cell[ok] % We
+            if args.demean:
+                lv = di_all[ok]
+                np.add.at(sd[v], (lv, cy, cx), d)
+                np.add.at(sq[v], (lv, cy, cx), d * d)
+                np.add.at(nl[v], (lv, cy, cx), 1.0)
+                continue
+            e2 = d ** 2
             for panel in (band_of[di_all[ok]], np.full(int(ok.sum()), len(BANDS))):
                 np.add.at(ss[v], (panel, cy, cx), e2)
                 np.add.at(cc[v], (panel, cy, cx), 1.0)
     model.train()
+    if args.demean:
+        # Sum of squares about each (level, cell)'s own annual mean, with the
+        # one degree of freedom the mean costs. A cell seen in only one month
+        # carries no information about variability and contributes nothing.
+        for v in VARS:
+            n = nl[v]
+            SS = sq[v] - np.divide(sd[v] ** 2, np.maximum(n, 1.0),
+                                   where=n > 0, out=np.zeros_like(sq[v]))
+            SS = np.maximum(SS, 0.0)                 # guard rounding to <0
+            dof = np.maximum(n - 1.0, 0.0)
+            for lv in range(De):
+                for panel in (band_of[lv], len(BANDS)):
+                    ss[v][panel] += SS[lv]
+                    cc[v][panel] += dof[lv]
     rm = {v: np.where(cc[v] > 0, np.sqrt(np.divide(ss[v], np.maximum(cc[v], 1))),
                       np.nan) for v in VARS}
     stats = {v: float(np.sqrt(ss[v][-1].sum() / max(cc[v][-1].sum(), 1)))
@@ -491,7 +529,14 @@ def dense_en4_map(model, months):
 # =================================================================== training
 best, best_state, hist = float("inf"), None, []
 rng = np.random.default_rng(args.seed)
-print("  training ...", flush=True)
+if args.from_checkpoint:
+    # Re-plotting an existing run: the figure is a pure function of the trained
+    # weights, so nothing needs retraining. steps=0 empties the loop below.
+    model.load_state_dict(torch.load(args.from_checkpoint, map_location=dev))
+    args.steps = 0
+    print(f"  loaded {args.from_checkpoint} — skipping training", flush=True)
+else:
+    print("  training ...", flush=True)
 for step in range(1, args.steps + 1):
     mi = int(rng.choice(TRM))
     src, tgt = month_rows(mi, tr_m)
@@ -543,7 +588,10 @@ for step in range(1, args.steps + 1):
               f"SALT {r['SALT']:.4f}  skill {sk:.3f}{star}", flush=True)
 if best_state is not None:
     model.load_state_dict(best_state)
-torch.save(model.state_dict(), os.path.join(CKPT, f"{tag}.pt"))
+if not args.from_checkpoint:
+    # Never write the checkpoint on a re-plot: it would overwrite a trained
+    # run with whatever was just loaded, under the same tag.
+    torch.save(model.state_dict(), os.path.join(CKPT, f"{tag}.pt"))
 
 # ==================================================================== testing
 se, se0, n = evaluate(TEM, args.seed)
@@ -658,7 +706,12 @@ if den is not None:
         f"scored against the EN4 objective analysis on ITS OWN 1 deg grid "
         f"(agreement, not error — EN4 assimilates these same floats); "
         f"dark = closer to EN4, grey = land or EN4 uncertainty > "
-        f"{args.en4_max_unc:g} degC", fontsize=9)
+        f"{args.en4_max_unc:g} degC"
+        # own line: the note is long enough to run off the canvas if appended
+        + ("\nANNUAL MEAN REMOVED at each cell and level — a constant "
+           "year-round offset drops out, so this maps only the TIME-VARYING "
+           "disagreement (RMSE about each cell's own 2023 mean, n-1 weighted)"
+           if args.demean else ""), fontsize=9)
     fp2 = os.path.join(REPORTS, f"fig_{tag}_en4.png")
     fig.savefig(fp2, dpi=130); plt.close(fig)
     print(f"  wrote {os.path.relpath(fp2, ROOT)}")

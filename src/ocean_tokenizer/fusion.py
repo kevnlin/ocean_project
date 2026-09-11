@@ -51,6 +51,8 @@ well-defined (zero-profile / empty-observation batches never NaN); it has
 negligible MBCA mass (eps) and does not break partition invariance.
 """
 from __future__ import annotations
+
+import dataclasses
 import math
 
 import torch
@@ -341,11 +343,14 @@ class DFSAttention(AttnFusionModel):
                  mlp_ratio: float = 2.0, anchor_grid=None, k_slots: int = 32,
                  k_neighbors: int = 32, learn_scales: bool = False,
                  target_scale=None, s_cross: float = dfs.S_CROSS,
-                 detach_evidence: bool = True):
+                 detach_evidence: bool = True, mass_mode: str = "dfs"):
         super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
                          c_out, mlp_ratio, anchor_grid=anchor_grid)
         self.scales = dfs.SupportScales(learn_residual=learn_scales)
-        self.resampler = dfs.EvidenceResampler(d_model, k_slots, n_heads)
+        self.mass_mode = mass_mode
+        self.resampler = dfs.EvidenceResampler(
+            d_model, k_slots, n_heads,
+            mode=("count" if mass_mode == "count" else "conservative"))
         self.k_neighbors = int(k_neighbors)
         self.s_cross = float(s_cross)
         self.target_scale = target_scale or dfs.PROTOCOL_SCALE
@@ -385,13 +390,33 @@ class DFSAttention(AttnFusionModel):
         return tokens.mask & ~is_bg, tokens.mask & is_bg
 
     def evidence(self, tokens: TokenBatch, target=None) -> dfs.DFSResult:
-        """Per-token degrees of freedom for signal at the target scale."""
+        """Per-token degrees of freedom for signal at the target scale.
+
+        ``mass_mode="uniform"`` is the MATCHED CONTROL: every observation token
+        carries tau = 1 instead of its measured evidence, and nothing else
+        changes -- same conservative transport, same background-referenced
+        fusion, same parameter count, same seed. It isolates the evidence
+        estimate as the single manipulated variable, which is what makes a
+        DFS-minus-Uniform difference attributable to the mass rule rather than
+        to capacity or optimisation.
+
+        It is NOT the same as the `perceiver` variant. That one replaces the
+        transport as well, so multiplicity feeds through the softmax -- which is
+        the `count` control, a different claim.
+        """
         obs_mask, _ = self._split(tokens)
         ctx = torch.no_grad() if self.detach_evidence else _nullctx()
         with ctx:
-            return dfs.dfs_scores(tokens, target or self.target_scale,
-                                  self.scales, k_neighbors=self.k_neighbors,
-                                  s_cross=self.s_cross, evidence_mask=obs_mask)
+            res = dfs.dfs_scores(tokens, target or self.target_scale,
+                                 self.scales, k_neighbors=self.k_neighbors,
+                                 s_cross=self.s_cross, evidence_mask=obs_mask)
+        if getattr(self, "mass_mode", "dfs") == "uniform":
+            unit = obs_mask.to(res.tau.dtype)
+            res = dataclasses.replace(
+                res, tau=unit, total=unit.sum(dim=-1),
+                by_modality={k: torch.ones_like(v)
+                             for k, v in res.by_modality.items()})
+        return res
 
     # ---- fuse ----------------------------------------------------------
     def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
@@ -554,6 +579,25 @@ class _nullctx:
 # --------------------------------------------------------------------------
 # Builder — identical encoders/trunk for every variant
 # --------------------------------------------------------------------------
+#: Any variant takes a `_uniform` or `_count` suffix, and both are MATCHED
+#: CONTROLS: identical architecture, identical parameter count, identical
+#: weights at a fixed seed.  Only the observation-mass rule moves.
+#:
+#:   `_uniform`  the evidence estimate is replaced by unit mass; transport is
+#:               still conservative, so duplicates compete for a fixed budget.
+#:   `_count`    the resampler normalises over TOKENS rather than slots and
+#:               ignores tau entirely -- token multiplicity feeds straight
+#:               through.  This is the Perceiver rule, applied inside the same
+#:               parameters.
+#:
+#: `_count` is NOT `_uniform` with a different name: handing unit tau to the
+#: conservative transport would collapse the two.  With an evidence estimate
+#: that halves per copy, conservative total mass holds at 1.00x through k=8
+#: while count grows 1.18x.
+#:
+#: The standalone `perceiver` variant is a different NETWORK (no resampler at
+#: all, ~261k params), so it is a family comparison rather than a control; use
+#: `<variant>_count` when the claim is about the mass rule alone.
 VARIANTS = {"perceiver": StandardPerceiver,
             "resampler": FixedBudgetResampler,
             "mbca": MBCA,
@@ -602,6 +646,17 @@ def build_fusion_model(variant: str, grid, d_model: int = 128,
         encoders["ssh"] = GridPatchEncoder(1, d_model=d_model,
                                            patch=(patch_surf or patch),
                                            modality="ssh_grid")
+    mass_mode = kw.pop("mass_mode", None)
+    for sfx in ("_uniform", "_count"):
+        if variant.endswith(sfx):
+            variant, mass_mode = variant[: -len(sfx)], sfx[1:]
+            break
     cls = VARIANTS[variant]
-    return cls(encoders, d_model=d_model, n_latent=n_latent, n_heads=n_heads,
-               n_self_blocks=n_self_blocks, anchor_grid=anchor_grid, **kw)
+    if mass_mode is not None:
+        kw["mass_mode"] = mass_mode
+    model = cls(encoders, d_model=d_model, n_latent=n_latent, n_heads=n_heads,
+                n_self_blocks=n_self_blocks, anchor_grid=anchor_grid, **kw)
+    if mass_mode is not None and not isinstance(model, DFSAttention):
+        raise ValueError(f"mass_mode is only meaningful for the DFS family; "
+                         f"{variant!r} has no evidence estimate")
+    return model

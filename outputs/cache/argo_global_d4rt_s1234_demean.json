@@ -1,0 +1,48 @@
+{
+ "tag": "argo_global_d4rt_s1234_demean",
+ "task": "real_argo_global_2d_reconstruction",
+ "variant": "d4rt",
+ "params": 445703,
+ "split": {
+  "train": [
+   2016,
+   2021
+  ],
+  "val": [
+   2022,
+   2022
+  ],
+  "test": [
+   2023,
+   2023
+  ]
+ },
+ "n_profiles": 1000,
+ "eq_sigma": 15.0,
+ "eq_uniform_frac": 0.25,
+ "test": {
+  "TEMP": 1.0907925071855387,
+  "SALT": 0.2234379123448226
+ },
+ "woa_floor": {
+  "TEMP": 1.2425951494712981,
+  "SALT": 0.23757283819405048
+ },
+ "skill": {
+  "TEMP": 0.12216580947571598,
+  "SALT": 0.05949723022495701
+ },
+ "bin_deg": 1,
+ "min_obs": 3,
+ "cells_scored": 7445,
+ "cells_total": 64800,
+ "history": [],
+ "en4_agreement": {
+  "TEMP": 0.4440449895953715,
+  "SALT": 0.14474924138462925
+ },
+ "en4_max_unc": 1.0,
+ "en4_cells": 38132,
+ "git_commit": "a63dfd47effd771ef6aa7ff161ecc6b646cfe306",
+ "protocol_hash": "c02118caadb2c2ae4367265a2fe12f9eb2f12d6158acf0688d774f280f7eeff7"
+}

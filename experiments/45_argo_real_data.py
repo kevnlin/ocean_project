@@ -508,7 +508,13 @@ def regime() -> dict:
     return {"n_levels": int(c.levels.size),
             "max_level_m": round(float(c.levels.max()), 1),
             "max_lead": int(max(leads)),
-            "split_protocol": args.split_protocol}
+            "split_protocol": args.split_protocol,
+            # Input density belongs here too: a model fitted with 24 profiles
+            # per month has never seen the token count, or the redundancy, that
+            # 128 profiles present. Scoring one at the other's density is the
+            # same silent substitution the depth grid and the split protocol
+            # already guard against.
+            "n_profiles": int(args.n_profiles)}
 
 
 def regime_matches(path: str) -> bool:
@@ -530,14 +536,17 @@ def regime_matches(path: str) -> bool:
     side = path.replace(".pt", ".regime.json")
     if os.path.exists(side):
         got = json.load(open(side))
-        if all(got.get(k) == want[k] for k in want):
+        # a sidecar written before a key existed cannot speak to it; compare
+        # only what it actually recorded, and treat the rest as unconstrained
+        keys = [k for k in want if k in got]
+        if keys and all(got[k] == want[k] for k in keys):
             return True
         print(f"  skipping {os.path.relpath(path, ROOT)}: trained on "
               f"{got.get('n_levels')} levels / lead {got.get('max_lead')}, "
               f"need {want['n_levels']} / lead {want['max_lead']}", flush=True)
         return False
     legacy = {"n_levels": 16, "max_level_m": 949.0, "max_lead": 3,
-              "split_protocol": "main"}
+              "split_protocol": "main", "n_profiles": 24}
     if all(legacy[k] == want[k] for k in legacy):
         return True
     print(f"  skipping {os.path.relpath(path, ROOT)}: no regime sidecar; the "

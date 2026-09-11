@@ -1,0 +1,102 @@
+{
+ "gulfstream": {
+  "24": {
+   "train": {
+    "region": "gulfstream",
+    "cap": 24,
+    "split": "train",
+    "n_months": 223,
+    "mean": 22.73542600896861,
+    "median": 24.0,
+    "min": 4,
+    "max": 24,
+    "frac_at_cap": 0.8923766816143498
+   },
+   "development": {
+    "region": "gulfstream",
+    "cap": 24,
+    "split": "development",
+    "n_months": 36,
+    "mean": 24.0,
+    "median": 24.0,
+    "min": 24,
+    "max": 24,
+    "frac_at_cap": 1.0
+   }
+  },
+  "128": {
+   "train": {
+    "region": "gulfstream",
+    "cap": 128,
+    "split": "train",
+    "n_months": 223,
+    "mean": 80.99551569506727,
+    "median": 81.0,
+    "min": 4,
+    "max": 128,
+    "frac_at_cap": 0.008968609865470852
+   },
+   "development": {
+    "region": "gulfstream",
+    "cap": 128,
+    "split": "development",
+    "n_months": 36,
+    "mean": 117.02777777777777,
+    "median": 119.0,
+    "min": 105,
+    "max": 128,
+    "frac_at_cap": 0.027777777777777776
+   }
+  }
+ },
+ "npac_gyre": {
+  "24": {
+   "train": {
+    "region": "npac_gyre",
+    "cap": 24,
+    "split": "train",
+    "n_months": 203,
+    "mean": 23.32512315270936,
+    "median": 24.0,
+    "min": 3,
+    "max": 24,
+    "frac_at_cap": 0.9310344827586207
+   },
+   "development": {
+    "region": "npac_gyre",
+    "cap": 24,
+    "split": "development",
+    "n_months": 36,
+    "mean": 24.0,
+    "median": 24.0,
+    "min": 24,
+    "max": 24,
+    "frac_at_cap": 1.0
+   }
+  },
+  "128": {
+   "train": {
+    "region": "npac_gyre",
+    "cap": 128,
+    "split": "train",
+    "n_months": 203,
+    "mean": 89.14285714285714,
+    "median": 89.0,
+    "min": 3,
+    "max": 128,
+    "frac_at_cap": 0.009852216748768473
+   },
+   "development": {
+    "region": "npac_gyre",
+    "cap": 128,
+    "split": "development",
+    "n_months": 36,
+    "mean": 86.83333333333333,
+    "median": 79.5,
+    "min": 65,
+    "max": 126,
+    "frac_at_cap": 0.0
+   }
+  }
+ }
+}

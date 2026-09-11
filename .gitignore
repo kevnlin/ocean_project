@@ -21,6 +21,8 @@
 /outputs/godas*/*.pt);
 # the numbers they contain are persisted in outputs/cache/*.json.
 /logs_*.log
+# Per-run stdout from long jobs launched into logs/<arm>/ (same intent).
+/logs/
 /outputs/logs/
 /outputs/cache/synthetic_argo_example.npz
 # Pseudo-SSH archive: 360 monthly (180,360) fields, ~90 MB — regenerate with
