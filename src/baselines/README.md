@@ -111,6 +111,6 @@ Every script (via `_common.py`) prints a depth-banded RMSE table
 `predictions/<name>.npz` holds `TEMP`, `SALT` `(N_test, D, H, W)` (plus
 `TEMP_std`/`SALT_std` for the ensemble and MC-dropout models), `depths`, and
 `te_idx`. `build_comparison_table.py` reads the per-depth caches and writes
-`reports/baseline_comparison.csv` and `reports/baseline_comparison.md`.
+`reports/synthetic/baseline_comparison.csv` and `reports/synthetic/baseline_comparison.md`.
 
 `<name>` ∈ {`nesperso_pcamlp`, `osnet_mlp`, `nardelli_lstm`}.

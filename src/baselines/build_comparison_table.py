@@ -3,10 +3,10 @@ depth-banded RMSE comparison (CSV + markdown).
 
 It reuses the EXACT split (so the valid-cell weights match) and the per-depth
 RMSE tables cached by:
-  * experiments/03_baselines.py  -> outputs/cache/baseline_depth_tables.npz
+  * experiments/synthetic/03_baselines.py  -> outputs/cache/baseline_depth_tables.npz
   * the three reference scripts   -> outputs/cache/ref_<name>_depth.npz
 Global-mean and CESM2-LE self-climatology rows are recomputed here (same recipe
-as experiments/05_band_table.py) so the table is self-contained.
+as experiments/synthetic/05_band_table.py) so the table is self-contained.
 
 The markdown is formatted for readability: rows are grouped (priors -> baselines
 -> surface-only reference models -> ours), the best value per band (among
@@ -16,8 +16,8 @@ deployable reconstruction methods) is bolded, and OUR method of choice
 Run (after the three reference scripts have been run at least once):
     ~/.venv/bin/python src/baselines/build_comparison_table.py
 Outputs:
-    reports/baseline_comparison.csv
-    reports/baseline_comparison.md
+    reports/synthetic/baseline_comparison.csv
+    reports/synthetic/baseline_comparison.md
 """
 from __future__ import annotations
 import os

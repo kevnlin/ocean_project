@@ -1,10 +1,10 @@
 # Experiment Sketch — Unified Ocean Tokenizer Prototype
 
 ## Current State
-- Phase: baseline sweep running (experiments/03_baselines.py, bg PID in outputs/baseline.pid)
+- Phase: baseline sweep running (experiments/synthetic/03_baselines.py, bg PID in outputs/baseline.pid)
 - Tokenizers + round-trip: DONE (all 4 exact, max_abs=0)
 - Data cards + synthetic Argo: DONE
-- Next: 04_report.py once sweep finishes -> reports/baseline_table.md, then final_report.md
+- Next: 04_report.py once sweep finishes -> reports/synthetic/baseline_table.md, then final_report.md
 
 ## Goal
 Clean tokenizer/data pipeline + small baseline table. NOT a foundation model.

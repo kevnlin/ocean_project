@@ -77,7 +77,7 @@ sitting on a sharp gradient gets a short vertical scale, so its neighbours stop
 being redundant with it. This is the mechanism behind "preserve fine levels
 around strong gradients": at a 10 m target, the same 30 fine levels yield
 **17.9 DFS** across a thermocline and **9.4 DFS** in a smooth column of equal
-anomaly amplitude (`reports/dfs_evidence_probes.md` §3–4).
+anomaly amplitude (`reports/synthetic/dfs_evidence_probes.md` §3–4).
 
 Because encoders see *anomaly* z-scores, `strat` measures anomaly structure —
 which is the right thing: a vertically displaced thermocline appears in anomaly
@@ -96,7 +96,7 @@ monotone by construction:
 * coarse target → long ℓ → nearby observations become mutually redundant;
 * fine target → ℓ falls back to the physical scale and they regain independence.
 
-Measured on one 2 dbar profile (`reports/dfs_evidence_probes.md` §5): DFS rises
+Measured on one 2 dbar profile (`reports/synthetic/dfs_evidence_probes.md` §5): DFS rises
 4.2 → 6.3 → 9.6 → 14.3 → 19.7 → 21.1 as Δz goes 250 → 100 → 50 → 25 → 10 → 5 m.
 Two profiles 5 km apart score ×1.03 of a single profile at a 5° target and
 ×1.67 at a 5 km target — the plan's horizontal test case, reproduced.
@@ -171,7 +171,7 @@ DFS is exactly 0 by construction.
 `decode(latent, query_coord, query_scale)` adds `(log Δx_q/Δx₀, log Δz_q/Δz₀)`
 to the query embedding, so the decoder answers the same question the evidence
 estimator was asked. Training at more than one scale is opt-in
-(`experiments/18_full_train.py --scale-aug`), which box-averages the truth over
+(`experiments/synthetic/18_full_train.py --scale-aug`), which box-averages the truth over
 `fz` levels × `fx`×`fx` cells and asks for that field at that resolution.
 With `--scale-aug 0` (the default) the run is a like-for-like protocol_v1
 comparison against the other three variants and the scale-conditioning weights
@@ -198,7 +198,7 @@ edge of the neighbourhood so this is observable rather than assumed.
 
 On the deployed observing geometry k = 32 is converged to < 0.05 %. In a
 pathologically dense cluster it is not, and the reported numbers there would be
-optimistic — which is why `experiments/23_dfs_evidence_probes.py` solves those
+optimistic — which is why `experiments/synthetic/23_dfs_evidence_probes.py` solves those
 small sets **exactly** (`k_neighbors=None`) rather than relying on the
 approximation.
 
@@ -237,7 +237,7 @@ sensitivity is trivially achievable by ignoring the profiles:
 
     low duplication sensitivity + high observation retention + competitive accuracy
 
-Reported together by `experiments/25_dfs_report.py`. Retention is measured two
+Reported together by `experiments/synthetic/25_dfs_report.py`. Retention is measured two
 ways: the share of estimated evidence that comes from profiles, and the RMSE
 degradation when profiles are withheld from a trained model (a model that
 ignores Argo degrades by nothing).

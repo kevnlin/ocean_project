@@ -48,7 +48,7 @@ N_FEATURES = 256
 #: reproducible as the honest record of the uncalibrated configuration; it is
 #: NOT the current setting.  At p = 32 the RFF kernel error is ~18 % while the
 #: effects being measured are ~1 %, i.e. the numerics were louder than the
-#: signal (work_plan.md Phase 0).  See experiments/29_dfs_operating_point.py
+#: signal (work_plan.md Phase 0).  See experiments/synthetic/29_dfs_operating_point.py
 #: --convergence for the table that puts this on record.
 N_FEATURES_LEGACY = 32
 

@@ -1,7 +1,7 @@
 """Task 6 — token-manipulation probes for the decisive invariance tests.
 
 Pure helpers shared by tests/test_mbca_invariance.py, test_token_refinement.py,
-test_profile_resampling.py and experiments/17_invariance_summary.py.  Every
+test_profile_resampling.py and experiments/synthetic/17_invariance_summary.py.  Every
 probe manipulates a *TokenBatch* (post-encoder), so "same physical evidence,
 different token representation" is constructed exactly, with all Task-4
 metadata carried along.

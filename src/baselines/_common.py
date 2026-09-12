@@ -4,7 +4,7 @@ These baselines (NeSPReSO PCA+MLP, OSnet-style MLP, Buongiorno-Nardelli stacked
 LSTM) all reuse the EXISTING ocean_tokenizer pipeline so that the train/test
 month split, the synthetic Argo profiles, the depth grid, the ocean mask and the
 WOA23 prior are *bit-for-bit identical* to the baselines already reported in
-``reports/baseline_table.md``.  This module centralises everything they share:
+``reports/synthetic/baseline_table.md``.  This module centralises everything they share:
 
 * reproducing the exact split + per-month synthetic Argo samples
 * turning per-month samples into a flat per-profile training table
@@ -48,7 +48,7 @@ ROOT = C.ROOT
 CKPT_DIR = os.path.join(ROOT, "checkpoints")
 PRED_DIR = os.path.join(ROOT, "predictions")
 CACHE = C.CACHE          # outputs/cache  (per-depth RMSE for the combined table)
-REPORTS = C.REPORTS
+REPORTS = C.REPORTS_SYNTHETIC
 for _d in (CKPT_DIR, PRED_DIR, CACHE, REPORTS):
     os.makedirs(_d, exist_ok=True)
 
@@ -79,7 +79,7 @@ def doy_sincos(month):
 def build_split(smoke: bool = False) -> dict:
     """Rebuild grid, train/test months and per-month samples deterministically.
 
-    The RNG call order mirrors experiments/03_baselines.py exactly
+    The RNG call order mirrors experiments/synthetic/03_baselines.py exactly
     (month draws -> train-month profile draws -> test-month profile draws), so
     the synthetic Argo profiles are identical to the existing baselines.
     """
@@ -260,7 +260,7 @@ def true_stack(test_samples):
 
 
 # --------------------------------------------------------------------------
-# Depth-banded, valid-cell-weighted RMSE  (matches experiments/05_band_table.py)
+# Depth-banded, valid-cell-weighted RMSE  (matches experiments/synthetic/05_band_table.py)
 # --------------------------------------------------------------------------
 def _band_defs(depths):
     return [("surface_~5m", lambda d: np.isclose(d, depths[0])),

@@ -28,8 +28,8 @@ def test_year_splits_agree_with_the_godas_driver_and_the_argo_cohort():
     """Three copies of a split definition is three chances to drift."""
     import re, pathlib
     root = pathlib.Path(__file__).resolve().parents[1]
-    drv = (root / "experiments" / "14_godas_dfs_d4rt.py").read_text()
-    coh = (root / "experiments" / "44_build_argo_cohort.py").read_text()
+    drv = (root / "experiments" / "real_data" / "14_godas_dfs_d4rt.py").read_text()
+    coh = (root / "experiments" / "data" / "44_build_argo_cohort.py").read_text()
     for name, (lo, hi) in P.YEAR_SPLITS.items():
         assert re.search(rf'"{name}":\s*\({lo},\s*{hi}\)', drv), f"{name} in driver"
         assert re.search(rf'"{name}":\s*\({lo},\s*{hi}\)', coh), f"{name} in cohort"

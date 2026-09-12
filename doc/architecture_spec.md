@@ -6,14 +6,14 @@ architecture" and "detail of tokenization looking into it". Every claim carries
 a `file:line` provenance link. The paper's method section should be lifted from
 this document, not re-derived.*
 
-**Status date**: 2026-08-08 · **Protocol**: [protocol_v1](../reports/protocol_v1.md)
+**Status date**: 2026-08-08 · **Protocol**: [protocol_v1](../reports/synthetic/protocol_v1.md)
 (frozen 2026-07-17) · **Rule**: where this document and the code disagree, the
 code is right and this document is a bug.
 
 **Scope note.** Sections A–D describe what runs today. Section E describes the
 target architecture and marks explicitly what exists and what does not.
 Section F records the transferable ideas from the advisor-assigned cBottle
-reference ([reading note](../reports/reading_cbottle.md)).
+reference ([reading note](../reports/notes/reading_cbottle.md)).
 
 ---
 
@@ -21,7 +21,7 @@ reference ([reading note](../reports/reading_cbottle.md)).
 
 ```mermaid
 flowchart TD
-  A1["CESM2-LE raw NetCDF<br/>one member, historical+SSP370"] --> S["experiments/standardize.py"]
+  A1["CESM2-LE raw NetCDF<br/>one member, historical+SSP370"] --> S["experiments/data/standardize.py"]
   A2["WOA23 monthly climatology<br/>1991-2020"] --> S
   S --> Z1[("processed/cesm2_le_full_standard.zarr<br/>time 3012 x depth 60 x 180 x 360")]
   S --> Z2[("processed/woa23_standard.zarr")]
@@ -54,7 +54,7 @@ interpolated, so the ground truth stays lossless. WOA23 is interpolated onto
 these levels instead ([data.py:125](../src/ocean_tokenizer/data.py#L125)).
 
 > The extended 23-level / 1400 m grid is a **separate, secondary protocol**
-> ([layered_depth_eval.md](../reports/layered_depth_eval.md)). 20- and 23-level
+> ([layered_depth_eval.md](../reports/synthetic/layered_depth_eval.md)). 20- and 23-level
 > numbers must never share a table, and no ">1000 m" claim may be made from the
 > 20-level task.
 
@@ -209,7 +209,7 @@ The repo contains two things called "tokenizer" and they are unrelated:
 |---|---|---|
 | Where | [tokenizers.py](../src/ocean_tokenizer/tokenizers.py) | [token_api.py](../src/ocean_tokenizer/token_api.py) |
 | Purpose | bit-exact round-trip compression of fields | map heterogeneous observations into a common embedding space |
-| Verified by | bit-exact round-trip ([tokenizer_roundtrip.md](../reports/tokenizer_roundtrip.md)) | unit tests on shape/mask/invariance |
+| Verified by | bit-exact round-trip ([tokenizer_roundtrip.md](../reports/synthetic/tokenizer_roundtrip.md)) | unit tests on shape/mask/invariance |
 | Used by the model? | **no** | yes |
 
 Only the second family is part of the method. The first is a data-handling
@@ -400,17 +400,17 @@ beats the pointwise MLP outright. The convolutional U-Nets clear it by ~31 %
 (`profiles_only`), so the margin is a better interpolator, not just richer
 inputs. The shared-latent variants, at ~0.52, are currently *far below* it. Any
 table claiming a learned method is useful needs this row in it —
-[oi_baseline.md](../reports/oi_baseline.md).
+[oi_baseline.md](../reports/synthetic/oi_baseline.md).
 
 **The SSH row is the cheapest open win.** One derived channel takes the same
 architecture from 0.1572 ± 0.0010 to 0.1368 ± 0.0002 (−13.0 %, all 3 seeds),
 with the largest gain in the
 100–300 m thermocline — the layer §D.5's band table shows is weakest. It is not
 yet in the shared-latent model; adding it as a third `GridPatchEncoder` stream
-(+540 tokens/month) is the obvious next step ([ssh_ablation.md](../reports/ssh_ablation.md)).
+(+540 tokens/month) is the obvious next step ([ssh_ablation.md](../reports/synthetic/ssh_ablation.md)).
 
 The shared-latent rows sit near the floor. That is the **month-identity recall**
-failure documented in [full_training_report.md](../reports/full_training_report.md):
+failure documented in [full_training_report.md](../reports/synthetic/full_training_report.md):
 with only 276 training fields, exact-column observations uniquely fingerprint
 each month, so reconstruct-the-field training collapses into recall for a
 globally attending token model, and every masking level that destroys the
@@ -493,7 +493,7 @@ queries per step. The probe is positive only if lead-1 beats **persistence**
 
 ## F. Transferable ideas from cBottle
 
-Full reading note: [reading_cbottle.md](../reports/reading_cbottle.md).
+Full reading note: [reading_cbottle.md](../reports/notes/reading_cbottle.md).
 cBottle is an *atmospheric*, pixel-space, diffusion generative model validated
 distributionally — no OI, no pointwise RMSE, no observation operator, no latent
 query. Nothing transplants directly; these four mechanisms do.

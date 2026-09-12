@@ -184,7 +184,7 @@ import os
 GODAS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "godas_gulfstream")
 needs_data = pytest.mark.skipif(
     not os.path.exists(os.path.join(GODAS_DIR, "manifest.json")),
-    reason="GODAS subset not downloaded (experiments/13_download_godas.py)")
+    reason="GODAS subset not downloaded (experiments/data/13_download_godas.py)")
 
 
 @needs_data

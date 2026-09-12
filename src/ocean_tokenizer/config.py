@@ -20,11 +20,13 @@ OUTPUTS = os.path.join(ROOT, "outputs")
 CACHE = os.path.join(OUTPUTS, "cache")
 CKPT = os.path.join(OUTPUTS, "ckpt")
 REPORTS = os.path.join(ROOT, "reports")
+#: outputs of the CESM2-LE-era experiments (experiments/synthetic/)
+REPORTS_SYNTHETIC = os.path.join(REPORTS, "synthetic")
 
 ZARR = {
     "cesm2":         os.path.join(PROCESSED, "cesm2_standard.zarr"),         # single member (curvilinear placeholder grid)
     "woa23":         os.path.join(DATA, "woa23_standard.zarr"),              # observational climatology (prior/baseline) — WOA23 decav91C0 monthly 1deg, standardized from data/woa23/*.nc
-    "cesm2_le_full": os.path.join(DATA, "cesm2_le_full_standard.zarr"),      # full LE simulation, regular 1deg (ground truth) — standardized from cesm2-le-ocean-sample via experiments/standardize.py
+    "cesm2_le_full": os.path.join(DATA, "cesm2_le_full_standard.zarr"),      # full LE simulation, regular 1deg (ground truth) — standardized from cesm2-le-ocean-sample via experiments/data/standardize.py
 }
 
 # --------------------------------------------------------------------------
@@ -90,3 +92,4 @@ DEVICE = "cuda"
 os.makedirs(CACHE, exist_ok=True)
 os.makedirs(CKPT, exist_ok=True)
 os.makedirs(REPORTS, exist_ok=True)
+os.makedirs(REPORTS_SYNTHETIC, exist_ok=True)
