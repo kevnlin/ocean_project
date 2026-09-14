@@ -33,6 +33,13 @@ ap.add_argument("--suffix", default="_ext",
                 help="artifact-dir suffix for the extended-grid runs")
 ap.add_argument("--regions", nargs="+", default=["gulfstream", "npac_gyre"])
 ap.add_argument("--leads", nargs="+", default=["0", "1", "3", "6"])
+ap.add_argument("--size-arms", nargs="*",
+                default=["_anom", "_anom_910k", "_anom_1m7"],
+                help="artifact suffixes to compare as a model-size ladder")
+ap.add_argument("--pretrain-arms", nargs="*", default=["_recent3_obs", "_recent3_ft"],
+                help="artifact suffixes compared as from-scratch vs simulation-pretrained")
+ap.add_argument("--density-arms", nargs="*", default=["_anom_p24", "_anom"],
+                help="artifact suffixes to compare as a profile-count stress")
 args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -54,6 +61,12 @@ EXTERNAL = [("dfs_expertlocal_cbottle", "**DFS (ours)**", False),
             ("objective_interpolation", "Causal OI", False),
             ("ecco", "ECCO V4r4", True),
             ("en4", "EN4", True)]
+#: References shown beside the model in Table 1, so the lead trend can be
+#: judged against things whose behaviour with lead is known in advance.
+LEAD_REFS = [("train_climatology", "Climatology"),
+             ("source_persistence", "Persistence"),
+             ("objective_interpolation", "Causal OI"),
+             ("en4", "EN4 (external)")]
 BANDS = ["0-100m", "100-300m", "300-700m", "700-1400m"]
 
 
@@ -92,18 +105,154 @@ def cell(arts, row, lead, ch, band=None):
     return r, j
 
 
+def meta(arts) -> dict:
+    """What an arm actually is, read off its artifacts rather than its name."""
+    g = lambda k: {(a.counts or {}).get(k) for a in arts} - {None}
+    pars = {r.get("params") for a in arts
+            for r in (((a.results or {}).get("model") or {}).get("rows") or {}).values()}
+    return {"target": g("anomaly_ref") or {"none"}, "n_profiles": g("n_profiles"),
+            "split": g("split_protocol"), "init": g("init_checkpoint_dir"),
+            "params": pars - {None}, "seeds": len(arts)}
+
+
+def provenance(region: str, arts: list) -> list[str]:
+    """Name the target and the model, so two arms can never be confused.
+
+    A model fitted on the raw field and one fitted on the WOA23 anomaly field
+    produce tables of identical shape and wholly different meaning.
+    """
+    m = meta(arts)
+    tgt = "/".join(sorted(m["target"]))
+    label = {"woa23_monthly": "WOA23 monthly anomaly",
+             "none": "raw field (per-level train mean removed, no seasonal cycle)",
+             "unknown": "unrecorded — the cohort did not say"}.get(tgt, tgt)
+    bits = [f"**target:** {label}"]
+    if len(m["params"]) == 1:
+        bits.append(f"{m['params'].pop():,} parameters, identical across the three rows")
+    elif m["params"]:
+        bits.append(f"**parameter counts differ: {sorted(m['params'])}**")
+    if m["n_profiles"]:
+        bits.append(f"cap {'/'.join(str(x) for x in sorted(m['n_profiles']))} profiles/month")
+    bits.append(f"{m['seeds']} seeds")
+    return [f"_{region} — " + "; ".join(bits) + "._", ""]
+
+
+def arm_rows(region: str, suffixes: list) -> list:
+    out = []
+    for sfx in suffixes:
+        a = load_suffix(region, sfx)
+        if a:
+            out.append((sfx, meta(a), a))
+    return out
+
+
+def resolving_note(region: str, suffixes: list) -> list[str]:
+    """State the noise floor, so a reader cannot mistake spread for an effect.
+
+    A contrast smaller than the seed spread beside it is not resolved by three
+    seeds. The two regions differ by nearly an order of magnitude here, so the
+    same nominal gap means different things in each.
+    """
+    sds = []
+    for sfx in suffixes:
+        a = load_suffix(region, sfx)
+        if len(a) > 1:
+            v = [x.results["rows"]["dfs_expertlocal_cbottle"]["lead0"]
+                 ["channels"]["TEMP"].get("rmse") for x in a]
+            v = [y for y in v if y]
+            if len(v) > 1:
+                sds.append(float(np.std(v)))
+    if not sds:
+        return []
+    worst = max(sds)
+    return ["", f"_Seed spread in this region reaches ±{worst:.4f} RMSE across "
+            f"three seeds. Any difference in the column above smaller than that "
+            f"is not resolved by this many seeds, whichever way it points._", ""]
+
+
+def table_pretrain(region: str) -> list[str]:
+    """Does pretraining on the simulation help? Same split, budget, seeds and
+    evaluation; only the starting weights differ."""
+    rows = arm_rows(region, args.pretrain_arms)
+    if len(rows) < 2:
+        return [f"### {region}", "", "_Both arms not yet available._", ""]
+    L = [f"### {region}", "",
+         "| start | arm | seeds | row | TEMP J lead 0 | TEMP J lead 6 | lead 6 / lead 0 | SALT J lead 0 |",
+         "|---|---|---:|---|---:|---:|---:|---:|"]
+    for sfx, m, a in rows:
+        start = "simulation-pretrained" if m["init"] else "from scratch"
+        for key, label in CORE:
+            r0, j0 = cell(a, key, "0", "TEMP")
+            _, j6 = cell(a, key, args.leads[-1], "TEMP")
+            _, js = cell(a, key, "0", "SALT")
+            try:
+                g = f"{float(j6) / float(j0):.3f}×"
+            except ValueError:
+                g = NA
+            L.append(f"| {start} | `{sfx}` | {m['seeds']} | {label} | {j0} | {j6} | {g} | {js} |")
+    return L + [""]
+
+
+def table_size(region: str) -> list[str]:
+    """Does more capacity help? Same target, same data, only width/depth move."""
+    rows = arm_rows(region, args.size_arms)
+    if len(rows) < 2:
+        return [f"### {region}", "",
+                f"_Fewer than two model sizes available ({len(rows)} of "
+                f"{len(args.size_arms)})._", ""]
+    L = [f"### {region} (lead 0, DFS row)", "",
+         "| parameters | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |",
+         "|---:|---|---:|---:|---:|---:|---:|"]
+    for sfx, m, a in sorted(rows, key=lambda r: min(r[1]["params"] or {0})):
+        rt, jt = cell(a, "dfs_expertlocal_cbottle", "0", "TEMP")
+        rs, js = cell(a, "dfs_expertlocal_cbottle", "0", "SALT")
+        pz = f"{min(m['params']):,}" if m["params"] else NA
+        L.append(f"| {pz} | `{sfx}` | {m['seeds']} | {rt} | {jt} | {rs} | {js} |")
+    return L + resolving_note(region, args.size_arms)
+
+
+def table_density(region: str) -> list[str]:
+    """Does more real Argo help? Same model, only the profile cap moves."""
+    rows = arm_rows(region, args.density_arms)
+    if len(rows) < 2:
+        return [f"### {region}", "", "_Both density arms not yet available._", ""]
+    L = [f"### {region} (lead 0, DFS row)", "",
+         "| profiles/month (cap) | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |",
+         "|---:|---|---:|---:|---:|---:|---:|"]
+    for sfx, m, a in sorted(rows, key=lambda r: min(r[1]["n_profiles"] or {0})):
+        rt, jt = cell(a, "dfs_expertlocal_cbottle", "0", "TEMP")
+        rs, js = cell(a, "dfs_expertlocal_cbottle", "0", "SALT")
+        nz = "/".join(str(x) for x in sorted(m["n_profiles"])) if m["n_profiles"] else NA
+        L.append(f"| {nz} | `{sfx}` | {m['seeds']} | {rt} | {jt} | {rs} | {js} |")
+    return L + resolving_note(region, args.density_arms) + ["The cap is not the delivered count: a month supplies fewer "
+                "profiles than the cap whenever it has fewer, and training "
+                "withholds ~30 % of each month's floats as targets.", ""]
+
+
 def table1(region, arts) -> list[str]:
     L = [f"### {region}", "",
          "| method | channel | " + " | ".join(
-             f"lead {l} mo — RMSE / J" for l in args.leads) + " |",
-         "|---|---|" + "---|" * len(args.leads)]
-    for row, label in CORE:
+             f"lead {l} mo — RMSE / J" for l in args.leads)
+         + f" | lead {args.leads[-1]} / lead {args.leads[0]} |",
+         "|---|---|" + "---|" * len(args.leads) + "---:|"]
+    for row, label in CORE + LEAD_REFS:
         for ch in VARS:
             cells = []
             for l in args.leads:
                 r, j = cell(arts, row, l, ch)
                 cells.append(f"{r} / {j}")
-            L.append(f"| {label} | {ch} | " + " | ".join(cells) + " |")
+            # How much does error actually grow over the horizon? On the raw
+            # field this sat near 1.00x, which is what made the forecast look
+            # suspicious: the query carries the target's calendar month and the
+            # raw field is ~90 % climatology, so most of the answer does not
+            # depend on lead at all.
+            try:
+                g = (float(cell(arts, row, args.leads[-1], ch)[0].split(" ")[0])
+                     / float(cell(arts, row, args.leads[0], ch)[0].split(" ")[0]))
+                grow = f"{g:.2f}×"
+            except (ValueError, ZeroDivisionError):
+                grow = NA
+            L.append(f"| {label} | {ch} | " + " | ".join(cells) + f" | {grow} |")
     return L + [""]
 
 
@@ -158,6 +307,29 @@ def _block(arts, rows, note) -> list[str]:
     return L + ["", note, ""]
 
 
+def eval_era(arts) -> str:
+    """The years actually scored, read from the artifacts' split protocol.
+
+    Resolved the way `ArgoCohort.apply_splits` resolves it -- last range wins --
+    so an overlapping table reports the years that were really evaluated rather
+    than the range it declares.
+    """
+    splits = meta(arts)["split"] if arts else set()
+    if len(splits) != 1:
+        return "mixed or unrecorded split"
+    name = next(iter(splits))
+    table = P.SPLIT_PROTOCOLS.get(name)
+    if not table:
+        return f"{name} split"
+    label = {}
+    for nm, (lo, hi) in table.items():
+        for y in range(lo, hi + 1):
+            label[y] = nm
+    dev = sorted(y for y, nm in label.items() if nm == "development")
+    era = f"{dev[0]}-{dev[-1]}" if dev else "none"
+    return f"{name} protocol, evaluation years {era}"
+
+
 def table4(region, arts) -> list[str]:
     """Two eras, kept apart.
 
@@ -166,12 +338,13 @@ def table4(region, arts) -> list[str]:
     era against the model on another. Each block is therefore scored end to end
     within its own era, with its own DFS / Uniform / OI rows from the same run.
     """
-    L = [f"### {region} — main protocol (evaluation era 2022-2024)", ""]
+    L = [f"### {region} — {eval_era(arts)}", ""]
     L += _block(arts, [r for r in EXTERNAL if r[0] != "ecco"],
                 "ECCO V4r4 ends 2017 and cannot be scored on this era at all. "
                 "It appears in the block below.")
     eco = load_suffix(region, args.suffix + "_ecco")
-    L += [f"### {region} — ECCO-overlap protocol (evaluation era 2015-2017)", ""]
+    L += [f"### {region} — ECCO-overlap protocol"
+          + (f" ({eval_era(eco)})" if eco else ""), ""]
     if not eco:
         L += ["_Not run._", ""]
         return L
@@ -202,6 +375,15 @@ HEAD = """<!-- generated by experiments/real_data/57_main_tables.py — do not e
 > Architecture and training are matched across DFS / Uniform / Count: same
 > encoder, same resampler budget, same decoder, same steps, same seeds. Only
 > the observation-mass rule differs.
+>
+> **Target.** Where the provenance line reads *WOA23 monthly anomaly*, the model
+> is trained and scored on the anomaly field: the WOA23 monthly climatology is
+> subtracted at each profile's own cell, level and calendar month. Zero anomaly
+> is then exactly that climatology, so `J` is measured against a seasonally and
+> spatially varying baseline instead of a single mean vertical profile. J values
+> are therefore much closer to 1 than on the raw field, and **are not comparable
+> with earlier raw-field tables**. EN4 and ECCO are moved onto the same anomaly
+> before scoring, with the same climatology.
 """
 
 out = ["# Main tables — real-data results", "", HEAD, ""]
@@ -218,6 +400,8 @@ for tno, (title, fn) in enumerate([
             out += [f"### {region}", "", "_No extended-grid run found._", ""]
             continue
         any_data = True
+        if tno == 1:
+            out += provenance(region, arts)
         out += fn(region, arts)
     if tno == 2:
         out += ["**The question this table asks:** does DFS help more in the "
@@ -230,6 +414,61 @@ for tno, (title, fn) in enumerate([
                 "They are upper references that have already seen the answer, "
                 "not competitors, and their beating the model is expected "
                 "rather than a result.", ""]
+    if tno == 1:
+        out += ["**The last column is the forecast-growth check.** It is how "
+                "much error grows from the first lead to the last. Near 1.00x "
+                "means the horizon costs nothing, which is the behaviour that "
+                "looked suspicious on the raw field — there the query carries "
+                "the target's calendar month and the field is ~90 % "
+                "climatology, so most of the answer never depended on lead. On "
+                "the anomaly field that crutch is gone, so this column is the "
+                "direct test of whether the forecast is real.", "",
+                "**How to read the trend.** Every lead is scored on the same "
+                "target months and the same held-out floats; only the source "
+                "month moves. Two rows therefore work as checks. *Climatology* "
+                "predicts zero anomaly and never sees the source month, so it "
+                "must read exactly 1.00x — if it does not, the target set is "
+                "not fixed. *Persistence* carries the nearest source-month "
+                "float forward, so its error must grow with lead as the ocean "
+                "decorrelates. Persistence is not automatically better than "
+                "climatology: when floats are sparser than the anomaly "
+                "correlation scale, the nearest float's anomaly is mostly noise "
+                "at the target, so persistence can score worse than "
+                "climatology even at lead 0, and in fast-decorrelating regions "
+                "it stops degrading within a few months. A learned row behaving "
+                "physically beats both at short lead, and its error grows "
+                "toward the climatology floor (J -> 1) as lead increases.", ""]
+
+out += ["## Table 5 — Model size", ""]
+for region in args.regions:
+    out += table_size(region)
+out += ["**The question this table asks:** does capacity help? Every arm shares "
+        "the target, the data, the seeds and the training budget; only width and "
+        "depth change. A flat column says the ceiling is not capacity.", ""]
+
+out += ["## Table 7 — Simulation pretraining", ""]
+for region in args.regions:
+    out += table_pretrain(region)
+out += ["**The question this table asks:** does pretraining on the CESM2-LE anomaly "
+        "field, sampled at the real float positions, then fine-tuning on observations "
+        "beat training on observations alone? The simulation store holds only 72 "
+        "months, and pretraining validation stopped improving within 2000-3000 steps "
+        "and never beat the simulation's own climatology in most runs, so a null or "
+        "negative result here speaks to this simulation's size, not to pretraining "
+        "in general.", ""]
+
+out += ["**Split note for Tables 5 and 6.** The size ladder and the density arms "
+        "were run before the most-recent-three-years split, on the main protocol "
+        "(train 2000-2018, validation 2019-2021, test 2022-2024), at lead 0 only. "
+        "Lead 0 was unaffected by the lead-target leak, so they remain valid, but "
+        "their test years differ from Tables 1-4 and 7.", ""]
+
+out += ["## Table 6 — Input density", ""]
+for region in args.regions:
+    out += table_density(region)
+out += ["**The question this table asks:** does more real Argo help? Causal OI "
+        "converts added profiles into accuracy automatically, so if the learned "
+        "rows do not, the limit is the model rather than the observations.", ""]
 
 path = os.path.join(REPORTS, "main_tables.md")
 with open(path, "w") as f:

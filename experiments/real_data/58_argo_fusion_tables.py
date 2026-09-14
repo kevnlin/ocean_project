@@ -92,6 +92,12 @@ ap.add_argument("--cohort", default=None)
 ap.add_argument("--reference-suffix", default="_deep")
 ap.add_argument("--suffix", default="_fusion")
 ap.add_argument("--output", default=None)
+ap.add_argument("--init-checkpoint-dir", default=None,
+                help="start each variant from <dir>/<region>_<variant>_s<seed>.pt "
+                     "(fine-tuning from a pretraining run)")
+ap.add_argument("--save-checkpoint-dir", default=None,
+                help="write each variant's selected weights to "
+                     "<dir>/<region>_<variant>_s<seed>.pt")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 
@@ -110,6 +116,15 @@ warnings_: list = []
 results: dict = {}
 
 c = ArgoCohort.load(COHORT)
+# What the values MEAN. A model fitted on the raw field and one fitted on the
+# WOA23 anomaly field are not comparable, and nothing in the numbers reveals
+# which is which -- so the artifact records it.
+try:
+    import xarray as _xr
+    ANOMALY_REF = str(_xr.open_dataset(COHORT).attrs.get("anomaly_ref", "none"))
+except Exception as _e:
+    ANOMALY_REF = "unknown"
+    warnings_.append(f"could not read anomaly_ref from the cohort: {_e}")
 if args.split_protocol != "main":
     # Re-label the YEAR split only.  `apply_splits` deliberately leaves
     # `float_split` alone: the held-out cohort is drawn from WMO ids and is
@@ -126,6 +141,7 @@ if args.split_protocol != "main":
           f"{P.SPLIT_PROTOCOLS[args.split_protocol]}", flush=True)
 norm = ArgoNorm.fit(c, "train")
 LEVELS = c.levels
+print(f"  target: {ANOMALY_REF}", flush=True)
 print(f"fusion tables  region={args.region} seed={args.seed} "
       f"n_profiles={args.n_profiles} leads={leads} device={dev}\n"
       f"  cohort {c.TEMP.shape[0]:,} profiles, {LEVELS.size} levels to "
@@ -139,6 +155,37 @@ for d in LEVELS:
     else:
         band_of_level.append(DEPTH_BANDS[-1][0])
 band_of_level = np.array(band_of_level)
+
+#: The cohort's own climatology, rebuilt on the same cell centres and levels.
+#: Needed because a gridded reference (EN4/ECCO) arrives in physical units: the
+#: model now predicts an anomaly, so scoring a physical field against it divides
+#: ~35 PSU by a ~0.03 PSU anomaly scale. The reference has to be moved onto the
+#: target first, with the SAME climatology, or Table 4 is nonsense.
+CLIM = None
+if ANOMALY_REF == "woa23_monthly":
+    import xarray as _xr2
+    _box = P.REGIONS[args.region]
+    _NY, _NX = c.grid
+    _la0, _la1 = (float(x) for x in _box["lat"])
+    _lo0, _lo1 = (float(x) for x in _box["lon"])
+    _latc = _la0 + (np.arange(_NY) + 0.5) * (_la1 - _la0) / _NY
+    _lonc = _lo0 + (np.arange(_NX) + 0.5) * (_lo1 - _lo0) / _NX
+    _w = _xr2.open_zarr(os.path.join(ROOT, "data", "woa23_standard.zarr"))
+    _w = _w.assign_coords(lon=(_w.lon % 360.0)).sortby("lon")
+    CLIM = np.stack([np.asarray(_w[ch].interp(lat=_latc, lon=_lonc, depth=LEVELS,
+                                              method="linear",
+                                              kwargs={"fill_value": None}).values,
+                                "float32") for ch in CHANNELS], axis=1)
+    print(f"  reference climatology: {CLIM.shape} (month, channel, level, y, x)",
+          flush=True)
+
+
+def _cells(lat, lon):
+    """Region cell index of each query — the grid the climatology is on."""
+    gy = np.clip(((np.asarray(lat) - _la0) / (_la1 - _la0) * _NY).astype(int), 0, _NY - 1)
+    gx = np.clip(((np.asarray(lon) - _lo0) / (_lo1 - _lo0) * _NX).astype(int), 0, _NX - 1)
+    return gy, gx
+
 
 cfg_train = ArgoObsConfig(n_profiles=args.n_profiles, n_queries=args.queries,
                           train=True, max_lead=max(leads),
@@ -156,6 +203,32 @@ def eligible(split: str, lead: int = 0) -> np.ndarray:
 
 
 elig = {k: eligible(k) for k in ("train", "validation", args.eval_split)}
+
+#: A training pair (source m, lead L) is only valid if its TARGET month m+L is
+#: also a training month. Without this, a late-year source at lead 6 trains on
+#: the first half of the next era -- for the last training year, the
+#: validation or test period.
+TRAIN_MONTHS = {int(x) for x in c.months_in("train")}
+
+#: Fixed-target evaluation. Every lead is scored on the SAME target months and
+#: the same held-out floats, all inside the evaluation years; only the source
+#: month moves (source = target - lead). The previous design fixed the SOURCE
+#: months instead, so each lead was scored on a different set of months -- and
+#: for leads 1-6 the targets ran past the end of the evaluation era, into the
+#: sealed 2025 holdout. A lead-to-lead difference then mixed information decay
+#: with a different sample of months. Here it can only be information decay.
+_eval_months = sorted(int(x) for x in c.months_in(args.eval_split))
+EVAL_TARGETS = [T for T in _eval_months
+                if c.month(T, float_split="heldout_float").size
+                and all(c.month(T - L, float_split="cohort_float").size for L in leads)]
+
+
+def eval_sources(lead: int) -> np.ndarray:
+    return np.array([T - lead for T in EVAL_TARGETS], dtype=int)
+
+
+print(f"  fixed-target evaluation: {len(EVAL_TARGETS)} target months in "
+      f"{args.eval_split}, every lead scored on the same set", flush=True)
 print("  months  " + "  ".join(f"{k}={v.size}" for k, v in elig.items()),
       flush=True)
 if elig["train"].size == 0:
@@ -225,6 +298,49 @@ class TrainClimatology:
     def train(self): pass
 
 
+class SourcePersistence:
+    """The nearest source-month float's anomaly at the query's own level.
+
+    The reference a forecast has to beat: nothing has changed since the nearest
+    float measured this depth. Because it carries a fixed source-month value
+    forward, its error MUST grow with lead as the ocean decorrelates -- which
+    makes it the check on whether Table 1's lead trend is physical.
+
+    Matched on the query's own depth level and nearest horizontally. The
+    token-space version in 45 took the nearest token in (x, y, z), but query
+    depth is normalised by level index and token depth by physical depth; on
+    the uneven 23-level grid those disagree and "nearest" can pick the wrong
+    level. Measured on the level itself, that cannot happen.
+    """
+
+    def __call__(self, s):
+        rows = s["_prof_rows"]
+        lat_q = np.asarray(s["target_lat"], float)
+        lon_q = np.asarray(s["target_lon"], float)
+        Q = lat_q.size
+        out = np.full((Q, len(CHANNELS)), np.nan, dtype="float32")
+        if len(rows) == 0 or Q == 0:
+            return torch.as_tensor(out, device=dev)
+        li = np.abs(LEVELS[None, :] - np.asarray(s["target_level"], float)[:, None]).argmin(axis=1)
+        lat_p, lon_p = c.lat[rows], c.lon[rows]
+        dy = lat_q[:, None] - lat_p[None, :]
+        dx = (((lon_q[:, None] - lon_p[None, :] + 180.0) % 360.0) - 180.0) \
+            * np.cos(np.deg2rad(0.5 * (lat_q[:, None] + lat_p[None, :])))
+        d2 = dx * dx + dy * dy                                   # (Q, P)
+        qi = np.arange(Q)
+        for j, ch in enumerate(CHANNELS):
+            V = norm.z(ch, getattr(c, ch)[rows])                 # (P, L)
+            v_at = V[:, li].T                                    # (Q, P) at each query's level
+            dd = np.where(np.isfinite(v_at), d2, np.inf)
+            k = dd.argmin(axis=1)                                # ties -> lowest index
+            ok = np.isfinite(dd[qi, k])
+            out[ok, j] = v_at[qi[ok], k[ok]]
+        return torch.as_tensor(out, device=dev)
+
+    def eval(self): pass
+    def train(self): pass
+
+
 class GriddedRow:
     """EN4 / ECCO scored at exactly the queries every other row is scored on.
 
@@ -252,8 +368,15 @@ class GriddedRow:
             col = np.searchsorted(ul, lev).clip(0, ul.size - 1)
             r = np.arange(lat.size)
             for j, (ch, v) in enumerate((("TEMP", T), ("SALT", S))):
-                out[:, j] = ((v[r, col] - self.norm.mean[ch][col])
-                             / self.norm.std[ch][col])
+                x = np.asarray(v[r, col], dtype="float64")
+                if CLIM is not None:
+                    # onto the model's target first: same climatology, same
+                    # cells, same levels as the cohort was built with. Where
+                    # the climatology is undefined this goes NaN and the query
+                    # is dropped, exactly as it is for the model's own targets.
+                    gy, gx = _cells(lat, lon)
+                    x = x - CLIM[int(s["target_month"]) % 12, j, col, gy, gx]
+                out[:, j] = (x - self.norm.mean[ch][col]) / self.norm.std[ch][col]
         self.n_query += out.shape[0]
         self.n_covered += int(np.isfinite(out[:, 0]).sum())
         return torch.as_tensor(out, dtype=torch.float32, device=dev)
@@ -397,6 +520,12 @@ def train_row(variant: str, seed: int) -> FusionRow:
     """
     torch.manual_seed(seed); np.random.seed(seed)
     row = FusionRow(variant, seed).to(dev)
+    if args.init_checkpoint_dir:
+        ip = os.path.join(args.init_checkpoint_dir, f"{args.region}_{variant}_s{seed}.pt")
+        # strict: a pretrained model with a different width, depth or lead
+        # horizon must fail loudly, not load half its weights
+        row.net.load_state_dict(torch.load(ip, map_location=dev), strict=True)
+        print(f"    {variant}: initialised from {ip}", flush=True)
     n = sum(p.numel() for p in row.net.parameters())
     opt = torch.optim.AdamW(row.parameters(), lr=args.lr,
                             weight_decay=args.weight_decay)
@@ -410,7 +539,10 @@ def train_row(variant: str, seed: int) -> FusionRow:
     row.train()
     for step in range(args.steps):
         m = int(rng.choice(elig["train"]))
-        lead = int(rng.choice(leads))
+        ok = [L for L in leads if (m + L) in TRAIN_MONTHS]
+        if not ok:
+            continue
+        lead = int(rng.choice(ok))
         pr, tr = training_rows(c, m, lead, args.n_profiles, rng)
         if pr.size == 0 or tr.size == 0:
             continue
@@ -440,6 +572,10 @@ def train_row(variant: str, seed: int) -> FusionRow:
                   f"  val {v:.4f}{'  *' if v == best else ''}", flush=True)
     if best_state is not None:
         row.load_state_dict(best_state)
+    if args.save_checkpoint_dir:
+        os.makedirs(args.save_checkpoint_dir, exist_ok=True)
+        torch.save(row.net.state_dict(), os.path.join(
+            args.save_checkpoint_dir, f"{args.region}_{variant}_s{seed}.pt"))
     row.eval()
     print(f"  {variant:14s} params={n:,}  best val {best:.4f}", flush=True)
     return row, n, hist
@@ -455,6 +591,7 @@ for key, variant in ROWS.items():
 
 trained["train_climatology"] = TrainClimatology()
 trained["objective_interpolation"] = ObjectiveInterpolation(OISettings()).to(dev)
+trained["source_persistence"] = SourcePersistence()
 
 pc = {m["params"] for m in model_meta.values()}
 if len(pc) != 1:
@@ -465,8 +602,13 @@ if len(pc) != 1:
 results["model"] = {"family": "fusion.D4RTFusion", "streams": ["profiles"],
                     "rows": model_meta, "parameter_matched": len(pc) == 1}
 
-for name, factory in (("en4", GriddedReference.en4),
-                      ("ecco", GriddedReference.ecco)):
+if ANOMALY_REF.startswith("cesm2"):
+    warnings_.append("simulation cohort: EN4 and ECCO describe the real ocean, "
+                     "not this simulation, so the reference rows are not scored")
+    _REFS = ()
+else:
+    _REFS = (("en4", GriddedReference.en4), ("ecco", GriddedReference.ecco))
+for name, factory in _REFS:
     try:
         rdir = os.path.join(ROOT, "data", "reference")
         ref = used = None
@@ -485,8 +627,7 @@ for name, factory in (("en4", GriddedReference.en4),
     except Exception as e:
         warnings_.append(f"{name} unavailable: {type(e).__name__}: {e}")
         continue
-    covered = [m for lead in leads for m in eligible(args.eval_split, lead)
-               if ref.covers(int(m))]
+    covered = [T for T in EVAL_TARGETS if ref.covers(int(T))]
     if not covered:
         # Scoring it anyway would fall back to NaN everywhere and report an
         # empty row as if it were a measurement.
@@ -508,7 +649,7 @@ per_row, cl_stats = {}, {}
 for name, model in trained.items():
     per_lead = {}
     for lead in leads:
-        sc = score_model(model, eligible(args.eval_split, lead), lead,
+        sc = score_model(model, eval_sources(lead), lead,
                          args.seed)
         per_lead[f"lead{lead}"] = stats_to_json(
             sc, args.n_boot, args.seed, keep_cluster_stats=(lead == 0))
@@ -540,6 +681,10 @@ if d_key in cl_stats and u_key in cl_stats:
 # can read the density off the artifact instead of inferring it from a
 # directory suffix -- which is how an arm gets mislabelled.
 counts = {"n_profiles": args.n_profiles,
+          "anomaly_ref": ANOMALY_REF,
+          "d_model": args.d_model, "n_latent": args.n_latent,
+          "n_heads": args.n_heads,
+          "n_self_blocks": args.n_self_blocks,
           "split_protocol": args.split_protocol,
           "eval_split": args.eval_split,
           "eval_months": int(eligible(args.eval_split, 0).size),
@@ -547,7 +692,10 @@ counts = {"n_profiles": args.n_profiles,
           "validation_months": int(elig["validation"].size),
           "n_levels": int(LEVELS.size),
           "max_level_m": float(LEVELS.max()),
-          "leads": leads, "steps": args.steps}
+          "leads": leads, "steps": args.steps,
+          "eval_design": "fixed_target",
+          "eval_target_months": len(EVAL_TARGETS),
+          "init_checkpoint_dir": args.init_checkpoint_dir}
 
 art = P.ResultArtifact(
     package="P0", track="A", region=args.region, results=results,

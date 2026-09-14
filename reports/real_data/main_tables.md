@@ -14,31 +14,64 @@
 > Architecture and training are matched across DFS / Uniform / Count: same
 > encoder, same resampler budget, same decoder, same steps, same seeds. Only
 > the observation-mass rule differs.
+>
+> **Target.** Where the provenance line reads *WOA23 monthly anomaly*, the model
+> is trained and scored on the anomaly field: the WOA23 monthly climatology is
+> subtracted at each profile's own cell, level and calendar month. Zero anomaly
+> is then exactly that climatology, so `J` is measured against a seasonally and
+> spatially varying baseline instead of a single mean vertical profile. J values
+> are therefore much closer to 1 than on the raw field, and **are not comparable
+> with earlier raw-field tables**. EN4 and ECCO are moved onto the same anomaly
+> before scoring, with the same climatology.
 
 
 ## Table 1 — Main real-data results, by forecast lead
 
+_gulfstream — **target:** WOA23 monthly anomaly; 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
+
 ### gulfstream
 
-| method | channel | lead 0 mo — RMSE / J | lead 1 mo — RMSE / J | lead 3 mo — RMSE / J | lead 6 mo — RMSE / J |
-|---|---|---|---|---|---|
-| **DFS (ours)** | TEMP | 0.6246 ± 0.0117 / 0.533 | 0.6119 ± 0.0048 / 0.522 | 0.6285 ± 0.0158 / 0.533 | 0.6589 ± 0.0177 / 0.551 |
-| **DFS (ours)** | SALT | 0.6277 ± 0.0230 / 0.532 | 0.6158 ± 0.0142 / 0.524 | 0.6277 ± 0.0170 / 0.530 | 0.6551 ± 0.0168 / 0.544 |
-| Uniform | TEMP | 0.6200 ± 0.0189 / 0.529 | 0.6148 ± 0.0107 / 0.525 | 0.6604 ± 0.0353 / 0.560 | 0.6942 ± 0.0571 / 0.581 |
-| Uniform | SALT | 0.6242 ± 0.0268 / 0.529 | 0.6173 ± 0.0174 / 0.525 | 0.6546 ± 0.0323 / 0.552 | 0.6806 ± 0.0386 / 0.565 |
-| Count / Perceiver | TEMP | 0.6293 ± 0.0157 / 0.537 | 0.6163 ± 0.0082 / 0.526 | 0.6223 ± 0.0018 / 0.528 | 0.6498 ± 0.0206 / 0.544 |
-| Count / Perceiver | SALT | 0.6423 ± 0.0166 / 0.545 | 0.6271 ± 0.0074 / 0.533 | 0.6281 ± 0.0011 / 0.530 | 0.6599 ± 0.0275 / 0.548 |
+| method | channel | lead 0 mo — RMSE / J | lead 1 mo — RMSE / J | lead 3 mo — RMSE / J | lead 6 mo — RMSE / J | lead 6 / lead 0 |
+|---|---|---|---|---|---|---:|
+| **DFS (ours)** | TEMP | 1.1776 ± 0.0102 / 0.973 | 1.1794 ± 0.0119 / 0.975 | 1.1759 ± 0.0135 / 0.972 | 1.1823 ± 0.0143 / 0.977 | 1.00× |
+| **DFS (ours)** | SALT | 1.1723 ± 0.0144 / 1.007 | 1.1716 ± 0.0143 / 1.006 | 1.1695 ± 0.0171 / 1.004 | 1.1737 ± 0.0158 / 1.008 | 1.00× |
+| Uniform | TEMP | 1.1761 ± 0.0163 / 0.972 | 1.1764 ± 0.0126 / 0.972 | 1.1762 ± 0.0130 / 0.972 | 1.1773 ± 0.0168 / 0.973 | 1.00× |
+| Uniform | SALT | 1.1681 ± 0.0122 / 1.003 | 1.1674 ± 0.0110 / 1.003 | 1.1654 ± 0.0133 / 1.001 | 1.1690 ± 0.0146 / 1.004 | 1.00× |
+| Count / Perceiver | TEMP | 1.1845 ± 0.0101 / 0.979 | 1.1878 ± 0.0137 / 0.982 | 1.1875 ± 0.0111 / 0.982 | 1.1879 ± 0.0103 / 0.982 | 1.00× |
+| Count / Perceiver | SALT | 1.1703 ± 0.0126 / 1.005 | 1.1708 ± 0.0136 / 1.005 | 1.1701 ± 0.0187 / 1.005 | 1.1746 ± 0.0121 / 1.009 | 1.00× |
+| Climatology | TEMP | 1.2098 ± 0.0000 / 1.000 | 1.2098 ± 0.0000 / 1.000 | 1.2098 ± 0.0000 / 1.000 | 1.2098 ± 0.0000 / 1.000 | 1.00× |
+| Climatology | SALT | 1.1644 ± 0.0000 / 1.000 | 1.1644 ± 0.0000 / 1.000 | 1.1644 ± 0.0000 / 1.000 | 1.1644 ± 0.0000 / 1.000 | 1.00× |
+| Persistence | TEMP | 1.5271 ± 0.0157 / 1.262 | 1.5505 ± 0.0229 / 1.282 | 1.6386 ± 0.0160 / 1.354 | 1.6070 ± 0.0293 / 1.328 | 1.05× |
+| Persistence | SALT | 1.4889 ± 0.0021 / 1.279 | 1.5282 ± 0.0202 / 1.312 | 1.5701 ± 0.0190 / 1.348 | 1.5418 ± 0.0238 / 1.324 | 1.04× |
+| Causal OI | TEMP | 1.2141 ± 0.0081 / 1.004 | 1.2242 ± 0.0026 / 1.012 | 1.2618 ± 0.0082 / 1.043 | 1.2301 ± 0.0095 / 1.017 | 1.01× |
+| Causal OI | SALT | 1.1732 ± 0.0066 / 1.008 | 1.1910 ± 0.0024 / 1.023 | 1.2163 ± 0.0106 / 1.045 | 1.1872 ± 0.0045 / 1.020 | 1.01× |
+| EN4 (external) | TEMP | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.00× |
+| EN4 (external) | SALT | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 1.00× |
+
+_npac_gyre — **target:** WOA23 monthly anomaly; 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
 
 ### npac_gyre
 
-| method | channel | lead 0 mo — RMSE / J | lead 1 mo — RMSE / J | lead 3 mo — RMSE / J | lead 6 mo — RMSE / J |
-|---|---|---|---|---|---|
-| **DFS (ours)** | TEMP | 0.3293 ± 0.0145 / 0.356 | 0.3295 ± 0.0143 / 0.353 | 0.3544 ± 0.0133 / 0.378 | 0.4189 ± 0.0766 / 0.440 |
-| **DFS (ours)** | SALT | 0.3573 ± 0.0128 / 0.367 | 0.3416 ± 0.0083 / 0.353 | 0.3530 ± 0.0111 / 0.366 | 0.4108 ± 0.0694 / 0.426 |
-| Uniform | TEMP | 0.3372 ± 0.0173 / 0.365 | 0.3373 ± 0.0142 / 0.362 | 0.3517 ± 0.0227 / 0.375 | 0.3909 ± 0.0345 / 0.410 |
-| Uniform | SALT | 0.3598 ± 0.0035 / 0.369 | 0.3509 ± 0.0052 / 0.362 | 0.3547 ± 0.0071 / 0.368 | 0.3945 ± 0.0349 / 0.409 |
-| Count / Perceiver | TEMP | 0.3303 ± 0.0070 / 0.358 | 0.3374 ± 0.0063 / 0.362 | 0.3687 ± 0.0236 / 0.393 | 0.4580 ± 0.1273 / 0.481 |
-| Count / Perceiver | SALT | 0.3495 ± 0.0047 / 0.359 | 0.3424 ± 0.0076 / 0.353 | 0.3639 ± 0.0222 / 0.377 | 0.4606 ± 0.1136 / 0.478 |
+| method | channel | lead 0 mo — RMSE / J | lead 1 mo — RMSE / J | lead 3 mo — RMSE / J | lead 6 mo — RMSE / J | lead 6 / lead 0 |
+|---|---|---|---|---|---|---:|
+| **DFS (ours)** | TEMP | 0.8934 ± 0.0144 / 0.860 | 0.8984 ± 0.0148 / 0.865 | 0.9131 ± 0.0128 / 0.879 | 0.9243 ± 0.0087 / 0.890 | 1.03× |
+| **DFS (ours)** | SALT | 0.8190 ± 0.0078 / 0.879 | 0.8305 ± 0.0103 / 0.892 | 0.8377 ± 0.0088 / 0.899 | 0.8417 ± 0.0078 / 0.904 | 1.03× |
+| Uniform | TEMP | 0.8792 ± 0.0034 / 0.847 | 0.8855 ± 0.0014 / 0.853 | 0.9038 ± 0.0010 / 0.870 | 0.9185 ± 0.0028 / 0.885 | 1.04× |
+| Uniform | SALT | 0.8137 ± 0.0075 / 0.874 | 0.8237 ± 0.0076 / 0.884 | 0.8326 ± 0.0103 / 0.894 | 0.8373 ± 0.0056 / 0.899 | 1.03× |
+| Count / Perceiver | TEMP | 0.8777 ± 0.0074 / 0.845 | 0.8842 ± 0.0096 / 0.851 | 0.9042 ± 0.0097 / 0.871 | 0.9188 ± 0.0117 / 0.885 | 1.05× |
+| Count / Perceiver | SALT | 0.8209 ± 0.0021 / 0.881 | 0.8282 ± 0.0019 / 0.889 | 0.8338 ± 0.0056 / 0.895 | 0.8364 ± 0.0062 / 0.898 | 1.02× |
+| Climatology | TEMP | 1.0384 ± 0.0000 / 1.000 | 1.0384 ± 0.0000 / 1.000 | 1.0384 ± 0.0000 / 1.000 | 1.0384 ± 0.0000 / 1.000 | 1.00× |
+| Climatology | SALT | 0.9314 ± 0.0000 / 1.000 | 0.9314 ± 0.0000 / 1.000 | 0.9314 ± 0.0000 / 1.000 | 0.9314 ± 0.0000 / 1.000 | 1.00× |
+| Persistence | TEMP | 1.1066 ± 0.0093 / 1.066 | 1.1394 ± 0.0060 / 1.097 | 1.1955 ± 0.0161 / 1.151 | 1.1974 ± 0.0151 / 1.153 | 1.08× |
+| Persistence | SALT | 1.0297 ± 0.0055 / 1.106 | 1.0658 ± 0.0037 / 1.144 | 1.1373 ± 0.0053 / 1.221 | 1.1096 ± 0.0095 / 1.191 | 1.08× |
+| Causal OI | TEMP | 0.9698 ± 0.0006 / 0.934 | 0.9774 ± 0.0014 / 0.941 | 0.9875 ± 0.0006 / 0.951 | 0.9946 ± 0.0015 / 0.958 | 1.03× |
+| Causal OI | SALT | 0.8941 ± 0.0014 / 0.960 | 0.8983 ± 0.0010 / 0.964 | 0.9028 ± 0.0009 / 0.969 | 0.9072 ± 0.0017 / 0.974 | 1.01× |
+| EN4 (external) | TEMP | 0.7951 ± 0.0000 / 0.766 | 0.7951 ± 0.0000 / 0.766 | 0.7951 ± 0.0000 / 0.766 | 0.7951 ± 0.0000 / 0.766 | 1.00× |
+| EN4 (external) | SALT | 0.6488 ± 0.0000 / 0.697 | 0.6488 ± 0.0000 / 0.697 | 0.6488 ± 0.0000 / 0.697 | 0.6488 ± 0.0000 / 0.697 | 1.00× |
+
+**The last column is the forecast-growth check.** It is how much error grows from the first lead to the last. Near 1.00x means the horizon costs nothing, which is the behaviour that looked suspicious on the raw field — there the query carries the target's calendar month and the field is ~90 % climatology, so most of the answer never depended on lead. On the anomaly field that crutch is gone, so this column is the direct test of whether the forecast is real.
+
+**How to read the trend.** Every lead is scored on the same target months and the same held-out floats; only the source month moves. Two rows therefore work as checks. *Climatology* predicts zero anomaly and never sees the source month, so it must read exactly 1.00x — if it does not, the target set is not fixed. *Persistence* carries the nearest source-month float forward, so its error must grow with lead as the ocean decorrelates. Persistence is not automatically better than climatology: when floats are sparser than the anomaly correlation scale, the nearest float's anomaly is mostly noise at the target, so persistence can score worse than climatology even at lead 0, and in fast-decorrelating regions it stops degrading within a few months. A learned row behaving physically beats both at short lead, and its error grows toward the climatology floor (J -> 1) as lead increases.
 
 ## Table 2 — Performance by depth band
 
@@ -46,45 +79,45 @@
 
 | method | channel | 0-100m | 100-300m | 300-700m | 700-1400m |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | TEMP | 0.6868 ± 0.0131 | 0.5899 ± 0.0297 | 0.6465 ± 0.0255 | 0.5417 ± 0.0145 |
-| **DFS (ours)** | SALT | 0.6778 ± 0.0405 | 0.6196 ± 0.0342 | 0.6533 ± 0.0083 | 0.5210 ± 0.0244 |
-| Uniform | TEMP | 0.6798 ± 0.0205 | 0.5820 ± 0.0358 | 0.6467 ± 0.0242 | 0.5439 ± 0.0131 |
-| Uniform | SALT | 0.6732 ± 0.0481 | 0.6137 ± 0.0391 | 0.6494 ± 0.0087 | 0.5236 ± 0.0261 |
-| Count / Perceiver | TEMP | 0.6879 ± 0.0201 | 0.6010 ± 0.0289 | 0.6583 ± 0.0114 | 0.5383 ± 0.0098 |
-| Count / Perceiver | SALT | 0.6976 ± 0.0366 | 0.6363 ± 0.0280 | 0.6614 ± 0.0056 | 0.5254 ± 0.0297 |
+| **DFS (ours)** | TEMP | 1.3420 ± 0.0067 | 1.1753 ± 0.0157 | 1.0917 ± 0.0179 | 0.8738 ± 0.0063 |
+| **DFS (ours)** | SALT | 1.2695 ± 0.0190 | 1.2656 ± 0.0203 | 1.0543 ± 0.0091 | 0.8701 ± 0.0057 |
+| Uniform | TEMP | 1.3362 ± 0.0153 | 1.1737 ± 0.0204 | 1.0997 ± 0.0215 | 0.8768 ± 0.0079 |
+| Uniform | SALT | 1.2637 ± 0.0139 | 1.2587 ± 0.0171 | 1.0597 ± 0.0142 | 0.8690 ± 0.0048 |
+| Count / Perceiver | TEMP | 1.3501 ± 0.0099 | 1.1831 ± 0.0144 | 1.1000 ± 0.0118 | 0.8747 ± 0.0029 |
+| Count / Perceiver | SALT | 1.2691 ± 0.0155 | 1.2615 ± 0.0200 | 1.0537 ± 0.0113 | 0.8675 ± 0.0095 |
 
 J against climatology, same slices:
 
 | method | channel | 0-100m | 100-300m | 300-700m | 700-1400m |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | TEMP | 0.591 | 0.490 | 0.512 | 0.504 |
-| **DFS (ours)** | SALT | 0.547 | 0.506 | 0.539 | 0.546 |
-| Uniform | TEMP | 0.585 | 0.484 | 0.512 | 0.506 |
-| Uniform | SALT | 0.543 | 0.501 | 0.536 | 0.548 |
-| Count / Perceiver | TEMP | 0.592 | 0.499 | 0.521 | 0.501 |
-| Count / Perceiver | SALT | 0.563 | 0.520 | 0.546 | 0.550 |
+| **DFS (ours)** | TEMP | 1.010 | 0.985 | 0.898 | 0.889 |
+| **DFS (ours)** | SALT | 1.065 | 1.004 | 0.896 | 0.939 |
+| Uniform | TEMP | 1.006 | 0.984 | 0.905 | 0.892 |
+| Uniform | SALT | 1.060 | 0.999 | 0.901 | 0.937 |
+| Count / Perceiver | TEMP | 1.016 | 0.992 | 0.905 | 0.890 |
+| Count / Perceiver | SALT | 1.065 | 1.001 | 0.896 | 0.936 |
 
 ### npac_gyre (lead 0)
 
 | method | channel | 0-100m | 100-300m | 300-700m | 700-1400m |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | TEMP | 0.3820 ± 0.0209 | 0.2678 ± 0.0231 | 0.3015 ± 0.0175 | 0.3311 ± 0.0144 |
-| **DFS (ours)** | SALT | 0.3163 ± 0.0248 | 0.3481 ± 0.0093 | 0.5059 ± 0.0242 | 0.3169 ± 0.0070 |
-| Uniform | TEMP | 0.3877 ± 0.0126 | 0.2770 ± 0.0208 | 0.2937 ± 0.0097 | 0.3516 ± 0.0336 |
-| Uniform | SALT | 0.3234 ± 0.0213 | 0.3446 ± 0.0048 | 0.5060 ± 0.0279 | 0.3226 ± 0.0019 |
-| Count / Perceiver | TEMP | 0.3790 ± 0.0009 | 0.2598 ± 0.0089 | 0.3044 ± 0.0115 | 0.3495 ± 0.0233 |
-| Count / Perceiver | SALT | 0.3097 ± 0.0248 | 0.3336 ± 0.0023 | 0.4951 ± 0.0352 | 0.3177 ± 0.0101 |
+| **DFS (ours)** | TEMP | 0.8818 ± 0.0188 | 0.8770 ± 0.0159 | 0.8843 ± 0.0209 | 0.9393 ± 0.0280 |
+| **DFS (ours)** | SALT | 0.7171 ± 0.0070 | 0.8739 ± 0.0008 | 0.9255 ± 0.0183 | 0.8238 ± 0.0181 |
+| Uniform | TEMP | 0.8630 ± 0.0195 | 0.8757 ± 0.0148 | 0.8686 ± 0.0114 | 0.9156 ± 0.0158 |
+| Uniform | SALT | 0.7159 ± 0.0086 | 0.8656 ± 0.0126 | 0.9041 ± 0.0114 | 0.8278 ± 0.0063 |
+| Count / Perceiver | TEMP | 0.8692 ± 0.0136 | 0.8709 ± 0.0043 | 0.8627 ± 0.0092 | 0.9095 ± 0.0075 |
+| Count / Perceiver | SALT | 0.7248 ± 0.0094 | 0.8769 ± 0.0007 | 0.9068 ± 0.0039 | 0.8301 ± 0.0057 |
 
 J against climatology, same slices:
 
 | method | channel | 0-100m | 100-300m | 300-700m | 700-1400m |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | TEMP | 0.418 | 0.280 | 0.429 | 0.327 |
-| **DFS (ours)** | SALT | 0.334 | 0.353 | 0.551 | 0.307 |
-| Uniform | TEMP | 0.424 | 0.289 | 0.418 | 0.348 |
-| Uniform | SALT | 0.341 | 0.349 | 0.550 | 0.313 |
-| Count / Perceiver | TEMP | 0.415 | 0.272 | 0.433 | 0.346 |
-| Count / Perceiver | SALT | 0.327 | 0.338 | 0.538 | 0.308 |
+| **DFS (ours)** | TEMP | 0.809 | 0.838 | 0.923 | 0.953 |
+| **DFS (ours)** | SALT | 0.793 | 0.921 | 0.900 | 0.930 |
+| Uniform | TEMP | 0.791 | 0.837 | 0.906 | 0.929 |
+| Uniform | SALT | 0.792 | 0.912 | 0.879 | 0.935 |
+| Count / Perceiver | TEMP | 0.797 | 0.832 | 0.900 | 0.922 |
+| Count / Perceiver | SALT | 0.802 | 0.924 | 0.882 | 0.937 |
 
 **The question this table asks:** does DFS help more in the deeper, more sparsely observed bands? Compare the J columns across bands rather than the RMSE columns — RMSE falls with depth simply because deep variability is smaller, so only the climatology-normalised J is comparable between bands.
 
@@ -94,68 +127,130 @@ J against climatology, same slices:
 
 | method | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
 |---|---:|---:|---:|---:|
-| Climatology | 1.1722 ± 0.0024 | 1.000 | 1.1788 ± 0.0040 | 1.000 |
-| Causal OI | 0.9915 ± 0.0095 | 0.846 | 1.0265 ± 0.0125 | 0.871 |
-| Count | 0.6293 ± 0.0157 | 0.537 | 0.6423 ± 0.0166 | 0.545 |
-| Uniform (neural) | 0.6200 ± 0.0189 | 0.529 | 0.6242 ± 0.0268 | 0.529 |
-| **DFS (ours)** | 0.6246 ± 0.0117 | 0.533 | 0.6277 ± 0.0230 | 0.532 |
+| Climatology | 1.2098 ± 0.0000 | 1.000 | 1.1644 ± 0.0000 | 1.000 |
+| Causal OI | 1.2141 ± 0.0081 | 1.004 | 1.1732 ± 0.0066 | 1.008 |
+| Count | 1.1845 ± 0.0101 | 0.979 | 1.1703 ± 0.0126 | 1.005 |
+| Uniform (neural) | 1.1761 ± 0.0163 | 0.972 | 1.1681 ± 0.0122 | 1.003 |
+| **DFS (ours)** | 1.1776 ± 0.0102 | 0.973 | 1.1723 ± 0.0144 | 1.007 |
 
 ### npac_gyre (lead 0)
 
 | method | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
 |---|---:|---:|---:|---:|
-| Climatology | 0.9239 ± 0.0032 | 1.000 | 0.9742 ± 0.0047 | 1.000 |
-| Causal OI | 0.7914 ± 0.0050 | 0.857 | 0.8556 ± 0.0092 | 0.878 |
-| Count | 0.3303 ± 0.0070 | 0.358 | 0.3495 ± 0.0047 | 0.359 |
-| Uniform (neural) | 0.3372 ± 0.0173 | 0.365 | 0.3598 ± 0.0035 | 0.369 |
-| **DFS (ours)** | 0.3293 ± 0.0145 | 0.356 | 0.3573 ± 0.0128 | 0.367 |
+| Climatology | 1.0384 ± 0.0000 | 1.000 | 0.9314 ± 0.0000 | 1.000 |
+| Causal OI | 0.9698 ± 0.0006 | 0.934 | 0.8941 ± 0.0014 | 0.960 |
+| Count | 0.8777 ± 0.0074 | 0.845 | 0.8209 ± 0.0021 | 0.881 |
+| Uniform (neural) | 0.8792 ± 0.0034 | 0.847 | 0.8137 ± 0.0075 | 0.874 |
+| **DFS (ours)** | 0.8934 ± 0.0144 | 0.860 | 0.8190 ± 0.0078 | 0.879 |
 
 ## Table 4 — External-reference comparison
 
-### gulfstream — main protocol (evaluation era 2022-2024)
+### gulfstream — recent3 protocol, evaluation years 2023-2024
 
 | method | external reference? | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | no | 0.6246 ± 0.0117 | 0.533 | 0.6277 ± 0.0230 | 0.532 |
-| Uniform | no | 0.6200 ± 0.0189 | 0.529 | 0.6242 ± 0.0268 | 0.529 |
-| Causal OI | no | 0.9915 ± 0.0095 | 0.846 | 1.0265 ± 0.0125 | 0.871 |
-| EN4 | **yes** | 0.4025 ± 0.0002 | 0.343 | 0.4391 ± 0.0046 | 0.372 |
+| **DFS (ours)** | no | 1.1776 ± 0.0102 | 0.973 | 1.1723 ± 0.0144 | 1.007 |
+| Uniform | no | 1.1761 ± 0.0163 | 0.972 | 1.1681 ± 0.0122 | 1.003 |
+| Causal OI | no | 1.2141 ± 0.0081 | 1.004 | 1.1732 ± 0.0066 | 1.008 |
+| EN4 | **yes** | 1.0294 ± 0.0000 | 0.851 | 0.9928 ± 0.0000 | 0.853 |
 
 ECCO V4r4 ends 2017 and cannot be scored on this era at all. It appears in the block below.
 
-### gulfstream — ECCO-overlap protocol (evaluation era 2015-2017)
+### gulfstream — ECCO-overlap protocol
+
+_Not run._
+
+### npac_gyre — recent3 protocol, evaluation years 2023-2024
 
 | method | external reference? | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
 |---|---|---:|---:|---:|---:|
-| **DFS (ours)** | no | 0.6249 ± 0.0165 | 0.469 | 0.8530 ± 0.0168 | 0.534 |
-| Uniform | no | 0.6298 ± 0.0230 | 0.472 | 0.8609 ± 0.0178 | 0.539 |
-| Causal OI | no | 1.1042 ± 0.0114 | 0.828 | 1.3889 ± 0.0115 | 0.869 |
-| ECCO V4r4 | **yes** | 0.5417 ± 0.0036 | 0.406 | 0.5985 ± 0.0073 | 0.374 |
-| EN4 | **yes** | 0.4358 ± 0.0048 | 0.327 | 0.5162 ± 0.0078 | 0.323 |
-
-A **secondary protocol**: the eras are shifted inside ECCO V4r4's coverage (train 2000-2012 / val 2013-2014 / eval 2015-2017). Legitimate because the held-out float cohort is WMO-disjoint and year-independent, so shifting the era does not change which floats are held out. The learned rows here were **trained on 2000-2012**, so 2015-2017 is genuinely out of sample; an earlier version reused main-protocol checkpoints trained through 2018 and was in-sample in time. Never merged into the main headline table.
-
-### npac_gyre — main protocol (evaluation era 2022-2024)
-
-| method | external reference? | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
-|---|---|---:|---:|---:|---:|
-| **DFS (ours)** | no | 0.3293 ± 0.0145 | 0.356 | 0.3573 ± 0.0128 | 0.367 |
-| Uniform | no | 0.3372 ± 0.0173 | 0.365 | 0.3598 ± 0.0035 | 0.369 |
-| Causal OI | no | 0.7914 ± 0.0050 | 0.857 | 0.8556 ± 0.0092 | 0.878 |
-| EN4 | **yes** | 0.2140 ± 0.0013 | 0.232 | 0.2106 ± 0.0015 | 0.216 |
+| **DFS (ours)** | no | 0.8934 ± 0.0144 | 0.860 | 0.8190 ± 0.0078 | 0.879 |
+| Uniform | no | 0.8792 ± 0.0034 | 0.847 | 0.8137 ± 0.0075 | 0.874 |
+| Causal OI | no | 0.9698 ± 0.0006 | 0.934 | 0.8941 ± 0.0014 | 0.960 |
+| EN4 | **yes** | 0.7951 ± 0.0000 | 0.766 | 0.6488 ± 0.0000 | 0.697 |
 
 ECCO V4r4 ends 2017 and cannot be scored on this era at all. It appears in the block below.
 
-### npac_gyre — ECCO-overlap protocol (evaluation era 2015-2017)
+### npac_gyre — ECCO-overlap protocol
 
-| method | external reference? | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
-|---|---|---:|---:|---:|---:|
-| **DFS (ours)** | no | 0.4462 ± 0.0040 | 0.417 | 0.4612 ± 0.0243 | 0.461 |
-| Uniform | no | 0.4452 ± 0.0027 | 0.417 | 0.4651 ± 0.0226 | 0.465 |
-| Causal OI | no | 0.8862 ± 0.0050 | 0.829 | 0.8958 ± 0.0152 | 0.896 |
-| ECCO V4r4 | **yes** | 0.3065 ± 0.0081 | 0.287 | 0.3358 ± 0.0098 | 0.336 |
-| EN4 | **yes** | 0.3648 ± 0.0106 | 0.341 | 0.3433 ± 0.0256 | 0.343 |
-
-A **secondary protocol**: the eras are shifted inside ECCO V4r4's coverage (train 2000-2012 / val 2013-2014 / eval 2015-2017). Legitimate because the held-out float cohort is WMO-disjoint and year-independent, so shifting the era does not change which floats are held out. The learned rows here were **trained on 2000-2012**, so 2015-2017 is genuinely out of sample; an earlier version reused main-protocol checkpoints trained through 2018 and was in-sample in time. Never merged into the main headline table.
+_Not run._
 
 **Both ECCO and EN4 assimilate the very floats being scored.** They are upper references that have already seen the answer, not competitors, and their beating the model is expected rather than a result.
+
+## Table 5 — Model size
+
+### gulfstream (lead 0, DFS row)
+
+| parameters | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
+|---:|---|---:|---:|---:|---:|---:|
+| 405,383 | `_anom_s12k` | 3 | 1.1681 ± 0.0120 | 0.960 | 1.1416 ± 0.0082 | 0.973 |
+| 910,151 | `_anom_910k` | 3 | 1.1631 ± 0.0055 | 0.956 | 1.1470 ± 0.0057 | 0.977 |
+| 1,677,823 | `_anom_1m7` | 3 | 1.1808 ± 0.0115 | 0.970 | 1.1484 ± 0.0034 | 0.979 |
+
+_Seed spread in this region reaches ±0.0120 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+### npac_gyre (lead 0, DFS row)
+
+| parameters | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
+|---:|---|---:|---:|---:|---:|---:|
+| 405,383 | `_anom_s12k` | 3 | 0.9781 ± 0.0575 | 0.915 | 0.9820 ± 0.0565 | 0.945 |
+| 910,151 | `_anom_910k` | 3 | 0.9300 ± 0.0504 | 0.870 | 0.9161 ± 0.0138 | 0.881 |
+| 1,677,823 | `_anom_1m7` | 3 | 0.9936 ± 0.0475 | 0.929 | 0.9806 ± 0.0623 | 0.943 |
+
+_Seed spread in this region reaches ±0.0575 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+**The question this table asks:** does capacity help? Every arm shares the target, the data, the seeds and the training budget; only width and depth change. A flat column says the ceiling is not capacity.
+
+## Table 7 — Simulation pretraining
+
+### gulfstream
+
+| start | arm | seeds | row | TEMP J lead 0 | TEMP J lead 6 | lead 6 / lead 0 | SALT J lead 0 |
+|---|---|---:|---|---:|---:|---:|---:|
+| from scratch | `_recent3_obs` | 3 | **DFS (ours)** | 0.973 | 0.977 | 1.004× | 1.007 |
+| from scratch | `_recent3_obs` | 3 | Uniform | 0.972 | 0.973 | 1.001× | 1.003 |
+| from scratch | `_recent3_obs` | 3 | Count / Perceiver | 0.979 | 0.982 | 1.003× | 1.005 |
+| simulation-pretrained | `_recent3_ft` | 3 | **DFS (ours)** | 0.969 | 0.988 | 1.020× | 0.998 |
+| simulation-pretrained | `_recent3_ft` | 3 | Uniform | 0.957 | 0.979 | 1.023× | 0.991 |
+| simulation-pretrained | `_recent3_ft` | 3 | Count / Perceiver | 0.971 | 0.989 | 1.019× | 1.006 |
+
+### npac_gyre
+
+| start | arm | seeds | row | TEMP J lead 0 | TEMP J lead 6 | lead 6 / lead 0 | SALT J lead 0 |
+|---|---|---:|---|---:|---:|---:|---:|
+| from scratch | `_recent3_obs` | 3 | **DFS (ours)** | 0.860 | 0.890 | 1.035× | 0.879 |
+| from scratch | `_recent3_obs` | 3 | Uniform | 0.847 | 0.885 | 1.045× | 0.874 |
+| from scratch | `_recent3_obs` | 3 | Count / Perceiver | 0.845 | 0.885 | 1.047× | 0.881 |
+| simulation-pretrained | `_recent3_ft` | 3 | **DFS (ours)** | 0.859 | 0.893 | 1.040× | 0.895 |
+| simulation-pretrained | `_recent3_ft` | 3 | Uniform | 0.872 | 0.896 | 1.028× | 0.888 |
+| simulation-pretrained | `_recent3_ft` | 3 | Count / Perceiver | 0.860 | 0.890 | 1.035× | 0.885 |
+
+**The question this table asks:** does pretraining on the CESM2-LE anomaly field, sampled at the real float positions, then fine-tuning on observations beat training on observations alone? The simulation store holds only 72 months, and pretraining validation stopped improving within 2000-3000 steps and never beat the simulation's own climatology in most runs, so a null or negative result here speaks to this simulation's size, not to pretraining in general.
+
+**Split note for Tables 5 and 6.** The size ladder and the density arms were run before the most-recent-three-years split, on the main protocol (train 2000-2018, validation 2019-2021, test 2022-2024), at lead 0 only. Lead 0 was unaffected by the lead-target leak, so they remain valid, but their test years differ from Tables 1-4 and 7.
+
+## Table 6 — Input density
+
+### gulfstream (lead 0, DFS row)
+
+| profiles/month (cap) | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
+|---:|---|---:|---:|---:|---:|---:|
+| 24 | `_anom_p24` | 3 | 1.1857 ± 0.0014 | 0.974 | 1.1852 ± 0.0110 | 1.010 |
+| 128 | `_anom_s12k` | 3 | 1.1681 ± 0.0120 | 0.960 | 1.1416 ± 0.0082 | 0.973 |
+
+_Seed spread in this region reaches ±0.0120 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+The cap is not the delivered count: a month supplies fewer profiles than the cap whenever it has fewer, and training withholds ~30 % of each month's floats as targets.
+
+### npac_gyre (lead 0, DFS row)
+
+| profiles/month (cap) | arm | seeds | TEMP RMSE | TEMP J | SALT RMSE | SALT J |
+|---:|---|---:|---:|---:|---:|---:|
+| 24 | `_anom_p24` | 3 | 0.9665 ± 0.0233 | 0.904 | 0.9667 ± 0.0238 | 0.930 |
+| 128 | `_anom_s12k` | 3 | 0.9781 ± 0.0575 | 0.915 | 0.9820 ± 0.0565 | 0.945 |
+
+_Seed spread in this region reaches ±0.0575 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+The cap is not the delivered count: a month supplies fewer profiles than the cap whenever it has fewer, and training withholds ~30 % of each month's floats as targets.
+
+**The question this table asks:** does more real Argo help? Causal OI converts added profiles into accuracy automatically, so if the learned rows do not, the limit is the model rather than the observations.

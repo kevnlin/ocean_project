@@ -134,6 +134,15 @@ ap.add_argument("--levels", default="godas", choices=list(LEVELSETS),
                 help="'protocol' uses protocol_v1's 20 levels to 985 m")
 ap.add_argument("--suffix", default="",
                 help="appended to the output filename, e.g. '_global'")
+ap.add_argument("--from-cohort", default=None,
+                help="derive from an existing cohort .nc instead of re-ingesting "
+                     "raw Argo; use with --anomaly")
+ap.add_argument("--sim-start-year", type=int, default=2016,
+                help="with --anomaly cesm2_self: the first of the 6 Argo years "
+                     "mapped month-for-month onto the 72 simulation months")
+ap.add_argument("--anomaly", default=None, choices=["woa23", "cesm2_self"],
+                help="subtract a seasonal climatology so TEMP/SALT become the "
+                     "anomaly field")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 
@@ -152,6 +161,175 @@ def sha256(path: str) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+# --------------------------------------------------------------------------
+# Anomaly cohort — a pure transformation of an existing cohort
+# --------------------------------------------------------------------------
+# Training on the raw field makes the model mostly predict climatology: the
+# seasonal + spatial mean accounts for 86 % of temperature variance in the Gulf
+# Stream and 96 % in the N. Pacific gyre. Skill against a per-level mean is then
+# flattered, and RMSE barely grows with forecast lead because the query carries
+# the target's calendar month and the answer is largely that month's mean state.
+# Subtracting the climatology leaves the part that actually has to be inferred
+# from observations.
+#
+# Derived from the existing cohort rather than re-ingesting 66 GB of raw Argo:
+# every field except TEMP/SALT is carried over unchanged, so the float split,
+# the QC and the depth interpolation are bit-identical to the parent.
+if args.from_cohort:
+    if not args.anomaly:
+        raise SystemExit("--from-cohort needs --anomaly (nothing else to do)")
+    if not args.suffix:
+        raise SystemExit("--from-cohort needs --suffix, or it would overwrite "
+                         "its own input")
+    ds0 = xr.open_dataset(args.from_cohort)
+
+    # ---- simulation cohort: CESM2-LE at the real observing geometry --------
+    # Pretraining data that looks exactly like the observations the model will
+    # be fine-tuned on: the same float positions, months, depth levels, held-out
+    # float split and per-profile vertical coverage -- only the values come
+    # from the simulation. The store holds 72 months (2000-2005), so a 6-year
+    # window of Argo months is mapped onto it month for month. That keeps
+    # calendar months aligned AND consecutive months consecutive, which is what
+    # makes lead-L pairs physically meaningful; wrapping 72 months across 26
+    # Argo years would pair December with an unrelated January every 6 years.
+    if args.anomaly == "cesm2_self":
+        y0 = int(args.sim_start_year)
+        years = np.asarray(ds0["year"].values, int)
+        keep = np.flatnonzero((years >= y0) & (years <= y0 + 5))
+        dsk = ds0.isel(profile=keep)
+        spath = os.path.join(ROOT, "data", "cesm2_le_full_standard.zarr")
+        simz = xr.open_zarr(spath)
+        if simz.sizes["time"] != 72:
+            raise SystemExit(f"expected 72 simulation months, found {simz.sizes['time']}")
+        la0, la1 = (float(x) for x in ds0.attrs["box_lat"])
+        lo0, lo1 = (float(x) for x in ds0.attrs["box_lon"])
+        slat = np.asarray(simz.lat.values, float)
+        slon = np.asarray(simz.lon.values, float) % 360.0
+        iy = np.flatnonzero((slat >= la0 - 1) & (slat <= la1 + 1))
+        ix = np.flatnonzero((slon >= lo0 - 1) & (slon <= lo1 + 1))
+        lev = np.asarray(ds0["level"].values, float)
+        sdep = np.asarray(simz.depth.values, float)
+        j1 = np.clip(np.searchsorted(sdep, lev), 1, sdep.size - 1); j0 = j1 - 1
+        wz = np.clip((lev - sdep[j0]) / (sdep[j1] - sdep[j0]), 0.0, 1.0)
+        plat = np.asarray(dsk["lat"].values, float)
+        plon = np.asarray(dsk["lon"].values, float) % 360.0
+        py = np.abs(slat[iy][None, :] - plat[:, None]).argmin(axis=1)   # nearest 1 deg cell
+        px = np.abs(slon[ix][None, :] - plon[:, None]).argmin(axis=1)
+        mi = np.asarray(dsk["month_index"].values, int) - (y0 - 2000) * 12
+        if mi.min() < 0 or mi.max() > 71:
+            raise SystemExit(f"window {y0}-{y0+5} does not map onto 72 simulation months")
+        dss = dsk.copy(deep=True)
+        cov = {}
+        for ch in ("TEMP", "SALT"):
+            F = np.asarray(simz[ch].isel(lat=iy, lon=ix).values, "float32")   # (72, D, y, x)
+            F = ((1 - wz)[None, :, None, None] * F[:, j0]
+                 + wz[None, :, None, None] * F[:, j1])                         # (72, L, y, x)
+            # the simulation's OWN seasonal cycle: its climatology is biased
+            # relative to WOA, and subtracting WOA would leave that bias in the
+            # "anomaly" the model is pretrained to reproduce
+            clim = np.stack([np.nanmean(F[k::12], axis=0) for k in range(12)])
+            A = F - clim[np.arange(72) % 12]
+            vals = A[mi, :, py, px]                                             # (P, L)
+            real = np.asarray(dsk[ch].values, "float32")
+            vals = np.where(np.isfinite(real), vals, np.nan).astype("float32")
+            cov[ch] = float(np.isfinite(vals).sum() / max(int(np.isfinite(real).sum()), 1))
+            dss[ch] = (("profile", "level"), vals)
+        for v in dss.variables:
+            dss[v].encoding = {}
+        dss.attrs = dict(ds0.attrs)
+        dss.attrs.update(
+            anomaly_ref="cesm2_monthly_self", anomaly_source=os.path.relpath(spath, ROOT),
+            anomaly_parent=os.path.basename(args.from_cohort),
+            anomaly_parent_sha256=sha256(args.from_cohort),
+            sim_window=f"Argo {y0}-{y0+5} mapped month for month onto simulation 2000-01..2005-12",
+            anomaly_coverage_TEMP=cov["TEMP"], anomaly_coverage_SALT=cov["SALT"],
+            anomaly_note=("SIMULATED values, not observations: CESM2-LE TEMP/SALT at "
+                          "each real Argo profile's nearest 1 deg cell, depth-"
+                          "interpolated to these levels, minus the simulation's own "
+                          "monthly climatology, and masked to the float's own "
+                          "vertical coverage. Positions, months, WMO ids and the "
+                          "held-out float split are the real cohort's."))
+        outp = os.path.join(OUT, f"{ds0.attrs['region']}{args.suffix}.nc")
+        if os.path.abspath(outp) == os.path.abspath(args.from_cohort):
+            raise SystemExit(f"refusing to overwrite the input: {outp}")
+        fd, tmp = tempfile.mkstemp(dir=OUT, suffix=".tmp"); os.close(fd)
+        try:
+            dss.to_netcdf(tmp)
+            os.replace(tmp, outp)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        print(f"  {os.path.basename(outp)}  {dss.sizes['profile']:,} simulated profiles "
+              f"({y0}-{y0+5} geometry) x {lev.size} levels\n"
+              f"    simulation value available for TEMP {cov['TEMP']:.2%} / "
+              f"SALT {cov['SALT']:.2%} of the floats' measured levels\n"
+              f"    sha256 {sha256(outp)}", flush=True)
+        raise SystemExit(0)
+
+    region = str(ds0.attrs["region"])
+    la0, la1 = (float(x) for x in ds0.attrs["box_lat"])
+    lo0, lo1 = (float(x) for x in ds0.attrs["box_lon"])
+    NY, NX = (int(x) for x in ds0.attrs["grid"])
+    lev = np.asarray(ds0["level"].values, float)
+    # cell centres: the SAME grid the WOAClimatology baseline row queries, so
+    # the target and that baseline cannot disagree about what climatology is
+    lat_c = la0 + (np.arange(NY) + 0.5) * (la1 - la0) / NY
+    lon_c = lo0 + (np.arange(NX) + 0.5) * (lo1 - lo0) / NX
+    wpath = os.path.join(ROOT, "data", "woa23_standard.zarr")
+    woa = xr.open_zarr(wpath)
+    woa = woa.assign_coords(lon=(woa.lon % 360.0)).sortby("lon")
+    cm = np.asarray(ds0["month_index"].values, int) % 12
+    gy = np.asarray(ds0["grid_y"].values, int)
+    gx = np.asarray(ds0["grid_x"].values, int)
+
+    ds = ds0.copy(deep=True)
+    cov = {}
+    for ch in ("TEMP", "SALT"):
+        clim = np.asarray(woa[ch].interp(lat=lat_c, lon=lon_c, depth=lev,
+                                         method="linear",
+                                         kwargs={"fill_value": None}).values,
+                          "float32")                         # (12, L, NY, NX)
+        raw = np.asarray(ds0[ch].values, "float32")
+        ref = clim[cm, :, gy, gx]                            # (P, L)
+        obs = np.isfinite(raw)
+        cov[ch] = float((obs & np.isfinite(ref)).sum() / max(int(obs.sum()), 1))
+        # where the climatology is undefined the anomaly is undefined: leave it
+        # NaN and let the samplers drop it, rather than substituting the raw
+        # value and mixing two different targets in one field
+        ds[ch] = (("profile", "level"), (raw - ref).astype("float32"))
+    for v in ds.variables:
+        ds[v].encoding = {}
+    ds.attrs = dict(ds0.attrs)
+    ds.attrs.update(
+        anomaly_ref="woa23_monthly",
+        anomaly_source=os.path.relpath(wpath, ROOT),
+        anomaly_parent=os.path.basename(args.from_cohort),
+        anomaly_parent_sha256=sha256(args.from_cohort),
+        anomaly_coverage_TEMP=cov["TEMP"], anomaly_coverage_SALT=cov["SALT"],
+        anomaly_note=("TEMP/SALT are anomalies against the WOA23 monthly "
+                      "climatology, interpolated to the region cell centres and "
+                      "these levels and subtracted at each profile's own cell "
+                      "and calendar month. TEMP_ERR/SALT_ERR are unchanged: "
+                      "subtracting a climatology does not change a measurement "
+                      "uncertainty."))
+    outp = os.path.join(OUT, f"{region}{args.suffix}.nc")
+    if os.path.abspath(outp) == os.path.abspath(args.from_cohort):
+        raise SystemExit(f"refusing to overwrite the input: {outp}")
+    fd, tmp = tempfile.mkstemp(dir=OUT, suffix=".tmp"); os.close(fd)
+    try:
+        ds.to_netcdf(tmp)
+        os.replace(tmp, outp)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+    print(f"  {os.path.basename(outp)}  {ds.sizes['profile']:,} profiles x "
+          f"{lev.size} levels\n"
+          f"    climatology available for TEMP {cov['TEMP']:.2%} / "
+          f"SALT {cov['SALT']:.2%} of measurements\n"
+          f"    sha256 {sha256(outp)}", flush=True)
+    raise SystemExit(0)
 
 
 def _bytes(a) -> np.ndarray:
