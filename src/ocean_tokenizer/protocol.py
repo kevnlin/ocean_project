@@ -72,7 +72,27 @@ YEAR_SPLITS = {"train": (2000, 2018), "validation": (2019, 2021),
 ECCO_OVERLAP_SPLITS = {"train": (2000, 2012), "validation": (2013, 2014),
                        "development": (2015, 2017), "holdout": (2017, 2017)}
 
-SPLIT_PROTOCOLS = {"main": YEAR_SPLITS, "ecco_overlap": ECCO_OVERLAP_SPLITS}
+#: "Most recent three years" protocol. About 80 % of the observations train the
+#: model (2000-2021 holds 84 % of Gulf Stream and 88 % of N. Pacific gyre
+#: profiles in 2000-2024), and the three most recent open years validate and
+#: test it: 2022 selects checkpoints, 2023-2024 is scored. 2025 stays the sealed
+#: P7 prospective holdout and is never opened here.
+#:
+#: The ranges do NOT overlap. `ArgoCohort.apply_splits` is last-wins, so an
+#: overlapping table silently moves the shared year into the later label.
+RECENT3_SPLITS = {"train": (2000, 2021), "validation": (2022, 2022),
+                  "development": (2023, 2024), "holdout": (2025, 2025)}
+
+#: Simulation pretraining. The CESM2-LE store holds 72 months (2000-2005), so the
+#: simulation cohort is sampled at the real Argo positions of a dense 72-month
+#: window (2016-2021) mapped month-for-month onto those simulation months. These
+#: years label the SIMULATED ocean, not the real one; nothing here is a real
+#: observation, so it cannot leak into the recent-three-years evaluation.
+SIM_PRETRAIN_SPLITS = {"train": (2016, 2019), "validation": (2020, 2020),
+                       "development": (2021, 2021)}
+
+SPLIT_PROTOCOLS = {"main": YEAR_SPLITS, "ecco_overlap": ECCO_OVERLAP_SPLITS,
+                   "recent3": RECENT3_SPLITS, "sim_pretrain": SIM_PRETRAIN_SPLITS}
 
 #: P1 regions.  Both boxes span 25 deg latitude and 51 deg longitude so the
 #: GODAS subsets land on an identical 38 x 26 grid — the model, token budget and
