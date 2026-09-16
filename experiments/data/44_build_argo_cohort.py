@@ -143,6 +143,20 @@ ap.add_argument("--sim-start-year", type=int, default=2016,
 ap.add_argument("--anomaly", default=None, choices=["woa23", "cesm2_self"],
                 help="subtract a seasonal climatology so TEMP/SALT become the "
                      "anomaly field")
+ap.add_argument("--ecco-insitu", default=None,
+                help="build the cohort from ECCO V4r4's organised in-situ "
+                     "constraints (the output_insitu *_model.nc files) instead "
+                     "of raw Argo; ECCO's own estimate at every observation is "
+                     "carried as ECCO_TEMP/ECCO_SALT")
+ap.add_argument("--heldout-from", default=None,
+                help="with --ecco-insitu: an existing Argo cohort whose "
+                     "held-out WMOs are reused, so both cohorts are scored on "
+                     "the same floats")
+ap.add_argument("--families", nargs="+", default=None,
+                help="with --ecco-insitu: keep only these instrument families "
+                     "(e.g. ARGO); default all")
+ap.add_argument("--year-range", type=int, nargs=2, default=(2000, 2017),
+                help="with --ecco-insitu: inclusive profile years to keep")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
 
@@ -299,6 +313,11 @@ if args.from_cohort:
         # NaN and let the samplers drop it, rather than substituting the raw
         # value and mixing two different targets in one field
         ds[ch] = (("profile", "level"), (raw - ref).astype("float32"))
+        if f"ECCO_{ch}" in ds0:
+            # ECCO's estimate at the same point goes through the SAME
+            # climatology, or its row would be scored on a different target
+            est = np.asarray(ds0[f"ECCO_{ch}"].values, "float32")
+            ds[f"ECCO_{ch}"] = (("profile", "level"), (est - ref).astype("float32"))
     for v in ds.variables:
         ds[v].encoding = {}
     ds.attrs = dict(ds0.attrs)
@@ -329,6 +348,203 @@ if args.from_cohort:
           f"    climatology available for TEMP {cov['TEMP']:.2%} / "
           f"SALT {cov['SALT']:.2%} of measurements\n"
           f"    sha256 {sha256(outp)}", flush=True)
+    raise SystemExit(0)
+
+
+# --------------------------------------------------------------------------
+# ECCO in-situ cohort — the observations ECCO V4r4 actually assimilated
+# --------------------------------------------------------------------------
+# ECCO distributes its in-situ constraints already QC'd and on standard depths
+# (MITprof format), one file per instrument family, each holding the
+# observation (prof_T/prof_S) AND ECCO's estimate at that point
+# (prof_Testim/prof_Sestim). Using exactly the profiles ECCO fitted is what makes
+# a model-vs-ECCO comparison apples-to-apples: same inputs available, same
+# queries scored.
+#
+# Choices, each forced by the files:
+#   * a value is an observation only if ECCO used it: finite, flag 0, weight > 0
+#   * prof_T is POTENTIAL temperature; WOA23 and the Argo cohort are in-situ, so
+#     it is converted with TEOS-10 (salinity from the profile, else ECCO's
+#     estimate for T-only XBTs). ECCO's estimate gets the identical conversion
+#   * standard depths -> cohort levels by linear interpolation between the two
+#     bracketing standard depths, only where BOTH are valid: no extrapolation
+#     and no bridging a gap in the profile
+#   * only Argo carries a platform id (the WMO). WOD-sourced files name an
+#     institution, not an instrument, so a held-out split on them would not be
+#     platform-disjoint. Held-out = Argo floats in --heldout-from's held-out set;
+#     every other profile is input-only
+#   * CCHDO and GOSHIP are byte-identical files; only CCHDO is read
+if args.ecco_insitu:
+    import glob
+    import gsw
+    if args.levels != "protocol_ext":
+        raise SystemExit("--ecco-insitu is built on --levels protocol_ext")
+    if not args.suffix:
+        raise SystemExit("--ecco-insitu needs --suffix, e.g. _ecco")
+    y_lo, y_hi = args.year_range
+    files = sorted(f for f in glob.glob(os.path.join(args.ecco_insitu, "*_model.nc"))
+                   if not os.path.basename(f).startswith("GOSHIP")
+                   and (args.families is None
+                        or os.path.basename(f).split("_")[0] in args.families))
+    if not files:
+        raise SystemExit(f"no *_model.nc under {args.ecco_insitu}")
+    if args.smoke:
+        files = [f for f in files if os.path.basename(f).startswith(("ARGO_20190131_14", "GLD_20190131_16"))]
+    VARS = ("prof_T", "prof_S", "prof_Terr", "prof_Serr", "prof_Testim",
+            "prof_Sestim", "prof_Tflag", "prof_Sflag", "prof_Tweight", "prof_Sweight")
+    buf = {r: [] for r in args.regions}
+    etally = Counter()
+    for f in files:
+        fam = os.path.basename(f).split("_")[0]
+        d = xr.open_dataset(f, decode_times=False)
+        sdep = np.asarray(d["prof_depth"].values, float)
+        j1 = np.clip(np.searchsorted(sdep, LEVELS), 1, sdep.size - 1); j0 = j1 - 1
+        wz = (LEVELS - sdep[j0]) / (sdep[j1] - sdep[j0])
+        inside = (LEVELS >= sdep[0]) & (LEVELS <= sdep[-1])
+        ymd = np.asarray(d["prof_YYYYMMDD"].values, float)
+        yr = np.floor(ymd / 1e4).astype(int)
+        mo = (np.floor(ymd / 1e2).astype(int) % 100)
+        plat = np.asarray(d["prof_lat"].values, float)
+        plon = np.asarray(d["prof_lon"].values, float) % 360.0
+        descr = np.char.strip(np.asarray(d["prof_descr"].values).astype(str))
+        pflag = np.asarray(d["prof_flag"].values, float)
+        base = (yr >= y_lo) & (yr <= y_hi) & (mo >= 1) & (mo <= 12) & ~(pflag > 0)
+        for region in args.regions:
+            box = REGIONS[region]
+            sel = np.flatnonzero(base & (plat >= box["lat"][0]) & (plat <= box["lat"][1])
+                                 & (plon >= box["lon"][0]) & (plon <= box["lon"][1]))
+            etally[f"{fam}:{region}:in_box"] += int(sel.size)
+            if sel.size == 0:
+                continue
+            # fixed windows of FILE position: netCDF fancy-indexing a scattered
+            # list is slow, and one slice spanning the first..last selected
+            # profile can be the whole multi-GB file
+            WIN = 40000
+            for a in np.unique(sel // WIN) * WIN:
+                k = sel[(sel >= a) & (sel < a + WIN)]
+                blk = {v: np.asarray(d[v].isel(iPROF=slice(int(k[0]), int(k[-1]) + 1)).values,
+                                     "float64")[k - k[0]] for v in VARS}
+                la, lo = plat[k], plon[k]
+
+                def onlev(x, ok):
+                    x = np.where(ok, x, np.nan)
+                    y = (1 - wz) * x[:, j0] + wz * x[:, j1]
+                    return np.where(inside[None, :], y, np.nan)
+
+                okT = np.isfinite(blk["prof_T"]) & (blk["prof_Tflag"] == 0) & (blk["prof_Tweight"] > 0)
+                okS = np.isfinite(blk["prof_S"]) & (blk["prof_Sflag"] == 0) & (blk["prof_Sweight"] > 0)
+                T = onlev(blk["prof_T"], okT); S = onlev(blk["prof_S"], okS)
+                eT = onlev(blk["prof_Testim"], np.isfinite(blk["prof_Testim"]))
+                eS = onlev(blk["prof_Sestim"], np.isfinite(blk["prof_Sestim"]))
+                Terr = onlev(blk["prof_Terr"], okT); Serr = onlev(blk["prof_Serr"], okS)
+                p = gsw.p_from_z(-LEVELS[None, :], la[:, None])
+
+                def insitu(pt, sp):
+                    sp = np.where(np.isfinite(sp), sp, 35.0)
+                    sa = gsw.SA_from_SP(sp, p, lo[:, None], la[:, None])
+                    return gsw.t_from_CT(sa, gsw.CT_from_pt(sa, pt), p)
+
+                Tin = insitu(T, np.where(np.isfinite(S), S, eS))
+                eTin = insitu(eT, eS)
+                keep = np.isfinite(Tin).sum(axis=1) >= args.min_levels
+                etally[f"{fam}:{region}:kept"] += int(keep.sum())
+                if not keep.any():
+                    continue
+                kk = np.flatnonzero(keep)
+                wmo = (descr[k][kk] if fam == "ARGO"
+                       else np.array([f"{fam}:{s.split('NODCID_')[-1].strip()}" for s in descr[k][kk]]))
+                buf[region].append(dict(
+                    fam=np.full(kk.size, fam), wmo=wmo, lat=la[kk], lon=lo[kk],
+                    year=yr[k][kk], month=mo[k][kk], day=(np.floor(ymd[k][kk]) % 100).astype(int),
+                    TEMP=Tin[kk], SALT=S[kk], TEMP_ERR=Terr[kk], SALT_ERR=Serr[kk],
+                    ECCO_TEMP=np.where(np.isfinite(Tin[kk]), eTin[kk], np.nan),
+                    ECCO_SALT=np.where(np.isfinite(S[kk]), eS[kk], np.nan)))
+        d.close()
+        print(f"  {os.path.basename(f):34s} " + "  ".join(
+            f"{r} {etally[f'{fam}:{r}:kept']:,}" for r in args.regions)
+            + f"  ({time.time()-t0:.0f}s)", flush=True)
+
+    for region in args.regions:
+        if not buf[region]:
+            print(f"  {region}: no profiles"); continue
+        box = REGIONS[region]
+        lat0, lat1 = box["lat"]; lon0, lon1 = box["lon"]
+        Q = {key: np.concatenate([x[key] for x in buf[region]]) for key in buf[region][0]}
+        # a few WOD-sourced records carry impossible days (2002-09-31): keep
+        # the month, which is all the cohort indexes on, and clip the day
+        mstart = np.array([f"{y:04d}-{m:02d}" for y, m in zip(Q["year"], Q["month"])],
+                          dtype="datetime64[M]")
+        mlen = ((mstart + 1).astype("datetime64[D]") - mstart.astype("datetime64[D]")).astype(int)
+        juld = mstart.astype("datetime64[D]") + (np.clip(Q["day"], 1, mlen) - 1)
+        order = np.argsort(juld, kind="stable")
+        Q = {key: v[order] for key, v in Q.items()}; juld = juld[order]
+        gy = np.clip(((Q["lat"] - lat0) / (lat1 - lat0) * GRID_NY).astype(int), 0, GRID_NY - 1)
+        gx = np.clip(((Q["lon"] - lon0) / (lon1 - lon0) * GRID_NX).astype(int), 0, GRID_NX - 1)
+        month_idx = (Q["year"] - 2000) * 12 + Q["month"] - 1
+        year_split = np.full(juld.size, "unassigned", dtype=object)
+        for name, (a, b) in YEAR_SPLITS.items():
+            year_split[(Q["year"] >= a) & (Q["year"] <= b)] = name
+        held = set()
+        if args.heldout_from:
+            src = args.heldout_from.format(region=region)
+            h0 = xr.open_dataset(src)
+            held = set(np.asarray(h0["wmo"].values).astype(str)[
+                np.asarray(h0["float_split"].values).astype(str) == "heldout_float"])
+            h0.close()
+        is_argo = Q["fam"] == "ARGO"
+        float_split = np.where(is_argo & np.isin(Q["wmo"], list(held)),
+                               "heldout_float", "cohort_float")
+        ds = xr.Dataset(
+            {"TEMP": (("profile", "level"), Q["TEMP"].astype("float32")),
+             "SALT": (("profile", "level"), Q["SALT"].astype("float32")),
+             "TEMP_ERR": (("profile", "level"), Q["TEMP_ERR"].astype("float32")),
+             "SALT_ERR": (("profile", "level"), Q["SALT_ERR"].astype("float32")),
+             "ECCO_TEMP": (("profile", "level"), Q["ECCO_TEMP"].astype("float32")),
+             "ECCO_SALT": (("profile", "level"), Q["ECCO_SALT"].astype("float32")),
+             "lat": ("profile", Q["lat"].astype("float32")),
+             "lon": ("profile", Q["lon"].astype("float32")),
+             "grid_y": ("profile", gy.astype("int16")),
+             "grid_x": ("profile", gx.astype("int16")),
+             "month_index": ("profile", month_idx.astype("int32")),
+             "year": ("profile", Q["year"].astype("int16")),
+             "cycle": ("profile", np.zeros(juld.size, "int32")),
+             "wmo": ("profile", Q["wmo"].astype(str)),
+             "dac": ("profile", np.full(juld.size, "ECCO")),
+             "platform_type": ("profile", Q["fam"].astype(str)),
+             "data_mode": ("profile", np.full(juld.size, "D")),
+             "year_split": ("profile", year_split.astype(str)),
+             "float_split": ("profile", float_split.astype(str))},
+            coords={"level": LEVELS, "time": ("profile", juld.astype("datetime64[ns]"))},
+            attrs=dict(
+                region=region, box_lat=list(box["lat"]), box_lon=list(box["lon"]),
+                grid=[GRID_NY, GRID_NX], levels_set=args.levels,
+                source="ECCO V4r4 ancillary_data output_insitu (MITprof); "
+                       "doi:10.5281/zenodo.4533349",
+                qc="ECCO's own: prof_flag == 0 and per-value flag == 0 and weight > 0",
+                depth="ECCO standard depths, linear between valid brackets, no extrapolation",
+                temperature="in-situ, converted from ECCO potential temperature with TEOS-10",
+                min_levels=args.min_levels, year_range=[int(y_lo), int(y_hi)],
+                families=" ".join(sorted(set(Q["fam"].tolist()))),
+                heldout_from=os.path.basename(args.heldout_from or ""),
+                heldout_rule="Argo WMOs held out in heldout_from; all non-Argo profiles are input-only",
+                ecco_estimate_note="ECCO_TEMP/ECCO_SALT are ECCO V4r4's estimate at each "
+                                   "observation, masked to the observed levels. ECCO fitted "
+                                   "these observations, held-out floats included."))
+        path = os.path.join(OUT, f"{region}{args.suffix}.nc")
+        fd, tmp = tempfile.mkstemp(dir=OUT, suffix=".tmp"); os.close(fd)
+        try:
+            ds.to_netcdf(tmp)
+            os.replace(tmp, path)
+        finally:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+        fams = Counter(Q["fam"].tolist())
+        print(f"  {region}{args.suffix}: {juld.size:,} profiles  "
+              f"{dict(sorted(fams.items()))}\n"
+              f"    held-out Argo floats {len(set(Q['wmo'][float_split == 'heldout_float']))} "
+              f"/ {int((float_split == 'heldout_float').sum()):,} profiles\n"
+              f"    by year split { {k: int((year_split == k).sum()) for k in YEAR_SPLITS} }\n"
+              f"    sha256 {sha256(path)}", flush=True)
     raise SystemExit(0)
 
 

@@ -69,8 +69,12 @@ YEAR_SPLITS = {"train": (2000, 2018), "validation": (2019, 2021),
 #:
 #: It is a SECONDARY protocol and is never mixed into the main headline table --
 #: the same treatment this project already gives the extended 23-level grid.
+#:
+#: There is no "holdout" key: ``apply_splits`` is last-wins, so a (2017, 2017)
+#: holdout silently relabelled the final development year and the scored era
+#: was only 2015-2016.  The sealed P7 holdout (2025) lies outside ECCO anyway.
 ECCO_OVERLAP_SPLITS = {"train": (2000, 2012), "validation": (2013, 2014),
-                       "development": (2015, 2017), "holdout": (2017, 2017)}
+                       "development": (2015, 2017)}
 
 #: "Most recent three years" protocol. About 80 % of the observations train the
 #: model (2000-2021 holds 84 % of Gulf Stream and 88 % of N. Pacific gyre

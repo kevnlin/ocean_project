@@ -28,9 +28,12 @@ class FakeGrid:
 
 
 def build(variant, seed=0):
+    # GAOT places its anchors on a region box; the whole globe stands in here
+    extra = ({"anchor_box": dict(lat=(-90.0, 90.0), lon=(0.0, 360.0))}
+             if variant.startswith("gaot") else {})
     m = build_fusion_model(variant, FakeGrid(), d_model=D_MODEL,
                            n_latent=N_LATENT, n_heads=4, n_self_blocks=2,
-                           patch=(4, 6), seed=seed)
+                           patch=(4, 6), seed=seed, **extra)
     m.eval()
     return m
 
@@ -96,7 +99,9 @@ def test_gradient_flow(variant):
     out.pow(2).mean().backward()
     g = model.encoders["profiles"].level_mlp[0].weight.grad
     assert g is not None and torch.isfinite(g).all() and g.abs().sum() > 0
-    g = model.latent0.grad
+    lat = (model.gaot_anchor_proj.weight if variant.startswith("gaot")
+           else model.latent0)
+    g = lat.grad
     assert g is not None and torch.isfinite(g).all() and g.abs().sum() > 0
 
 

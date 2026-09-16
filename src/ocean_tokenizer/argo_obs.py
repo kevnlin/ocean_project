@@ -90,6 +90,10 @@ class ArgoCohort:
     TEMP_ERR: np.ndarray
     SALT_ERR: np.ndarray
     grid: tuple[int, int] = (38, 26)
+    #: ECCO V4r4's own estimate at each observation, when the cohort was built
+    #: from ECCO's in-situ constraints; None for a GDAC Argo cohort
+    ECCO_TEMP: np.ndarray | None = None
+    ECCO_SALT: np.ndarray | None = None
     _by_month: dict = field(default_factory=dict, repr=False)
 
     @staticmethod
@@ -112,12 +116,16 @@ class ArgoCohort:
             TEMP_ERR=np.asarray(d["TEMP_ERR"].values, float),
             SALT_ERR=np.asarray(d["SALT_ERR"].values, float),
             grid=tuple(int(x) for x in d.attrs.get("grid", (38, 26))))
+        for k in ("ECCO_TEMP", "ECCO_SALT"):
+            if k in d:
+                setattr(c, k, np.asarray(d[k].values, float))
         d.close()
         order = np.argsort(c.month_index, kind="stable")
         for k in ("month_index", "grid_y", "grid_x", "lat", "lon", "wmo",
                   "year", "year_split", "float_split", "TEMP", "SALT",
-                  "TEMP_ERR", "SALT_ERR"):
-            setattr(c, k, getattr(c, k)[order])
+                  "TEMP_ERR", "SALT_ERR", "ECCO_TEMP", "ECCO_SALT"):
+            if getattr(c, k) is not None:
+                setattr(c, k, getattr(c, k)[order])
         uniq, start = np.unique(c.month_index, return_index=True)
         stop = np.r_[start[1:], c.month_index.size]
         c._by_month = {int(m): (int(a), int(b))
@@ -423,12 +431,14 @@ def build_argo_sample(c: ArgoCohort, norm: ArgoNorm, t_src: int,
     tgt_lat = np.repeat(c.lat[target_rows], L)
     tgt_lon = np.repeat(c.lon[target_rows], L)
     tgt_lev = np.tile(c.levels, R)
+    tgt_row = np.repeat(target_rows, L)     # cohort row behind every query
 
     if cfg.n_queries and R * L > cfg.n_queries:
         pick = rng.choice(R * L, cfg.n_queries, replace=False)
         qcoord, target, tmask = qcoord[pick], target[pick], tmask[pick]
         tgt_wmo, tgt_lat = tgt_wmo[pick], tgt_lat[pick]
         tgt_lon, tgt_lev = tgt_lon[pick], tgt_lev[pick]
+        tgt_row = tgt_row[pick]
 
     return dict(
         coord=torch.as_tensor(coord, dtype=torch.float64),
@@ -449,7 +459,8 @@ def build_argo_sample(c: ArgoCohort, norm: ArgoNorm, t_src: int,
         target=torch.as_tensor(np.nan_to_num(target), dtype=torch.float32),
         target_mask=torch.as_tensor(tmask),
         target_wmo=tgt_wmo, target_lat=tgt_lat, target_lon=tgt_lon,
-        target_level=tgt_lev, target_month=int(t_src + lead),
+        target_level=tgt_lev, target_row=tgt_row,
+        target_month=int(t_src + lead),
         t_src=int(t_src), lead=int(lead),
         n_input_profiles=int(profile_rows.size),
         n_target_profiles=int(R),
