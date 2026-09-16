@@ -27,7 +27,7 @@
 
 ## Table 1 — Main real-data results, by forecast lead
 
-_gulfstream — **target:** WOA23 monthly anomaly; 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
+_gulfstream — **target:** WOA23 monthly anomaly; **backbone:** Perceiver-style latent (D4RTFusion); 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
 
 ### gulfstream
 
@@ -48,7 +48,7 @@ _gulfstream — **target:** WOA23 monthly anomaly; 405,383 parameters, identical
 | EN4 (external) | TEMP | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.0294 ± 0.0000 / 0.851 | 1.00× |
 | EN4 (external) | SALT | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 0.9928 ± 0.0000 / 0.853 | 1.00× |
 
-_npac_gyre — **target:** WOA23 monthly anomaly; 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
+_npac_gyre — **target:** WOA23 monthly anomaly; **backbone:** Perceiver-style latent (D4RTFusion); 405,383 parameters, identical across the three rows; cap 128 profiles/month; 3 seeds._
 
 ### npac_gyre
 
@@ -158,7 +158,7 @@ ECCO V4r4 ends 2017 and cannot be scored on this era at all. It appears in the b
 
 ### gulfstream — ECCO-overlap protocol
 
-_Not run._
+_Not run in this block; ECCO is scored in Table 8._
 
 ### npac_gyre — recent3 protocol, evaluation years 2023-2024
 
@@ -173,7 +173,7 @@ ECCO V4r4 ends 2017 and cannot be scored on this era at all. It appears in the b
 
 ### npac_gyre — ECCO-overlap protocol
 
-_Not run._
+_Not run in this block; ECCO is scored in Table 8._
 
 **Both ECCO and EN4 assimilate the very floats being scored.** They are upper references that have already seen the answer, not competitors, and their beating the model is expected rather than a result.
 
@@ -225,7 +225,7 @@ _Seed spread in this region reaches ±0.0575 RMSE across three seeds. Any differ
 | simulation-pretrained | `_recent3_ft` | 3 | Uniform | 0.872 | 0.896 | 1.028× | 0.888 |
 | simulation-pretrained | `_recent3_ft` | 3 | Count / Perceiver | 0.860 | 0.890 | 1.035× | 0.885 |
 
-**The question this table asks:** does pretraining on the CESM2-LE anomaly field, sampled at the real float positions, then fine-tuning on observations beat training on observations alone? The simulation store holds only 72 months, and pretraining validation stopped improving within 2000-3000 steps and never beat the simulation's own climatology in most runs, so a null or negative result here speaks to this simulation's size, not to pretraining in general.
+**The question this table asks:** does pretraining on the CESM2-LE anomaly field, sampled at the real float positions, then fine-tuning on observations beat training on observations alone? The simulation store holds only 72 months, and pretraining validation stopped improving within 1000-4000 steps and never beat the simulation's own climatology in most runs, so a null or negative result here speaks to this simulation's size, not to pretraining in general.
 
 **Split note for Tables 5 and 6.** The size ladder and the density arms were run before the most-recent-three-years split, on the main protocol (train 2000-2018, validation 2019-2021, test 2022-2024), at lead 0 only. Lead 0 was unaffected by the lead-target leak, so they remain valid, but their test years differ from Tables 1-4 and 7.
 
@@ -254,3 +254,67 @@ _Seed spread in this region reaches ±0.0575 RMSE across three seeds. Any differ
 The cap is not the delivered count: a month supplies fewer profiles than the cap whenever it has fewer, and training withholds ~30 % of each month's floats as targets.
 
 **The question this table asks:** does more real Argo help? Causal OI converts added profiles into accuracy automatically, so if the learned rows do not, the limit is the model rather than the observations.
+
+## Table 8 — Retrained on ECCO's observations
+
+### gulfstream — ecco_overlap protocol, evaluation years 2015-2017
+
+| training data | seeds | row | TEMP RMSE | TEMP J lead 0 | TEMP J lead 6 | SALT J lead 0 |
+|---|---:|---|---:|---:|---:|---:|
+| ECCO obs, all instruments | 3 | **DFS (ours)** | 1.1897 ± 0.0123 | 0.974 | 0.977 | 0.947 |
+| ECCO obs, all instruments | 3 | Uniform | 1.1930 ± 0.0104 | 0.976 | 0.976 | 0.948 |
+| ECCO obs, all instruments | 3 | Count / Perceiver | 1.1943 ± 0.0087 | 0.977 | 0.977 | 0.951 |
+| ECCO obs, Argo only | 3 | **DFS (ours)** | 1.2581 ± 0.0105 | 0.976 | 0.976 | 0.941 |
+| ECCO obs, Argo only | 3 | Uniform | 1.2537 ± 0.0071 | 0.973 | 0.972 | 0.938 |
+| ECCO obs, Argo only | 3 | Count / Perceiver | 1.2562 ± 0.0096 | 0.975 | 0.975 | 0.942 |
+| GDAC Argo (our cohort) | 3 | **DFS (ours)** | 1.3241 ± 0.0151 | 1.002 | 1.000 | 0.971 |
+| GDAC Argo (our cohort) | 3 | Uniform | 1.3273 ± 0.0122 | 1.004 | 1.003 | 0.967 |
+| GDAC Argo (our cohort) | 3 | Count / Perceiver | 1.3244 ± 0.0166 | 1.002 | 1.004 | 0.964 |
+
+References, scored on the `_ecco_obs` queries (lead does not change them):
+
+| reference | TEMP RMSE | TEMP J | SALT RMSE | SALT J | query coverage |
+|---|---:|---:|---:|---:|---:|
+| Climatology | 1.2219 ± 0.0000 | 1.000 | 1.2806 ± 0.0000 | 1.000 | — |
+| Persistence | 1.4873 ± 0.0197 | 1.217 | 1.4964 ± 0.0066 | 1.169 | — |
+| Causal OI | 1.2058 ± 0.0064 | 0.987 | 1.2455 ± 0.0065 | 0.973 | — |
+| EN4 (external, gridded) | 1.0626 ± 0.0000 | 0.870 | 1.1196 ± 0.0000 | 0.874 | 86% |
+| ECCO V4r4 (external, gridded monthly) | 1.3062 ± 0.0000 | 1.069 | 1.2926 ± 0.0000 | 1.009 | 77% |
+| ECCO V4r4 (external, its estimate at each observation) | 1.2764 ± 0.0000 | 1.045 | 1.2723 ± 0.0000 | 0.994 | 85% |
+
+_Seed spread in this region reaches ±0.0151 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+### npac_gyre — ecco_overlap protocol, evaluation years 2015-2017
+
+| training data | seeds | row | TEMP RMSE | TEMP J lead 0 | TEMP J lead 6 | SALT J lead 0 |
+|---|---:|---|---:|---:|---:|---:|
+| ECCO obs, all instruments | 3 | **DFS (ours)** | 1.2013 ± 0.0057 | 1.005 | 1.007 | 1.041 |
+| ECCO obs, all instruments | 3 | Uniform | 1.1953 ± 0.0019 | 1.000 | 1.003 | 1.031 |
+| ECCO obs, all instruments | 3 | Count / Perceiver | 1.2023 ± 0.0123 | 1.005 | 1.004 | 1.034 |
+| ECCO obs, Argo only | 3 | **DFS (ours)** | 1.1982 ± 0.0062 | 1.015 | 1.014 | 1.043 |
+| ECCO obs, Argo only | 3 | Uniform | 1.1982 ± 0.0087 | 1.015 | 1.016 | 1.048 |
+| ECCO obs, Argo only | 3 | Count / Perceiver | 1.1967 ± 0.0071 | 1.014 | 1.014 | 1.035 |
+| GDAC Argo (our cohort) | 3 | **DFS (ours)** | 1.4209 ± 0.0062 | 1.016 | 1.015 | 1.034 |
+| GDAC Argo (our cohort) | 3 | Uniform | 1.4243 ± 0.0095 | 1.018 | 1.017 | 1.045 |
+| GDAC Argo (our cohort) | 3 | Count / Perceiver | 1.4244 ± 0.0111 | 1.018 | 1.019 | 1.040 |
+
+References, scored on the `_ecco_obs` queries (lead does not change them):
+
+| reference | TEMP RMSE | TEMP J | SALT RMSE | SALT J | query coverage |
+|---|---:|---:|---:|---:|---:|
+| Climatology | 1.1957 ± 0.0000 | 1.000 | 1.2215 ± 0.0000 | 1.000 | — |
+| Persistence | 1.3264 ± 0.0168 | 1.109 | 1.2787 ± 0.0165 | 1.047 | — |
+| Causal OI | 1.1746 ± 0.0025 | 0.982 | 1.1544 ± 0.0030 | 0.945 | — |
+| EN4 (external, gridded) | 0.9623 ± 0.0000 | 0.805 | 0.8856 ± 0.0000 | 0.725 | 89% |
+| ECCO V4r4 (external, gridded monthly) | 1.0757 ± 0.0000 | 0.900 | 1.0316 ± 0.0000 | 0.845 | 73% |
+| ECCO V4r4 (external, its estimate at each observation) | 1.1046 ± 0.0000 | 0.924 | 1.1215 ± 0.0000 | 0.918 | 84% |
+
+_Seed spread in this region reaches ±0.0062 RMSE across three seeds. Any difference in the column above smaller than that is not resolved by this many seeds, whichever way it points._
+
+**The question this table asks:** trained on exactly the in-situ profiles ECCO V4r4 assimilated, how does the model compare with ECCO itself on the same held-out observations? ECCO's observations end in 2017, so every arm uses the ECCO-overlap split (train 2000-2012, validation 2013-2014, test 2015-2017) and cannot share test years with Tables 1-7.
+
+**What each arm isolates.** *All instruments* adds ECCO's XBT, CTD, glider, seal-tag and hydrographic profiles to the Argo inputs. *Argo only* keeps ECCO's Argo profiles, so the gap between the two is what the other instruments add. *GDAC Argo* is this project's own cohort on the same split, linking the table to Tables 1-7. Non-Argo profiles are never targets: their files name an institution, not an instrument, so they cannot be held out platform-disjointly.
+
+**Compare arms by J, not RMSE.** RMSE here is in z units scaled by each arm's own training statistics, so the same error reads differently in each arm (climatology alone scores 1.22 / 1.29 / 1.32 in the three Gulf Stream arms). The GDAC arm is also scored on more held-out floats (62 vs 53 in the Gulf Stream), because 9 of its held-out floats are absent from ECCO's Argo set. J divides out the scale; the float difference remains, so the ECCO-vs-GDAC gap is suggestive, not a clean contrast. The two ECCO arms share identical held-out floats.
+
+**ECCO is not out of sample.** ECCO fitted these observations, held-out floats included, and its in-situ row is its own estimate at those very points. It is a reanalysis that has seen the answer; the model has not. ECCO's in-situ row covers every query with a valid anomaly target, where the gridded monthly row is limited by its depth cut.
