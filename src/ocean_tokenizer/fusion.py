@@ -568,6 +568,228 @@ class D4RTFusion(DFSAttention):
         return self.decode(latent, query_coord, query_scale, lead, chunk)
 
 
+# --------------------------------------------------------------------------
+# Variant F — DFS–GAOT-Argo: spatially addressed latent + multiscale neighbourhoods
+# --------------------------------------------------------------------------
+_KM_PER_DEG = 111.195
+
+
+class GAOTFusion(D4RTFusion):
+    """D4RT fusion with a GAOT-style geometry-aware encoder and processor.
+
+    Replaces the two stages of :class:`D4RTFusion` that have no notion of
+    place -- the 32 unaddressed resampler slots and the 32 free latent vectors
+    -- with **anchors that have spatial addresses**, following the
+    "DFS with a modern ocean reconstruction backbone" first-run proposal
+    (GAOT, NeurIPS 2025). Everything downstream is kept: the reference slots,
+    the evidence-vs-background competition at ``log lambda_bg``, the
+    independent-query D4RT decoder with its local refiner, the loss and the
+    data contract. Improvements are therefore attributable to the spatial
+    representation alone.
+
+    1. **Anchors.** ``nx * ny`` horizontal anchors on a fixed grid over the
+       region box, times ``len(anchor_depths)`` depth anchors taken from the
+       cohort level grid. Placement depends on the region box and level grid
+       only, never on targets. Each anchor's initial state is the shared
+       ``coord_features`` of its address, so anchors and queries speak the same
+       coordinate language.
+
+    2. **Multiscale neighbourhood aggregation.** For each scale ``r`` the logit
+       from token ``i`` to anchor ``j`` is a content dot product plus a
+       geometric bias ``-0.5 * ((d_h / l_h)^2 + (d_z / l_z)^2 + (d_t / l_t)^2)``
+       built from horizontal km, depth metres and days scaled SEPARATELY (never
+       a raw distance mixing degrees and metres), plus a learned relative-
+       offset term. Pairs beyond ``cutoff`` e-folds are masked.
+
+    3. **The arm's mass rule, at the same stage as before.** The arms still
+       differ exactly where :class:`dfs.EvidenceResampler` makes them differ:
+
+       * ``dfs`` / ``uniform`` (conservative): each token distributes its whole
+         evidence ``e_i`` (DFS tau, or unit mass) over anchors AND scales -- a
+         softmax over ``(r, j)`` -- so ``sum_{r,j} m_rj = sum_i e_i`` exactly.
+         An anchor's content is the evidence-weighted mean of what it received.
+       * ``count``: the softmax runs over TOKENS inside each anchor's
+         neighbourhood, so multiplicity feeds straight through, and the mass is
+         the neighbourhood token count.
+
+       Evidence metadata travels as its own channel (``m_j``) and is never
+       folded into the normalised features.
+
+    4. **Evidence against the reference, per anchor.** Each anchor attends to
+       its aggregated observation token at bias ``log m_j`` against the null key
+       and the availability-conditioned reference slots at ``log lambda_bg`` --
+       the same competition :class:`DFSAttention` runs globally. An anchor with
+       no evidence in reach has its observation key masked and falls back to
+       the reference: nothing is fabricated at an unobserved anchor.
+
+    5. **Processor.** The inherited global self-attention blocks run over the
+       anchor tokens, which keep their coordinate embeddings.
+
+    The local refiner is unchanged and reads ``tau`` exactly as
+    :class:`D4RTFusion` does, so the arms' semantics there are unchanged too.
+    """
+
+    def __init__(self, encoders, d_model: int = 64, n_latent: int = 32,
+                 n_heads: int = 4, n_self_blocks: int = 2, c_out: int = 2,
+                 mlp_ratio: float = 2.0, anchor_grid=None,
+                 anchor_box: dict | None = None,
+                 anchor_hw: tuple[int, int] = (8, 4),
+                 anchor_depths=(5.0, 35.0, 105.0, 186.3, 326.9, 527.7,
+                                984.7, 1400.5),
+                 scales_km: tuple[float, ...] = (300.0, 900.0),
+                 scales_m: tuple[float, ...] = (100.0, 400.0),
+                 scale_t_d: float = 30.0, cutoff: float = 3.0, **kw):
+        super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
+                         c_out, mlp_ratio, anchor_grid=None, **kw)
+        if anchor_box is None:
+            raise ValueError("GAOTFusion needs anchor_box=dict(lat=(lo, hi), "
+                             "lon=(lo, hi)) -- anchors are placed on the region")
+        mode = "count" if self.mass_mode == "count" else "conservative"
+        # the Perceiver-specific stages this backbone replaces: no unaddressed
+        # resampler slots, no free latent vectors
+        del self.resampler
+        del self.latent0
+        self.agg_mode = mode
+        nx, ny = anchor_hw
+        (la0, la1), (lo0, lo1) = anchor_box["lat"], anchor_box["lon"]
+        lat_c = la0 + (torch.arange(ny) + 0.5) * (la1 - la0) / ny
+        lon_c = lo0 + (torch.arange(nx) + 0.5) * (lo1 - lo0) / nx
+        dep = torch.as_tensor(anchor_depths, dtype=torch.float32)
+        g = torch.stack(torch.meshgrid(dep, lat_c, lon_c, indexing="ij"), -1)
+        coords = torch.cat([g[..., 1:2], g[..., 2:3], g[..., 0:1],
+                            torch.zeros_like(g[..., :1])], -1).reshape(-1, 4)
+        self.register_buffer("gaot_anchor", coords.float())    # (J, 4)
+        self.n_anchor = coords.shape[0]
+        self.register_buffer("gaot_l_km", torch.tensor(scales_km).float())
+        self.register_buffer("gaot_l_m", torch.tensor(scales_m).float())
+        self.gaot_l_t = float(scale_t_d)
+        self.gaot_cutoff = float(cutoff)
+        R = len(scales_km)
+        assert len(scales_m) == R
+        self.gaot_anchor_proj = nn.Linear(N_COORD_FEATS, d_model)
+        self.gaot_ln_kv = nn.LayerNorm(d_model)
+        self.gaot_ln_q = nn.LayerNorm(d_model)
+        # q/k shared across scales (scale identity enters through the geometric
+        # bias and a per-scale query offset); v/o per scale so each scale can
+        # carry its own summary
+        self.gaot_wq = nn.Linear(d_model, d_model)
+        self.gaot_wk = nn.Linear(d_model, d_model)
+        self.gaot_scale_q = nn.Parameter(torch.zeros(R, d_model))
+        self.gaot_wv = nn.ModuleList(nn.Linear(d_model, d_model) for _ in range(R))
+        self.gaot_rel = nn.Linear(3, n_heads)
+        nn.init.zeros_(self.gaot_rel.weight)
+        nn.init.zeros_(self.gaot_rel.bias)
+        self.gaot_mix = nn.Linear(R * d_model, d_model)
+
+    # ---- geometry --------------------------------------------------------
+    def _offsets(self, tcoord):
+        """-> (dh_km, dz_m) each (B, N, J) from tokens to anchors."""
+        a = self.gaot_anchor
+        dlat = tcoord[..., 0, None] - a[:, 0]
+        dlon = (tcoord[..., 1, None] - a[:, 1] + 180.0) % 360.0 - 180.0
+        mlat = torch.deg2rad(0.5 * (tcoord[..., 0, None] + a[:, 0]))
+        dy = dlat * _KM_PER_DEG
+        dx = dlon * _KM_PER_DEG * torch.cos(mlat)
+        dz = tcoord[..., 2, None] - a[:, 2]
+        return dx, dy, dz
+
+    def _anchor_tokens(self, B):
+        return self.gaot_anchor_proj(coord_features(self.gaot_anchor))[None].expand(B, -1, -1)
+
+    def aggregate(self, tokens: TokenBatch, obs_mask, e):
+        """Observation tokens -> per-anchor content (B,J,d) and mass (B,J)."""
+        B, N, _ = tokens.emb.shape
+        J, R, h = self.n_anchor, self.gaot_l_km.numel(), self.fuse_attn.h
+        dh = tokens.emb.shape[-1] // h
+        coord = torch.nan_to_num(tokens.coord)
+        dx, dy, dz = self._offsets(coord)                           # (B,N,J)
+        t_off = (torch.zeros_like(e) if tokens.time_offset is None
+                 else torch.nan_to_num(tokens.time_offset))
+        dt2 = (t_off / self.gaot_l_t)[..., None] ** 2               # (B,N,1)
+        kv = self.gaot_ln_kv(torch.nan_to_num(tokens.emb))
+        kh = self.gaot_wk(kv).view(B, N, h, dh)
+        anc = self.gaot_ln_q(self._anchor_tokens(B))                # (B,J,d)
+        rel = self.gaot_rel(torch.stack([dx / 1000.0, dy / 1000.0,
+                                         dz / 1000.0], -1))         # (B,N,J,h)
+        logits, inside = [], []
+        for r in range(R):
+            lh, lz = self.gaot_l_km[r], self.gaot_l_m[r]
+            d2 = (dx / lh) ** 2 + (dy / lh) ** 2 + (dz / lz) ** 2 + dt2
+            qh = self.gaot_wq(anc + self.gaot_scale_q[r]).view(B, J, h, dh)
+            s = torch.einsum("bnhd,bjhd->bhnj", kh, qh) / math.sqrt(dh)
+            lg = s - 0.5 * d2[:, None] + rel.permute(0, 3, 1, 2)
+            ok = (d2 <= self.gaot_cutoff ** 2) & obs_mask[..., None]  # (B,N,J)
+            logits.append(lg.masked_fill(~ok[:, None], -float("inf")))
+            inside.append(ok)
+        lg = torch.stack(logits, 2)                                  # (B,h,R,N,J)
+        ok = torch.stack(inside, 1)                                  # (B,R,N,J)
+        if self.agg_mode == "count":
+            # normalise over TOKENS in each anchor's neighbourhood: multiplicity
+            # feeds straight through, mass is the neighbourhood token count
+            A = torch.nan_to_num(torch.softmax(lg, dim=3), nan=0.0)
+            w = A
+            mass = ok.sum(dim=2).to(e.dtype)                         # (B,R,J)
+        else:
+            # conservative: every token spreads its evidence over (scale, anchor)
+            flat = lg.permute(0, 1, 3, 2, 4).reshape(B, h, N, R * J)
+            A = torch.nan_to_num(torch.softmax(flat, dim=-1), nan=0.0)
+            A = A.reshape(B, h, N, R, J).permute(0, 1, 3, 2, 4)      # (B,h,R,N,J)
+            w = A * e[:, None, None, :, None]
+            mass = w.sum(dim=3).mean(dim=1)                          # (B,R,J)
+        outs = []
+        for r in range(R):
+            vh = self.gaot_wv[r](kv).view(B, N, h, dh)
+            num = torch.einsum("bhnj,bnhd->bjhd", w[:, :, r], vh)
+            den = w[:, :, r].sum(dim=2).clamp(min=_LOG_EPS).transpose(1, 2)[..., None]
+            outs.append((num / den).reshape(B, J, -1))
+        content = self.gaot_mix(torch.cat(outs, -1))
+        m = mass.sum(dim=1)                                          # (B,J)
+        return content * (m > 0)[..., None].to(content.dtype), m
+
+    # ---- fuse -------------------------------------------------------------
+    def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
+        if self.causal_check and tokens.time_offset is not None:
+            check_causal(tokens.time_offset, tokens.support_t, tokens.mask)
+        self._tokens = tokens
+        target = target or self.target_scale
+        obs_mask, bg_mask = self._split(tokens)
+        B = tokens.emb.shape[0]
+        res = self.evidence(tokens, target)
+        e = torch.nan_to_num(res.tau, nan=0.0).clamp(min=0.0) * obs_mask.to(res.tau.dtype)
+        content, m = self.aggregate(tokens, obs_mask, e)
+        self.last_evidence = dict(tau=res.tau, nu=m, total=res.total,
+                                  by_modality=res.by_modality)
+
+        z = self._anchor_tokens(B)
+        if bool(bg_mask.any()):
+            z = z + self.bg_gate * self.bg_attn(
+                self.fuse_ln_q(z), self.bg_ln_kv(tokens.emb), key_mask=bg_mask)
+        J, d = z.shape[1], z.shape[2]
+
+        # per-anchor competition: [own observation summary @ log m_j,
+        #                           null @ log lambda_bg, reference slots]
+        own = content.reshape(B * J, 1, d)
+        own_mask = (m > 0).reshape(B * J, 1)
+        null = self.null_token.expand(B * J, 1, -1)
+        kv = torch.cat([own, null], dim=1)
+        kv_mask = torch.cat([own_mask, torch.ones_like(own_mask)], dim=1)
+        bias = torch.cat([torch.log(m.reshape(B * J, 1) + _LOG_EPS),
+                          self.log_lambda_bg.expand(B * J, 1)], dim=1)
+        extra = self._extra_kv(tokens)
+        if extra is not None:
+            e_kv, e_mask, e_bias = extra
+            n = e_kv.shape[1]
+            kv = torch.cat([kv, e_kv[:, None].expand(B, J, n, d).reshape(B * J, n, d)], 1)
+            kv_mask = torch.cat([kv_mask, e_mask[:, None].expand(B, J, n).reshape(B * J, n)], 1)
+            bias = torch.cat([bias, e_bias[:, None].expand(B, J, n).reshape(B * J, n)], 1)
+        zq = z.reshape(B * J, 1, d)
+        z = z + self.fuse_attn(self.fuse_ln_q(zq), self.fuse_ln_kv(kv),
+                               key_bias=bias, key_mask=kv_mask).reshape(B, J, d)
+        for blk in self.blocks:
+            z = blk(z)
+        return z
+
+
 class _nullctx:
     def __enter__(self):
         return None
@@ -602,7 +824,8 @@ VARIANTS = {"perceiver": StandardPerceiver,
             "resampler": FixedBudgetResampler,
             "mbca": MBCA,
             "dfs": DFSAttention,
-            "d4rt": D4RTFusion}
+            "d4rt": D4RTFusion,
+            "gaot": GAOTFusion}
 
 
 def build_fusion_model(variant: str, grid, d_model: int = 128,

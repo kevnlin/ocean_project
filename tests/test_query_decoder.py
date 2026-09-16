@@ -586,3 +586,110 @@ def test_no_observed_columns_keeps_everything():
     idx = torch.arange(3 * HW)
     kept = drop_observed_columns(idx, torch.zeros(HW, dtype=torch.bool), HW)
     assert torch.equal(kept, idx)
+
+
+# --------------------------------------------------------------------------
+# GAOT backbone (DFS–GAOT-Argo): spatially addressed anchors
+# --------------------------------------------------------------------------
+_BOX = dict(lat=(25.0, 50.0), lon=(280.0, 331.0))
+
+
+def _gaot(variant="gaot", seed=0):
+    from ocean_tokenizer.fusion import build_fusion_model
+    m = build_fusion_model(variant, _Grid(), d_model=D_MODEL, n_latent=N_LATENT,
+                           n_heads=N_HEADS, n_self_blocks=2, seed=seed,
+                           max_lead=6, anchor_box=_BOX)
+    m.eval()
+    return m
+
+
+def _box_obs(P=9, seed=0, lat=(26, 49), lon=(281, 330)):
+    rng = np.random.default_rng(seed)
+    return {"profiles": dict(
+        prof=torch.tensor(rng.normal(size=(1, P, 2, len(DEPTHS))).astype("float32")),
+        lat=torch.tensor(rng.uniform(*lat, (1, P)).astype("float32")),
+        lon=torch.tensor(rng.uniform(*lon, (1, P)).astype("float32")),
+        month=torch.full((1,), 3))}
+
+
+def _box_q(Q=11, seed=2):
+    rng = np.random.default_rng(seed)
+    q = np.stack([rng.uniform(26, 49, Q), rng.uniform(281, 330, Q),
+                  rng.uniform(0, 985, Q), np.full(Q, 3.0)], -1).astype("float32")
+    return torch.tensor(q[None])
+
+
+def _masses(m, obs):
+    tok = m.encode(obs, batch=1, device=torch.device("cpu"))
+    with torch.no_grad():
+        m.fuse(tok)
+    return m.last_evidence
+
+
+def test_gaot_is_size_matched_to_the_perceiver_backbone():
+    from ocean_tokenizer.fusion import build_fusion_model
+    n_g = sum(p.numel() for p in _gaot().parameters())
+    n_p = sum(p.numel() for p in build_fusion_model(
+        "d4rt", _Grid(), d_model=D_MODEL, n_latent=N_LATENT, n_heads=N_HEADS,
+        n_self_blocks=2, seed=0, max_lead=6).parameters())
+    assert abs(n_g - n_p) / n_p < 0.01
+
+
+def test_gaot_arms_are_parameter_identical():
+    counts = {v: sum(p.numel() for p in _gaot(v).parameters())
+              for v in ("gaot", "gaot_uniform", "gaot_count")}
+    assert len(set(counts.values())) == 1
+
+
+def test_gaot_forward_is_finite_with_and_without_profiles():
+    m, q = _gaot(), _box_q()
+    lead = torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        assert torch.isfinite(m(_box_obs(), q, lead=lead)).all()
+        assert torch.isfinite(m({}, q, lead=lead)).all()
+
+
+def test_gaot_conservative_transport_preserves_total_evidence():
+    for v in ("gaot", "gaot_uniform"):
+        ev = _masses(_gaot(v), _box_obs())
+        tot = (torch.nan_to_num(ev["tau"]) ).sum()
+        assert torch.allclose(ev["nu"].sum(), tot, rtol=1e-4), v
+
+
+def test_gaot_count_arm_is_not_the_uniform_arm():
+    """The port must keep Count and Uniform distinct, or the comparison changed."""
+    q, lead = _box_q(), torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        u = _gaot("gaot_uniform")(_box_obs(), q, lead=lead)
+        c = _gaot("gaot_count")(_box_obs(), q, lead=lead)
+    assert not torch.allclose(u, c)
+
+
+def test_gaot_prediction_does_not_depend_on_other_queries():
+    m, q = _gaot(), _box_q()
+    with torch.no_grad():
+        full = m(_box_obs(), q, lead=torch.zeros(1, 11, dtype=torch.long))
+        part = m(_box_obs(), q[:, :4], lead=torch.zeros(1, 4, dtype=torch.long))
+    assert torch.allclose(full[:, :4], part, atol=1e-5)
+
+
+def test_gaot_is_invariant_to_profile_order():
+    m, q = _gaot(), _box_q()
+    obs = _box_obs()
+    perm = torch.randperm(9)
+    obs_p = {"profiles": {k: (v[:, perm] if k != "month" else v)
+                          for k, v in obs["profiles"].items()}}
+    lead = torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        assert torch.allclose(m(obs, q, lead=lead), m(obs_p, q, lead=lead), atol=1e-4)
+
+
+def test_gaot_anchor_out_of_reach_gets_no_mass_and_stays_finite():
+    """Evidence far outside the region reaches no anchor: nothing is fabricated."""
+    m = _gaot()
+    far = _box_obs(lat=(-60, -55), lon=(100, 110))
+    ev = _masses(m, far)
+    assert float(ev["nu"].sum()) == 0.0
+    with torch.no_grad():
+        out = m(far, _box_q(), lead=torch.zeros(1, 11, dtype=torch.long))
+    assert torch.isfinite(out).all()

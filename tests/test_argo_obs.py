@@ -309,8 +309,19 @@ def test_apply_splits_never_moves_the_heldout_float_cohort(cohort):
 def test_ecco_overlap_eval_era_is_inside_ecco_v4r4_coverage():
     """ECCO V4r4 ends 2018-01-01; the secondary protocol must respect that."""
     from ocean_tokenizer import protocol as PR
-    for split in ("train", "validation", "development", "holdout"):
-        assert PR.ECCO_OVERLAP_SPLITS[split][1] <= 2017, split
+    for split, (_, hi) in PR.ECCO_OVERLAP_SPLITS.items():
+        assert hi <= 2017, split
+
+
+def test_ecco_overlap_development_era_is_not_shadowed():
+    """apply_splits is last-wins; a later key must not swallow 2017."""
+    from ocean_tokenizer import protocol as PR
+    import numpy as np
+    from types import SimpleNamespace
+    from ocean_tokenizer.argo_obs import ArgoCohort
+    c = SimpleNamespace(year=np.arange(2000, 2018))
+    ArgoCohort.apply_splits(c, PR.ECCO_OVERLAP_SPLITS)
+    assert list(c.year_split[-3:]) == ["development"] * 3
 
 
 def test_split_protocols_do_not_overlap_between_train_and_eval():

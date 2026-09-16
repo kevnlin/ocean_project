@@ -98,8 +98,15 @@ ap.add_argument("--init-checkpoint-dir", default=None,
 ap.add_argument("--save-checkpoint-dir", default=None,
                 help="write each variant's selected weights to "
                      "<dir>/<region>_<variant>_s<seed>.pt")
+ap.add_argument("--backbone", default="d4rt", choices=["d4rt", "gaot"],
+                help="d4rt: Perceiver-style unaddressed latent (Tables 1-8); "
+                     "gaot: DFS-GAOT-Argo spatially addressed anchors with "
+                     "multiscale neighbourhood aggregation (same decoder)")
 ap.add_argument("--smoke", action="store_true")
 args = ap.parse_args()
+# the same three arms on the chosen backbone; the row keys stay put so the
+# table generator reads either family unchanged
+ROWS = {k: v.replace("d4rt", args.backbone, 1) for k, v in ROWS.items()}
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 COHORT = args.cohort or os.path.join(ROOT, "data", "argo_cohort",
@@ -255,7 +262,9 @@ class FusionRow(torch.nn.Module):
             variant, _Grid(), d_model=args.d_model, n_latent=args.n_latent,
             n_heads=args.n_heads, n_self_blocks=args.n_self_blocks, seed=seed,
             n_dec_blocks=args.n_dec_blocks, max_lead=max(leads),
-            query_chunk=args.query_chunk)
+            query_chunk=args.query_chunk,
+            **({"anchor_box": P.REGIONS[args.region]}
+               if args.backbone == "gaot" else {}))
         self.variant = variant
 
     def _obs(self, s: dict) -> dict:
@@ -377,6 +386,38 @@ class GriddedRow:
                     gy, gx = _cells(lat, lon)
                     x = x - CLIM[int(s["target_month"]) % 12, j, col, gy, gx]
                 out[:, j] = (x - self.norm.mean[ch][col]) / self.norm.std[ch][col]
+        self.n_query += out.shape[0]
+        self.n_covered += int(np.isfinite(out[:, 0]).sum())
+        return torch.as_tensor(out, dtype=torch.float32, device=dev)
+
+    def eval(self): pass
+    def train(self): pass
+
+
+class InsituEstimateRow:
+    """ECCO V4r4's own estimate at each held-out observation, from its in-situ files.
+
+    Where the gridded ECCO row interpolates monthly means (and reaches only the
+    queries its cut covers), this reads the value ECCO itself produced at that
+    profile's time, position and depth, so it is scored on every query. The
+    cohort builder already moved it onto the target with the same WOA23
+    climatology, so only the train-only z-scoring is applied here.
+
+    ECCO fitted these very observations, held-out floats included: it is a
+    reanalysis that has seen the answer, not an out-of-sample peer.
+    """
+
+    def __init__(self, cohort, norm):
+        self.c, self.norm = cohort, norm
+        self.n_query = self.n_covered = 0
+
+    def __call__(self, s):
+        rows = np.asarray(s["target_row"], int)
+        li = np.searchsorted(LEVELS, np.asarray(s["target_level"], float)).clip(
+            0, LEVELS.size - 1)
+        out = np.stack([(getattr(self.c, f"ECCO_{ch}")[rows, li]
+                         - self.norm.mean[ch][li]) / self.norm.std[ch][li]
+                        for ch in CHANNELS], axis=-1)
         self.n_query += out.shape[0]
         self.n_covered += int(np.isfinite(out[:, 0]).sum())
         return torch.as_tensor(out, dtype=torch.float32, device=dev)
@@ -599,7 +640,9 @@ if len(pc) != 1:
         f"the three learned rows are NOT parameter-matched: {sorted(pc)}; a "
         f"difference between them is no longer attributable to the mass rule "
         f"alone")
-results["model"] = {"family": "fusion.D4RTFusion", "streams": ["profiles"],
+results["model"] = {"family": ("fusion.GAOTFusion" if args.backbone == "gaot"
+                               else "fusion.D4RTFusion"),
+                    "backbone": args.backbone, "streams": ["profiles"],
                     "rows": model_meta, "parameter_matched": len(pc) == 1}
 
 if ANOMALY_REF.startswith("cesm2"):
@@ -644,6 +687,11 @@ for name, factory in _REFS:
         "max_depth_m": float(ref.depth.max()),
         "product_range": [str(ref.time[0]), str(ref.time[-1])]}
 
+if c.ECCO_TEMP is not None and not ANOMALY_REF.startswith("cesm2"):
+    trained["ecco_insitu"] = InsituEstimateRow(c, norm)
+    warnings_.append("ecco_insitu: ECCO V4r4's estimate at each held-out "
+                     "observation; ECCO assimilated these observations")
+
 # ------------------------------------------------------------------- scoring
 per_row, cl_stats = {}, {}
 for name, model in trained.items():
@@ -656,7 +704,7 @@ for name, model in trained.items():
         if lead == 0:
             cl_stats[name] = sc
     per_row[name] = per_lead
-    if isinstance(model, GriddedRow) and model.n_query:
+    if isinstance(model, (GriddedRow, InsituEstimateRow)) and model.n_query:
         results.setdefault("reference_coverage", {}).setdefault(name, {})[
             "query_coverage"] = model.n_covered / model.n_query
     r0 = per_lead["lead0"]["channels"]
@@ -695,7 +743,8 @@ counts = {"n_profiles": args.n_profiles,
           "leads": leads, "steps": args.steps,
           "eval_design": "fixed_target",
           "eval_target_months": len(EVAL_TARGETS),
-          "init_checkpoint_dir": args.init_checkpoint_dir}
+          "init_checkpoint_dir": args.init_checkpoint_dir,
+          "backbone": args.backbone}
 
 art = P.ResultArtifact(
     package="P0", track="A", region=args.region, results=results,

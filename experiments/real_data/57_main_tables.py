@@ -9,6 +9,8 @@ so the tables cannot drift from the runs they describe.
   Table 3  against the traditional baselines: climatology, causal OI, Count,
            Uniform, DFS
   Table 4  external references: ECCO V4r4 and EN4 alongside DFS/Uniform/OI
+  Table 8  retrained on ECCO V4r4's own in-situ observations, scored with ECCO's
+           estimate at the same held-out observations (eval 2015-2017)
 
 `J = RMSE_model / RMSE_climatology`, computed on exactly the same slice
 (same rows scored, same lead, same band) as the RMSE beside it, so the
@@ -40,6 +42,15 @@ ap.add_argument("--pretrain-arms", nargs="*", default=["_recent3_obs", "_recent3
                 help="artifact suffixes compared as from-scratch vs simulation-pretrained")
 ap.add_argument("--density-arms", nargs="*", default=["_anom_p24", "_anom"],
                 help="artifact suffixes to compare as a profile-count stress")
+ap.add_argument("--ecco-arms", nargs="*",
+                default=["_ecco_obs", "_ecco_argo", "_ecco_gdac"],
+                help="artifact suffixes for the ECCO-observation comparison")
+ap.add_argument("--out", default="main_tables.md",
+                help="report filename under reports/real_data")
+ap.add_argument("--title", default="Main tables — real-data results")
+ap.add_argument("--compare-arms", nargs="*", default=[],
+                help="NEW:OLD suffix pairs shown side by side in a backbone "
+                     "comparison table, e.g. _gaot_recent3_obs:_recent3_obs")
 args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -127,6 +138,10 @@ def provenance(region: str, arts: list) -> list[str]:
              "none": "raw field (per-level train mean removed, no seasonal cycle)",
              "unknown": "unrecorded — the cohort did not say"}.get(tgt, tgt)
     bits = [f"**target:** {label}"]
+    bb = {(a.counts or {}).get("backbone") or "d4rt" for a in arts}
+    bits.append("**backbone:** " + "/".join(
+        {"d4rt": "Perceiver-style latent (D4RTFusion)",
+         "gaot": "GAOT spatial anchors (GAOTFusion)"}.get(b, b) for b in sorted(bb)))
     if len(m["params"]) == 1:
         bits.append(f"{m['params'].pop():,} parameters, identical across the three rows")
     elif m["params"]:
@@ -227,6 +242,53 @@ def table_density(region: str) -> list[str]:
     return L + resolving_note(region, args.density_arms) + ["The cap is not the delivered count: a month supplies fewer "
                 "profiles than the cap whenever it has fewer, and training "
                 "withholds ~30 % of each month's floats as targets.", ""]
+
+
+ECCO_ARM_LABEL = {"_ecco_obs": "ECCO obs, all instruments",
+                  "_ecco_argo": "ECCO obs, Argo only",
+                  "_ecco_gdac": "GDAC Argo (our cohort)"}
+ECCO_REFS = [("train_climatology", "Climatology"),
+             ("source_persistence", "Persistence"),
+             ("objective_interpolation", "Causal OI"),
+             ("en4", "EN4 (external, gridded)"),
+             ("ecco", "ECCO V4r4 (external, gridded monthly)"),
+             ("ecco_insitu", "ECCO V4r4 (external, its estimate at each observation)")]
+
+
+def table_ecco(region: str) -> list[str]:
+    """Same model, same split, same held-out floats; only the training data moves.
+
+    Every arm is scored on held-out Argo floats in 2015-2017 (the WMO set of the
+    GDAC cohort). The ECCO arms read those floats as ECCO QC'd them, the GDAC
+    arm as the GDAC delivered them -- the same profiles to within 0.02 degC.
+    """
+    rows = arm_rows(region, args.ecco_arms)
+    if not rows:
+        return [f"### {region}", "", "_Not yet run._", ""]
+    L = [f"### {region} — {eval_era(rows[0][2])}", "",
+         "| training data | seeds | row | TEMP RMSE | TEMP J lead 0 | TEMP J lead 6 | SALT J lead 0 |",
+         "|---|---:|---|---:|---:|---:|---:|"]
+    for sfx, m, a in rows:
+        for key, label in CORE:
+            rt, j0 = cell(a, key, "0", "TEMP")
+            _, j6 = cell(a, key, args.leads[-1], "TEMP")
+            _, js = cell(a, key, "0", "SALT")
+            lab = next((v for k, v in ECCO_ARM_LABEL.items() if sfx.endswith(k)), sfx)
+            L.append(f"| {lab} | {m['seeds']} | {label} | {rt} | {j0} | {j6} | {js} |")
+    ref_arm = rows[0]
+    L += ["", f"References, scored on the `{ref_arm[0]}` queries "
+          "(lead does not change them):", "",
+          "| reference | TEMP RMSE | TEMP J | SALT RMSE | SALT J | query coverage |",
+          "|---|---:|---:|---:|---:|---:|"]
+    for key, label in ECCO_REFS:
+        rt, jt = cell(ref_arm[2], key, "0", "TEMP")
+        rs, js = cell(ref_arm[2], key, "0", "SALT")
+        cov = [((a.results or {}).get("reference_coverage") or {}).get(key, {}).get("query_coverage")
+               for a in ref_arm[2]]
+        cov = [c for c in cov if c is not None]
+        L.append(f"| {label} | {rt} | {jt} | {rs} | {js} | "
+                 f"{f'{np.mean(cov):.0%}' if cov else NA} |")
+    return L + resolving_note(region, [r[0] for r in rows])
 
 
 def table1(region, arts) -> list[str]:
@@ -346,7 +408,7 @@ def table4(region, arts) -> list[str]:
     L += [f"### {region} — ECCO-overlap protocol"
           + (f" ({eval_era(eco)})" if eco else ""), ""]
     if not eco:
-        L += ["_Not run._", ""]
+        L += ["_Not run in this block; ECCO is scored in Table 8._", ""]
         return L
     L += _block(eco, EXTERNAL,
                 "A **secondary protocol**: the eras are shifted inside ECCO "
@@ -386,7 +448,20 @@ HEAD = """<!-- generated by experiments/real_data/57_main_tables.py — do not e
 > before scoring, with the same climatology.
 """
 
-out = ["# Main tables — real-data results", "", HEAD, ""]
+GAOT = any(((a.counts or {}).get("backbone") == "gaot")
+           for r in args.regions for a in load(r))
+out = [f"# {args.title}", "", HEAD, ""]
+if GAOT:
+    out += ["> **Backbone.** Every learned row in this report uses `GAOTFusion` "
+            "(DFS–GAOT-Argo): the Perceiver's 32 unaddressed resampler slots and "
+            "32 free latent vectors are replaced by 256 spatially addressed anchors "
+            "(8 × 4 horizontal × 8 depths over the region box), reached through "
+            "two-scale neighbourhood aggregation (300 km / 100 m and 900 km / "
+            "400 m e-folds). DFS, Uniform and Count keep their original mass rules "
+            "at that stage, each anchor weighs its evidence against the reference "
+            "slots at `log lambda_bg`, and the D4RT query decoder, local refiner, "
+            "loss, data, splits, seeds and step budgets are unchanged. Parameter "
+            "counts are within 0.2 % of the Perceiver backbone at every width.", ""]
 any_data = False
 for tno, (title, fn) in enumerate([
         ("Table 1 — Main real-data results, by forecast lead", table1),
@@ -452,16 +527,23 @@ for region in args.regions:
 out += ["**The question this table asks:** does pretraining on the CESM2-LE anomaly "
         "field, sampled at the real float positions, then fine-tuning on observations "
         "beat training on observations alone? The simulation store holds only 72 "
-        "months, and pretraining validation stopped improving within 2000-3000 steps "
-        "and never beat the simulation's own climatology in most runs, so a null or "
-        "negative result here speaks to this simulation's size, not to pretraining "
-        "in general.", ""]
+        + ("months, and pretraining validation stopped improving within 1000-4000 steps "
+           "and never beat the simulation's own climatology in most runs, so a null or "
+           "negative result here speaks to this simulation's size, not to pretraining "
+           "in general." if not GAOT else
+           "months, so a null or negative result here speaks to this simulation's "
+           "size, not to pretraining in general."), ""]
 
-out += ["**Split note for Tables 5 and 6.** The size ladder and the density arms "
-        "were run before the most-recent-three-years split, on the main protocol "
-        "(train 2000-2018, validation 2019-2021, test 2022-2024), at lead 0 only. "
-        "Lead 0 was unaffected by the lead-target leak, so they remain valid, but "
-        "their test years differ from Tables 1-4 and 7.", ""]
+out += [("**Split note for Tables 5 and 6.** The size ladder and the density arms "
+         "were run before the most-recent-three-years split, on the main protocol "
+         "(train 2000-2018, validation 2019-2021, test 2022-2024), at lead 0 only. "
+         "Lead 0 was unaffected by the lead-target leak, so they remain valid, but "
+         "their test years differ from Tables 1-4 and 7.") if not GAOT else
+        ("**Split note for Tables 5 and 6.** These arms deliberately repeat the "
+         "original size and density experiments on the main protocol (train "
+         "2000-2018, validation 2019-2021, test 2022-2024), read at lead 0, so each "
+         "compares directly with the same table in `main_tables.md`. Their test "
+         "years differ from Tables 1-4 and 7."), ""]
 
 out += ["## Table 6 — Input density", ""]
 for region in args.regions:
@@ -470,7 +552,67 @@ out += ["**The question this table asks:** does more real Argo help? Causal OI "
         "converts added profiles into accuracy automatically, so if the learned "
         "rows do not, the limit is the model rather than the observations.", ""]
 
-path = os.path.join(REPORTS, "main_tables.md")
+out += ["## Table 8 — Retrained on ECCO's observations", ""]
+for region in args.regions:
+    out += table_ecco(region)
+out += ["**The question this table asks:** trained on exactly the in-situ "
+        "profiles ECCO V4r4 assimilated, how does the model compare with ECCO "
+        "itself on the same held-out observations? ECCO's observations end in "
+        "2017, so every arm uses the ECCO-overlap split (train 2000-2012, "
+        "validation 2013-2014, test 2015-2017) and cannot share test years with "
+        "Tables 1-7.", "",
+        "**What each arm isolates.** *All instruments* adds ECCO's XBT, CTD, "
+        "glider, seal-tag and hydrographic profiles to the Argo inputs. *Argo "
+        "only* keeps ECCO's Argo profiles, so the gap between the two is what the "
+        "other instruments add. *GDAC Argo* is this project's own cohort on the "
+        "same split, linking the table to Tables 1-7. Non-Argo profiles are "
+        "never targets: their files name an institution, not an instrument, so "
+        "they cannot be held out platform-disjointly.", "",
+        "**Compare arms by J, not RMSE.** RMSE here is in z units scaled by each "
+        "arm's own training statistics, so the same error reads differently in "
+        "each arm (climatology alone scores 1.22 / 1.29 / 1.32 in the three Gulf "
+        "Stream arms). The GDAC arm is also scored on more held-out floats (62 "
+        "vs 53 in the Gulf Stream), because 9 of its held-out floats are absent "
+        "from ECCO's Argo set. J divides out the scale; the float difference "
+        "remains, so the ECCO-vs-GDAC gap is suggestive, not a clean contrast. "
+        "The two ECCO arms share identical held-out floats.", "",
+        "**ECCO is not out of sample.** ECCO fitted these observations, held-out "
+        "floats included, and its in-situ row is its own estimate at those very "
+        "points. It is a reanalysis that has seen the answer; the model has not. "
+        "ECCO's in-situ row covers every query with a valid anomaly target, "
+        "where the gridded monthly row is limited by its depth cut.", ""]
+
+if args.compare_arms:
+    out += ["## Backbone comparison — GAOT vs the Perceiver-style latent", ""]
+    for region in args.regions:
+        L = [f"### {region} (J at lead 0)", "",
+             "| experiment | row | TEMP J Perceiver | TEMP J GAOT | Δ TEMP | SALT J Perceiver | SALT J GAOT | Δ SALT |",
+             "|---|---|---:|---:|---:|---:|---:|---:|"]
+        for pair in args.compare_arms:
+            new, old = pair.split(":")
+            an, ao = load_suffix(region, new), load_suffix(region, old)
+            if not an or not ao:
+                L.append(f"| `{old}` | — | _not available_ | | | | | |")
+                continue
+            for key, label in CORE:
+                vals = []
+                for ch in ("TEMP", "SALT"):
+                    _, jo = cell(ao, key, "0", ch)
+                    _, jn = cell(an, key, "0", ch)
+                    try:
+                        dlt = f"{float(jn) - float(jo):+.3f}"
+                    except ValueError:
+                        dlt = NA
+                    vals += [jo, jn, dlt]
+                L.append(f"| `{old}` | {label} | " + " | ".join(vals) + " |")
+        out += L + [""]
+    out += ["**Reading the comparison.** Δ = GAOT minus Perceiver, so negative "
+            "favours GAOT. Improving every arm while the DFS-minus-Uniform and "
+            "DFS-minus-Count gaps stay near zero is a backbone improvement, not a "
+            "DFS improvement. Differences smaller than the seed spread shown in "
+            "the tables above are not resolved by three seeds.", ""]
+
+path = os.path.join(REPORTS, args.out)
 with open(path, "w") as f:
     f.write("\n".join(out))
 print(f"wrote {os.path.relpath(path, ROOT)}"
