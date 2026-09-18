@@ -54,3 +54,14 @@ venv/
 # Real-Argo row checkpoints: many small .pt files, regenerate with
 # experiments/real_data/45_argo_real_data.py (the signed artifact_*.json ARE tracked).
 /outputs/argo_*/*.pt
+
+# --- Audit runs (2026-09-17 pipeline audit) ---
+# Per-arm weights and the raw step-by-step histories regenerate with
+# experiments/real_data/62_sanity_train.py; the summary_seed*.json each run
+# writes ARE small and are what 63_audit_report.py reads.
+/outputs/audit/**/*.pt
+/outputs/audit/**/history.jsonl
+# W&B offline runs (sync with: wandb sync outputs/wandb/wandb/offline-run-*)
+/outputs/wandb/
+# Exact-position anomaly cache, rebuilt by audit_tools.load_cohort(anomaly="exact")
+/data/argo_cohort/*_anomx.npz

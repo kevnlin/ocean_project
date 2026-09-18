@@ -1,0 +1,74 @@
+{
+ "tag": "copy_fixed",
+ "region": "gulfstream",
+ "seed": 1235,
+ "surface": false,
+ "splits": {
+  "train": [
+   2000,
+   2021
+  ],
+  "validation": [
+   2022,
+   2022
+  ],
+  "development": [
+   2023,
+   2024
+  ],
+  "holdout": [
+   2025,
+   2025
+  ]
+ },
+ "backbone": "d4rt",
+ "mass_mode": "dfs",
+ "ablations": [
+  "coords_region",
+  "level_tokens",
+  "refiner_gate1",
+  "refiner_local"
+ ],
+ "mode": "copy",
+ "params": 405063,
+ "steps": 4000,
+ "batch": 1,
+ "n_profiles": 128,
+ "best_step": 4000,
+ "scores": {
+  "overfit": {
+   "TEMP": {
+    "rmse_z": 0.008637845712231373,
+    "rmse_physical": 0.015064041639498102,
+    "unit": "degC",
+    "J": 0.009108257412072225,
+    "climatology_z": 0.948353271261596,
+    "n": 2494,
+    "by_band_z": {
+     "0-100m": 0.007423662486888963,
+     "100-300m": 0.011677805264166436,
+     "300-700m": 0.008239858090404919,
+     "700-1400m": 0.004069972862799232
+    }
+   },
+   "SALT": {
+    "rmse_z": 0.007971302915976669,
+    "rmse_physical": 0.0024239375536433514,
+    "unit": "PSU",
+    "J": 0.009197361124645614,
+    "climatology_z": 0.8666945668379215,
+    "n": 2494,
+    "by_band_z": {
+     "0-100m": 0.006073299197436042,
+     "100-300m": 0.011344870093136174,
+     "300-700m": 0.007965198595996249,
+     "700-1400m": 0.0029098117077207995
+    }
+   },
+   "macro_z": 0.008304574314104021
+  }
+ },
+ "split_protocol": "recent3",
+ "runtime_s": 632.9619560241699,
+ "qc": null
+}

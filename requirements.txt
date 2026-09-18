@@ -5,3 +5,6 @@ xarray
 zarr
 netCDF4
 torch
+matplotlib
+# optional: training curves (offline unless WANDB_API_KEY is set)
+wandb

@@ -115,10 +115,19 @@ def test_masked_tokens_carry_no_mass_in_any_row():
 # The OI residual wrapper
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("row", [r for r in ROWS if r.endswith("oi_expert_cbottle")])
-def test_oi_rows_carry_exactly_eight_gates(row):
+def test_oi_rows_carry_one_gate_per_lead_and_channel(row):
+    """One gate per (lead, channel) — derived, not hardcoded.
+
+    This read `== 8` while `max_lead` was 3 (4 leads x 2 channels). The default
+    is now 6, so the count is 14; asserting the *rule* keeps the contract
+    meaningful when the lead horizon moves again.
+    """
+    from ocean_tokenizer.godas_obs import N_CHANNELS
     m = build_row(row)
     assert m.oi_residual is not None
-    assert m.oi_residual.gate_logit.numel() == 8
+    gates = m.oi_residual.gate_logit
+    assert gates.shape == (m.oi_residual.max_lead + 1, N_CHANNELS)
+    assert gates.numel() == (m.oi_residual.max_lead + 1) * N_CHANNELS
 
 
 def test_a_closed_gate_reduces_an_oi_row_to_plain_oi():

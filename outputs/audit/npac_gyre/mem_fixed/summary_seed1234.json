@@ -1,0 +1,74 @@
+{
+ "tag": "mem_fixed",
+ "region": "npac_gyre",
+ "seed": 1234,
+ "surface": null,
+ "splits": {
+  "train": [
+   2000,
+   2021
+  ],
+  "validation": [
+   2022,
+   2022
+  ],
+  "development": [
+   2023,
+   2024
+  ],
+  "holdout": [
+   2025,
+   2025
+  ]
+ },
+ "backbone": "d4rt",
+ "mass_mode": "dfs",
+ "ablations": [
+  "coords_region",
+  "level_tokens",
+  "refiner_gate1",
+  "refiner_local"
+ ],
+ "mode": "memorise",
+ "params": 405063,
+ "steps": 4000,
+ "batch": 1,
+ "n_profiles": 128,
+ "best_step": 4000,
+ "scores": {
+  "overfit": {
+   "TEMP": {
+    "rmse_z": 0.007610778410368521,
+    "rmse_physical": 0.004208465482135938,
+    "unit": "degC",
+    "J": 0.007870320600585267,
+    "climatology_z": 0.9670226661163657,
+    "n": 1488,
+    "by_band_z": {
+     "0-100m": 0.0018315669385611552,
+     "100-300m": 0.0055675444387103725,
+     "300-700m": 0.01827069606773498,
+     "700-1400m": 0.0040422414786614475
+    }
+   },
+   "SALT": {
+    "rmse_z": 0.005480134658696889,
+    "rmse_physical": 0.00043882153574597237,
+    "unit": "PSU",
+    "J": 0.004620611660672258,
+    "climatology_z": 1.1860193111099013,
+    "n": 1488,
+    "by_band_z": {
+     "0-100m": 0.0027461750672011843,
+     "100-300m": 0.0025473835593683297,
+     "300-700m": 0.013720888445842109,
+     "700-1400m": 0.0018751554652674729
+    }
+   },
+   "macro_z": 0.006545456534532704
+  }
+ },
+ "split_protocol": "recent3",
+ "runtime_s": 517.274885892868,
+ "qc": null
+}
