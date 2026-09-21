@@ -39,7 +39,7 @@ The current work: registered rows on real Argo, held-out-float evaluation, the c
 | `58_argo_fusion_tables.py` | Main tables on the Perceiver-IO family: DFS-Attention + D4RT query decoder. |
 | `59_tau_spread.py` | How much does the DFS evidence estimate actually vary on real Argo input? |
 | `60_input_density.py` | What the `--n-profiles` cap actually delivers, per month. |
-| `61_pipeline_audit.py` | The 2026-09-17 audit: data prep, normalisation, tokenisation, and a kriging OI that says how much of the signal is recoverable at all. |
+| `61_pipeline_audit.py` | The 2026-09-17 audit: data prep, normalisation, tokenisation, and the predictability floor (anomaly correlation vs distance, nugget per latitude band). |
 | `62_sanity_train.py` | Overfit sanity ladder, one-switch-at-a-time ablations and backbone trials, with W&B/JSONL training curves. |
 | `63_audit_report.py` | Render `pipeline_audit.md`, `overfit_sanity.md`, `ablation_ladder.md` and their figures from what 61 and 62 wrote. |
 | `64_architecture_figure.py` | The architecture diagram, annotated with the audit's numbers. |

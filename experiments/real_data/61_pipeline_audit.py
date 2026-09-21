@@ -16,13 +16,21 @@ Four sections, each a question with a number attached:
   3 TOKENISATION   what a profile becomes before the model sees it, and at what
                    spatial and vertical resolution the coordinate path and the
                    local refiner can still tell two places apart
-  4 CEILING        how far the anomaly at a held-out float is predictable from
-                   the floats the model is actually given, measured from the
-                   data (correlation vs separation) and by a kriging OI whose
-                   covariance is fitted on the training years
+  4 FLOOR          how far the anomaly at a held-out float is predictable at
+                   all: correlation against separation, and the share of the
+                   variance no other float sees (the nugget of a covariance
+                   fitted on the training years, per latitude band)
+
+Default: the GLOBAL cohort (one domain over the whole ocean, 1.79 M profiles,
+20 levels to 985 m), every profile a month delivers, satellite-era split (train
+2016-2020, validate 2021, test 2022-23). The anomaly is WOA23 at the centre of
+the profile's 1 deg cell, as the registered cohorts were built. Covariances
+are fitted per absolute-latitude band, because the tropics and the mid-latitude
+fronts do not share one. `--regions gulfstream,npac_gyre` reruns the committed
+regional study.
 
 Nothing here trains anything and nothing here writes to the registered
-artifacts; it reads the same cohorts the tables were built from.
+artifacts.
 
   .venv/bin/python experiments/real_data/61_pipeline_audit.py
 """
@@ -39,24 +47,26 @@ import xarray as xr
 from ocean_tokenizer import protocol as P
 from ocean_tokenizer.argo_obs import (ArgoCohort, ArgoNorm, _select_profiles,
                                       ArgoObsConfig)
-from ocean_tokenizer.audit_tools import (BINS_KM, KrigingOI, fit_cov,
-                                         haversine_km, load_cohort,
-                                         pair_correlation, robust_qc,
-                                         woa_monthly)
+from ocean_tokenizer.audit_tools import (BINS_KM, LAT_BANDS, band_of_lat,
+                                         cohort_path, fit_cov, haversine_km,
+                                         load_cohort, pair_correlation)
 from ocean_tokenizer.token_api import default_depth_bands, _DEPTH_SCALE, _N_FREQ_SPHERE
 from ocean_tokenizer.query_decoder import _L_INIT, _GATE_INIT
 from ocean_tokenizer.objective_interpolation import OISettings
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--regions", default="gulfstream,npac_gyre")
+ap.add_argument("--regions", default="global")
 ap.add_argument("--split-protocol", default="recent3", choices=sorted(P.SPLIT_PROTOCOLS))
-ap.add_argument("--split-table", default=None,
+ap.add_argument("--split-table",
+                default='{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}',
                 help="JSON override of the year splits (for a secondary era, "
                      "e.g. the satellite-covered 2016-2023 window)")
 ap.add_argument("--seed", type=int, default=1234)
-ap.add_argument("--n-profiles", type=int, default=128)
+ap.add_argument("--n-profiles", type=int, default=1000,
+                help="the capped comparison arm; the main reference uses every profile")
 ap.add_argument("--corr-months", type=int, default=150)
-ap.add_argument("--no-kriging", action="store_true")
+ap.add_argument("--no-covariance", action="store_true",
+                help="skip the (slow) per-level covariance fits behind the floor")
 ap.add_argument("--out", default=None)
 args = ap.parse_args()
 
@@ -71,8 +81,7 @@ BANDS = (("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
 CH = ("TEMP", "SALT")
 UNITS = {"TEMP": "degC", "SALT": "PSU"}
 OUT_MD = args.out or os.path.join(ROOT, "reports", "real_data", "pipeline_audit.md")
-OUT_JSON = os.path.join(ROOT, "outputs", "cache",
-                        "pipeline_audit%s.json" % ("_custom" if args.split_table else ""))
+OUT_JSON = os.path.join(ROOT, "outputs", "cache", "pipeline_audit.json")
 FIG = os.path.join(ROOT, "reports", "real_data")
 t0 = time.time()
 A: dict = {"split_protocol": args.split_protocol, "splits": SPLITS,
@@ -97,7 +106,7 @@ def band_rms(levels, per_level):
             for name, _, _ in BANDS}
 
 
-def eval_targets(c, leads=(0, 1, 3, 6), split="development"):
+def eval_targets(c, leads=(0,), split="development"):
     """The table's fixed-target month set, replicated exactly (58_argo_fusion_tables)."""
     return [int(T) for T in c.months_in(split)
             if c.month(T, float_split="heldout_float").size
@@ -108,12 +117,11 @@ for region in REGIONS:
     print(f"\n===== {region}", flush=True)
     R: dict = {}
     c, _ = load_cohort(ROOT, region, SPLITS)
-    raw, _ = load_cohort(ROOT, region, SPLITS) if False else (None, None)
-    raw = ArgoCohort.load(os.path.join(ROOT, "data", "argo_cohort", f"{region}_ext.nc"))
+    raw = ArgoCohort.load(cohort_path(ROOT, region))
     raw.apply_splits(SPLITS)
     norm = ArgoNorm.fit(c, "train")
     LEV = c.levels
-    ds = xr.open_dataset(os.path.join(ROOT, "data", "argo_cohort", f"{region}_ext.nc"))
+    ds = xr.open_dataset(cohort_path(ROOT, region))
     order = np.argsort(np.asarray(ds["month_index"].values, int), kind="stable")
     dmode = np.asarray(ds["data_mode"].values).astype(str)[order]
 
@@ -192,7 +200,9 @@ for region in REGIONS:
                                "after": band_rms(LEV, rep.std_after[ch])} for ch in CH}}
 
     # climatology evaluated at the cell centre vs at the profile
-    box = P.REGIONS[region]; NY, NX = c.grid
+    box = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0)) if region == "global"
+           else P.REGIONS[region])
+    NY, NX = c.grid
     la0, la1 = (float(x) for x in box["lat"]); lo0, lo1 = (float(x) for x in box["lon"])
     latc = la0 + (raw.grid_y + 0.5) * (la1 - la0) / NY
     lonc = lo0 + (raw.grid_x + 0.5) * (lo1 - lo0) / NX
@@ -284,41 +294,47 @@ for region in REGIONS:
                                    * np.cos(np.deg2rad((la0 + la1) / 2))),
             "rho0": OISettings().rho0}}
 
-    # realised input density and how far a target sits from its nearest input
+    # realised input density and how far a target sits from its nearest input.
+    # The model sees EVERY profile; the capped draw is the comparison arm.
+    from scipy.spatial import cKDTree
+
+    def _xyz(rows):
+        la, lo = np.deg2rad(c.lat[rows]), np.deg2rad(c.lon[rows])
+        return np.stack([np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)], -1)
+
+    def nearest_km(tg, src):
+        d, _ = cKDTree(_xyz(src)).query(_xyz(tg), k=1)
+        return 2 * 6371.0 * np.arcsin(np.clip(d / 2, 0, 1))
+
     dens, dmin_cap, dmin_all = [], [], []
     ET = eval_targets(c)
     for T in ET:
         tg = c.month(T, float_split="heldout_float")
         pool = c.month(T, float_split="cohort_float")
-        src = _select_profiles(c, pool, args.n_profiles,
+        cap = _select_profiles(c, pool, args.n_profiles,
                                np.random.default_rng([args.seed, T, 0]))
-        dens.append((pool.size, src.size))
-        if tg.size and src.size:
-            dmin_cap.append(haversine_km(c.lat[tg][:, None], c.lon[tg][:, None],
-                                         c.lat[src][None], c.lon[src][None]).min(1))
-            dmin_all.append(haversine_km(c.lat[tg][:, None], c.lon[tg][:, None],
-                                         c.lat[pool][None], c.lon[pool][None]).min(1))
+        dens.append((pool.size, cap.size))
+        if tg.size and pool.size:
+            dmin_cap.append(nearest_km(tg, cap)); dmin_all.append(nearest_km(tg, pool))
     dmin_cap = np.concatenate(dmin_cap); dmin_all = np.concatenate(dmin_all)
-    pool_n = np.array([d[0] for d in dens]); used_n = np.array([d[1] for d in dens])
+    pool_n = np.array([d[0] for d in dens]); cap_n = np.array([d[1] for d in dens])
+
+    def dist_summary(x):
+        return {"median": float(np.median(x)), "p25": float(np.percentile(x, 25)),
+                "p75": float(np.percentile(x, 75)),
+                "frac_under_50": float((x < 50).mean()),
+                "frac_under_100": float((x < 100).mean())}
+
     R["input_density"] = {
-        "eval_months": len(ET),
+        "eval_months": len(ET), "cap": args.n_profiles,
         "available_per_month": {"median": float(np.median(pool_n)),
                                 "min": int(pool_n.min()), "max": int(pool_n.max())},
-        "used_per_month_at_cap": {"median": float(np.median(used_n)),
-                                  "min": int(used_n.min()), "max": int(used_n.max())},
-        "fraction_of_available_used": float(used_n.sum() / pool_n.sum()),
-        "nearest_input_km_at_cap": {
-            "median": float(np.median(dmin_cap)),
-            "p25": float(np.percentile(dmin_cap, 25)),
-            "p75": float(np.percentile(dmin_cap, 75)),
-            "frac_under_50": float((dmin_cap < 50).mean()),
-            "frac_under_100": float((dmin_cap < 100).mean())},
-        "nearest_input_km_all_profiles": {
-            "median": float(np.median(dmin_all)),
-            "frac_under_50": float((dmin_all < 50).mean()),
-            "frac_under_100": float((dmin_all < 100).mean())}}
+        "used_per_month": {"median": float(np.median(pool_n))},
+        "cap_fraction_of_available": float(cap_n.sum() / pool_n.sum()),
+        "nearest_input_km_all_profiles": dist_summary(dmin_all),
+        "nearest_input_km_at_cap": dist_summary(dmin_cap)}
 
-    # ------------------------------------------------------------ 4 ceiling
+    # ------------------------------------------------------------ 4 floor
     tr_months = c.months_in("train")
     corr = {}
     for ch in CH:
@@ -330,69 +346,39 @@ for region in REGIONS:
             corr[ch][f"{LEV[lv]:.0f}m"] = {"bins_km": BINS_KM.tolist(),
                                            "corr": rho.tolist(), "pairs": cnt.tolist()}
     R["pair_correlation"] = corr
+    # the same curve per absolute-latitude band at the thermocline: the global
+    # covariance is not one covariance
+    lat_band = band_of_lat(c.lat)
+    by_band = {}
+    lv327 = int(np.argmin(np.abs(LEV - 326.9)))
+    for b, (lo, hi) in enumerate(LAT_BANDS):
+        rho, cnt = pair_correlation(c, norm, "TEMP", lv327, tr_months,
+                                    max_months=args.corr_months, seed=args.seed,
+                                    rows=np.flatnonzero(lat_band == b))
+        by_band[f"{lo:.0f}-{min(hi, 90):.0f}"] = {"bins_km": BINS_KM.tolist(),
+                                                 "corr": rho.tolist(), "pairs": cnt.tolist()}
+    R["pair_correlation_by_lat_band_327m"] = by_band
 
-    if not args.no_kriging:
-        print("  fitting covariances and running the kriging OI ...", flush=True)
-        cov = {}
+    if not args.no_covariance:
+        print("  fitting covariances per latitude band ...", flush=True)
+        cov = {ch: [] for ch in CH}
         for ch in CH:
-            cov[ch] = []
             for lv in range(LEV.size):
-                rho, cnt = pair_correlation(c, norm, ch, lv, tr_months,
-                                            max_months=args.corr_months, seed=args.seed)
-                cov[ch].append(fit_cov(rho, cnt))
+                per = []
+                for b in range(len(LAT_BANDS)):
+                    rho, cnt = pair_correlation(
+                        c, norm, ch, lv, tr_months, max_months=args.corr_months,
+                        seed=args.seed, rows=np.flatnonzero(lat_band == b))
+                    per.append(fit_cov(rho, cnt))
+                cov[ch].append(per)
+        # the nugget of each fit is the share of variance no neighbouring float
+        # sees: the floor on J at a held-out float
         R["covariance_fit"] = {
-            ch: [{"level_m": float(LEV[i]), "a0": m.a0, "a1": m.a1, "L1_km": m.L1,
-                  "a2": m.a2, "L2_km": m.L2, "nugget": m.nugget}
-                 for i, m in enumerate(cov[ch])] for ch in CH}
-        oi = KrigingOI(cov)
-        res = {k: {ch: [0.0, 0.0] for ch in CH}
-               for k in ("kriging_cap", "kriging_all", "climatology", "nearest")}
-        phys = {k: {ch: [0.0, 0.0] for ch in CH} for k in res}
-        for T in ET:
-            tg = c.month(T, float_split="heldout_float")
-            pool = c.month(T, float_split="cohort_float")
-            cap = _select_profiles(c, pool, args.n_profiles,
-                                   np.random.default_rng([args.seed, T, 0]))
-            if tg.size == 0:
-                continue
-            Y = np.stack([(getattr(c, ch)[tg] - norm.mean[ch]) / norm.std[ch]
-                          for ch in CH], -1)                      # (R,L,2)
-            preds = {"kriging_cap": oi.predict(c, norm, cap, tg),
-                     "kriging_all": oi.predict(c, norm, pool, tg),
-                     "climatology": np.zeros_like(Y)}
-            # nearest input profile, matched on the query's own level
-            d = haversine_km(c.lat[tg][:, None], c.lon[tg][:, None],
-                             c.lat[cap][None], c.lon[cap][None])
-            near = np.zeros_like(Y)
-            for j, ch in enumerate(CH):
-                V = (getattr(c, ch)[cap] - norm.mean[ch]) / norm.std[ch]  # (P,L)
-                for lv in range(LEV.size):
-                    dd = np.where(np.isfinite(V[:, lv])[None, :], d, np.inf)
-                    k = dd.argmin(1)
-                    near[:, lv, j] = np.where(np.isfinite(dd[np.arange(tg.size), k]),
-                                              V[k, lv], 0.0)
-            preds["nearest"] = near
-            for name, pr in preds.items():
-                for j, ch in enumerate(CH):
-                    e = (pr[..., j] - Y[..., j]) ** 2
-                    ok = np.isfinite(e)
-                    res[name][ch][0] += float(e[ok].sum()); res[name][ch][1] += int(ok.sum())
-                    ep = e * (norm.std[ch] ** 2)[None, :]
-                    phys[name][ch][0] += float(ep[ok].sum()); phys[name][ch][1] += int(ok.sum())
-        R["kriging"] = {
-            name: {ch: {"rmse_z": float(np.sqrt(v[ch][0] / max(v[ch][1], 1))),
-                        "rmse_physical": float(np.sqrt(phys[name][ch][0]
-                                                       / max(phys[name][ch][1], 1))),
-                        "unit": UNITS[ch], "n": int(v[ch][1]),
-                        "J": float(np.sqrt(v[ch][0] / max(v[ch][1], 1))
-                                   / np.sqrt(res["climatology"][ch][0]
-                                             / max(res["climatology"][ch][1], 1)))}
-                   for ch in CH}
-            for name, v in res.items()}
-        for name, v in R["kriging"].items():
-            print(f"    {name:14s} " + "  ".join(
-                f"{ch} {v[ch]['rmse_z']:.4f} z / {v[ch]['rmse_physical']:.3f} "
-                f"{UNITS[ch]} (J {v[ch]['J']:.3f})" for ch in CH), flush=True)
+            ch: [{"level_m": float(LEV[i]), "bands": [
+                    {"lat_band": list(LAT_BANDS[b]), "a0": m.a0, "a1": m.a1,
+                     "L1_km": m.L1, "a2": m.a2, "L2_km": m.L2, "nugget": m.nugget}
+                    for b, m in enumerate(per)]}
+                 for i, per in enumerate(cov[ch])] for ch in CH}
 
     A["regions"][region] = R
 

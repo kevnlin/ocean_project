@@ -100,23 +100,35 @@ class SetConvUNet(nn.Module):
         self.max_lead = int(max_lead)
 
     # ---- encoder ---------------------------------------------------------
-    def setconv(self, prof, lat, lon):
-        """(K,C,L) profile z-values at (K,) positions -> (2*C*L, ny, nx)."""
+    def setconv(self, prof, lat, lon, chunk: int = 512):
+        """(K,C,L) profile z-values at (K,) positions -> (2*C*L, ny, nx).
+
+        Accumulated over chunks of profiles: a global month is ~7 600 profiles
+        on a 180 x 360 grid, and the full (ny, nx, K) kernel would be ~2 GB per
+        variable. The sums are identical to the one-shot version.
+        """
         valid = torch.isfinite(prof)
         v = torch.nan_to_num(prof) * valid
-        dy = (self.grid_lat[:, None] - lat[None, :]) * KM_PER_DEG       # (ny,K)
-        clat = torch.cos(torch.deg2rad(lat)).clamp(min=0.2)
-        dlon = (self.grid_lon[:, None] - lon[None, :] + 180.0) % 360.0 - 180.0
-        dx = dlon * KM_PER_DEG * clat[None, :]                          # (nx,K)
-        d2 = dy[:, None, :] ** 2 + dx[None, :, :] ** 2                  # (ny,nx,K)
         ell = self.log_ell.exp().clamp(5.0, 2000.0)
+        L = prof.shape[-1]
+        num = [prof.new_zeros(L, self.ny, self.nx) for _ in range(self.C)]
+        den = [prof.new_zeros(L, self.ny, self.nx) for _ in range(self.C)]
+        for i in range(0, prof.shape[0], chunk):
+            la, lo = lat[i:i + chunk], lon[i:i + chunk]
+            dy = (self.grid_lat[:, None] - la[None, :]) * KM_PER_DEG      # (ny,k)
+            clat = torch.cos(torch.deg2rad(la)).clamp(min=0.2)
+            dlon = (self.grid_lon[:, None] - lo[None, :] + 180.0) % 360.0 - 180.0
+            dx = dlon * KM_PER_DEG * clat[None, :]                        # (nx,k)
+            d2 = dy[:, None, :] ** 2 + dx[None, :, :] ** 2                # (ny,nx,k)
+            for ci in range(self.C):
+                w = torch.exp(-0.5 * d2 / ell[ci] ** 2)
+                num[ci] = num[ci] + torch.einsum("yxk,kl->lyx", w, v[i:i + chunk, ci, :])
+                den[ci] = den[ci] + torch.einsum(
+                    "yxk,kl->lyx", w, valid[i:i + chunk, ci, :].to(v.dtype))
         outs = []
         for ci in range(self.C):
-            w = torch.exp(-0.5 * d2 / ell[ci] ** 2)                     # (ny,nx,K)
-            num = torch.einsum("yxk,kl->lyx", w, v[:, ci, :])
-            den = torch.einsum("yxk,kl->lyx", w, valid[:, ci, :].to(v.dtype))
-            outs.append(num / den.clamp(min=1e-3))
-            outs.append(torch.log1p(den))
+            outs.append(num[ci] / den[ci].clamp(min=1e-3))
+            outs.append(torch.log1p(den[ci]))
         return torch.cat(outs, 0)
 
     # ---- decoder ---------------------------------------------------------

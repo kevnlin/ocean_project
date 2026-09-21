@@ -790,6 +790,136 @@ class GAOTFusion(D4RTFusion):
         return z
 
 
+
+# --------------------------------------------------------------------------
+# Variant G — DFS–LNO: Latent Neural Operator physics-cross-attention fuse
+# --------------------------------------------------------------------------
+class LNOFusion(D4RTFusion):
+    """D4RT fusion whose fuse stage is Latent-Neural-Operator Physics-Cross-Attention.
+
+    Replaces the Perceiver-IO trunk's unaddressed resampler slots and free latent
+    array (Wang et al., NeurIPS 2024, "Latent Neural Operator"; the slot framing
+    follows Set Transformer / Slot Attention):
+
+    1. **Position-only attention.** Each observation token's weights over the
+       ``n_slots`` latent slots come from its coordinates alone, through a small
+       MLP on the shared ``coord_features``; the token's content enters only as
+       the value. Observation positions and query coordinates are therefore
+       decoupled — nothing about where a query sits is baked into the encoder.
+    2. **Softmax over the SLOTS** (per token, per head): every token distributes
+       itself across the slots, so slots compete for tokens. This is the Slot
+       Attention / Transolver normalisation, deliberately NOT the LNO paper's
+       own PhCA encoder, which normalises over the input points (its Eq. 4):
+       normalising over slots is what keeps DFS evidence conserved. Hence a
+       "PhCA-style" backbone. The same competition drives the mass rule:
+
+         * ``dfs`` / ``uniform`` (conservative): token i spreads its evidence
+           ``e_i`` (DFS tau, or 1) as ``w_ij = e_i a_ij``; the slot mass
+           ``m_j = sum_i w_ij`` sums to ``sum_i e_i`` exactly.
+         * ``count``: the softmax runs over TOKENS inside each slot, so
+           multiplicity feeds straight through, and the mass is the slot's
+           token count.
+
+       A slot's content is the mass-weighted mean of what it received.
+    3. **Evidence against the reference, per slot**, exactly as
+       :class:`GAOTFusion` does for its anchors: each slot attends to its own
+       content at ``log m_j`` against the null key and the availability-
+       conditioned reference slots at ``log lambda_bg``.
+    4. The inherited latent self-attention blocks run over the slots; the D4RT
+       query decoder, local refiner, loss and data contract are unchanged, so a
+       difference against the Perceiver trunk is attributable to the fuse stage.
+    """
+
+    def __init__(self, encoders, d_model: int = 64, n_latent: int = 32,
+                 n_heads: int = 4, n_self_blocks: int = 2, c_out: int = 2,
+                 mlp_ratio: float = 2.0, anchor_grid=None, n_slots: int = 32,
+                 proj_hidden: int = 96, **kw):
+        super().__init__(encoders, d_model, n_latent, n_heads, n_self_blocks,
+                         c_out, mlp_ratio, anchor_grid=None, **kw)
+        # the Perceiver-specific stages this backbone replaces
+        del self.resampler
+        del self.latent0
+        self.agg_mode = "count" if self.mass_mode == "count" else "conservative"
+        self.n_slots = int(n_slots)
+        h = self.fuse_attn.h
+        self.phca_proj = nn.Sequential(nn.Linear(N_COORD_FEATS, proj_hidden),
+                                       nn.GELU(),
+                                       nn.Linear(proj_hidden, h * self.n_slots))
+        self.phca_ln = nn.LayerNorm(d_model)
+        self.phca_v = nn.Linear(d_model, d_model)
+        self.phca_out = nn.Linear(d_model, d_model)
+        self.slot_emb = nn.Parameter(torch.randn(self.n_slots, d_model) * 0.02)
+
+    def slot_weights(self, coord: torch.Tensor) -> torch.Tensor:
+        """(B,N,4) physical coords -> (B,N,h,M) position-only logits."""
+        B, N, _ = coord.shape
+        h = self.fuse_attn.h
+        return self.phca_proj(coord_features(torch.nan_to_num(coord))).view(
+            B, N, h, self.n_slots)
+
+    def aggregate(self, tokens: TokenBatch, obs_mask, e):
+        """Observation tokens -> per-slot content (B,M,d) and mass (B,M)."""
+        B, N, d = tokens.emb.shape
+        h, M = self.fuse_attn.h, self.n_slots
+        dh = d // h
+        lg = self.slot_weights(tokens.coord)                     # (B,N,h,M)
+        valid = obs_mask[..., None, None].to(lg.dtype)
+        a_slot = torch.softmax(lg, dim=-1) * valid               # over slots
+        if self.agg_mode == "count":
+            # softmax over TOKENS within each slot: multiplicity feeds through
+            w = torch.softmax(lg.masked_fill(~obs_mask[..., None, None],
+                                             -float("inf")), dim=1)
+            w = torch.nan_to_num(w, nan=0.0)
+            mass = a_slot.sum(dim=1).mean(dim=1)                 # token count
+        else:
+            w = a_slot * e[:, :, None, None]
+            mass = w.sum(dim=1).mean(dim=1)                      # sum = sum_i e_i
+        v = self.phca_v(self.phca_ln(torch.nan_to_num(tokens.emb))).view(B, N, h, dh)
+        num = torch.einsum("bnhm,bnhd->bmhd", w, v)
+        den = w.sum(dim=1).transpose(1, 2)[..., None]            # (B,M,h,1)
+        content = self.phca_out((num / den.clamp(min=_LOG_EPS)).reshape(B, M, d))
+        return content * (mass > 0)[..., None].to(content.dtype), mass
+
+    def fuse(self, tokens: TokenBatch, target=None) -> torch.Tensor:
+        if self.causal_check and tokens.time_offset is not None:
+            check_causal(tokens.time_offset, tokens.support_t, tokens.mask)
+        self._tokens = tokens
+        target = target or self.target_scale
+        obs_mask, bg_mask = self._split(tokens)
+        B = tokens.emb.shape[0]
+        res = self.evidence(tokens, target)
+        e = torch.nan_to_num(res.tau, nan=0.0).clamp(min=0.0) * obs_mask.to(res.tau.dtype)
+        content, m = self.aggregate(tokens, obs_mask, e)
+        self.last_evidence = dict(tau=res.tau, nu=m, total=res.total,
+                                  by_modality=res.by_modality)
+
+        z = self.slot_emb[None].expand(B, -1, -1)
+        if bool(bg_mask.any()):
+            z = z + self.bg_gate * self.bg_attn(
+                self.fuse_ln_q(z), self.bg_ln_kv(tokens.emb), key_mask=bg_mask)
+        M, d = z.shape[1], z.shape[2]
+        own = content.reshape(B * M, 1, d)
+        own_mask = (m > 0).reshape(B * M, 1)
+        null = self.null_token.expand(B * M, 1, -1)
+        kv = torch.cat([own, null], dim=1)
+        kv_mask = torch.cat([own_mask, torch.ones_like(own_mask)], dim=1)
+        bias = torch.cat([torch.log(m.reshape(B * M, 1) + _LOG_EPS),
+                          self.log_lambda_bg.expand(B * M, 1)], dim=1)
+        extra = self._extra_kv(tokens)
+        if extra is not None:
+            e_kv, e_mask, e_bias = extra
+            n = e_kv.shape[1]
+            kv = torch.cat([kv, e_kv[:, None].expand(B, M, n, d).reshape(B * M, n, d)], 1)
+            kv_mask = torch.cat([kv_mask, e_mask[:, None].expand(B, M, n).reshape(B * M, n)], 1)
+            bias = torch.cat([bias, e_bias[:, None].expand(B, M, n).reshape(B * M, n)], 1)
+        zq = z.reshape(B * M, 1, d)
+        z = z + self.fuse_attn(self.fuse_ln_q(zq), self.fuse_ln_kv(kv),
+                               key_bias=bias, key_mask=kv_mask).reshape(B, M, d)
+        for blk in self.blocks:
+            z = blk(z)
+        return z
+
+
 class _nullctx:
     def __enter__(self):
         return None
@@ -825,7 +955,8 @@ VARIANTS = {"perceiver": StandardPerceiver,
             "mbca": MBCA,
             "dfs": DFSAttention,
             "d4rt": D4RTFusion,
-            "gaot": GAOTFusion}
+            "gaot": GAOTFusion,
+            "lno": LNOFusion}
 
 
 def build_fusion_model(variant: str, grid, d_model: int = 128,

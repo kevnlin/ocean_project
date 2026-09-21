@@ -1,5 +1,12 @@
 """Overfit sanity checks, one-component ablations, and backbone trials on real Argo.
 
+Default setup: GLOBAL ocean state reconstruction — one domain over the whole
+ocean, every profile a month delivers (~7 600, no cap), 20 levels to 985 m,
+target = WOA23 monthly anomaly, split in the satellite era (train 2016-2020,
+validate 2021, test 2022-23) so profile-only and satellite arms share one
+table. `--region gulfstream|npac_gyre` reproduces the committed regional study
+(with its own --split-table / --n-profiles).
+
 The 2026-09-17 meeting asked for three things this script does:
 
 * **an overfit test** — can the model drive RMSE below 0.1 on data it is allowed
@@ -18,9 +25,8 @@ The 2026-09-17 meeting asked for three things this script does:
 * **training curves** — every step's loss goes to a JSONL history and, with
   ``--wandb``, to Weights & Biases (offline unless WANDB_API_KEY is set).
 
-Metrics are reported in z units (comparable with the tables) AND in degC / PSU
-(comparable with the target Prof. Wang set), because the per-level z scale is
-1.6-2.1 degC in the Gulf Stream and 0.06-1.1 degC in the gyre — one z unit is
+Metrics are reported in z units AND in degC / PSU (comparable with the target
+Prof. Wang set), because the per-level z scale varies by depth — one z unit is
 not one number.
 
   .venv/bin/python experiments/real_data/62_sanity_train.py --mode memorise --steps 3000
@@ -49,15 +55,16 @@ BANDS = (("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-700m", 300.0, 700.0), ("700-1400m", 700.0, 1401.0))
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--region", default="gulfstream", choices=list(P.REGIONS))
+ap.add_argument("--region", default="global", choices=["global"] + list(P.REGIONS))
 ap.add_argument("--seed", type=int, default=1234)
 ap.add_argument("--mode", default="train",
                 choices=["train", "memorise", "copy", "small"])
 ap.add_argument("--tag", default=None, help="name of this run (dir + W&B)")
 ap.add_argument("--split-protocol", default="recent3", choices=sorted(P.SPLIT_PROTOCOLS))
-ap.add_argument("--backbone", default="d4rt", choices=["d4rt", "gaot", "setconv"])
+ap.add_argument("--backbone", default="d4rt", choices=["d4rt", "gaot", "lno", "setconv"])
 ap.add_argument("--mass-mode", default="dfs", choices=["dfs", "uniform", "count"])
-ap.add_argument("--n-profiles", type=int, default=128)
+ap.add_argument("--n-profiles", type=int, default=0,
+                help="profiles per month (0 = every profile the month has)")
 ap.add_argument("--steps", type=int, default=12000)
 ap.add_argument("--batch", type=int, default=1, help="months per optimiser step")
 ap.add_argument("--lr", type=float, default=1e-3)
@@ -78,20 +85,36 @@ ap.add_argument("--ablation", default="none", help=(
     "none | qc | anomaly_exact | level_tokens | refiner_local | refiner_gate1 | "
     "coords_region | all_profiles | batch8 | no_latent | no_target_dropout | "
     "mass_uniform | mass_count  (comma-separate to stack, e.g. for the 'fixed' arm)"))
-ap.add_argument("--setconv-grid", default="50x102")
+ap.add_argument("--setconv-grid", default="auto",
+                help="SetConv grid ny x nx; auto = 1 deg (180x360) globally, "
+                     "0.5 x 0.5 deg on a regional box")
+ap.add_argument("--eval-cells", type=int, default=8000,
+                help="fixed per-month cap on scored cells for the validation "
+                     "and train-subset sets (the test set is always scored in "
+                     "full); a global month has ~30 000 held-out cells")
 ap.add_argument("--surface", action="store_true",
-                help="add satellite SST/SLA/SSS (+ validity) as gridded input "
-                     "channels — the information a profiles-only OI does not "
-                     "have. setconv backbone only; needs --split-table inside "
-                     "the satellite era (data/real_obs_1deg.zarr: 2016-2023)")
+                help="add satellite SST/SLA/SSS — the information a profiles-only "
+                     "OI does not have. Token backbones (d4rt/lno) get them as "
+                     "gridded patch tokens through the surf/ssh encoders; the "
+                     "satellite store covers 2016-2023 only")
 ap.add_argument("--surface-vars", default="SST,SLA,SSS",
                 help="which surface fields to use with --surface. SLA alone is "
                      "the clean control: altimetry assimilates no in-situ "
                      "profile, while the L4 SST/SSS analyses do")
-ap.add_argument("--split-table", default=None,
+ap.add_argument("--split-table",
+                default='{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}',
                 help='JSON override of the year splits, e.g. \'{"train":[2016,2020],'
                      '"validation":[2021,2021],"development":[2022,2023]}\'')
 ap.add_argument("--setconv-width", type=int, default=28)
+ap.add_argument("--n-slots", type=int, default=32,
+                help="LNO latent slots (32 = the Perceiver's latent count)")
+ap.add_argument("--proj-hidden", type=int, default=96,
+                help="LNO position-MLP width (96 at 32 slots and 48 at 128 slots "
+                     "keep the model within 4 %% of the Perceiver's size)")
+ap.add_argument("--surface-patch", type=int, default=3,
+                help="satellite patch size in grid cells for the token backbones "
+                     "(3 = 3 x 3 deg; the encoder default of 10 x 12 deg would "
+                     "average away the mesoscale signal altimetry carries)")
 ap.add_argument("--wandb", action="store_true")
 ap.add_argument("--wandb-project", default="ocean-audit")
 ap.add_argument("--eval-split", default="development")
@@ -100,7 +123,7 @@ args = ap.parse_args()
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABL = {a for a in args.ablation.split(",") if a and a != "none"}
-KNOWN = {"qc", "anomaly_exact", "level_tokens", "refiner_local", "refiner_gate1",
+KNOWN = {"qc", "anomaly_exact", "level_tokens", "refiner_local", "refiner_gate1", "cap1000",
          "coords_region", "all_profiles", "batch8", "no_latent",
          "no_target_dropout", "mass_uniform", "mass_count"}
 if ABL - KNOWN:
@@ -110,6 +133,7 @@ if "mass_count" in ABL: args.mass_mode = "count"
 if "batch8" in ABL: args.batch = 8
 if "no_target_dropout" in ABL: args.target_dropout = 0.0
 if "all_profiles" in ABL: args.n_profiles = 0            # 0 = every profile
+if "cap1000" in ABL: args.n_profiles = 1000
 TAG = args.tag or f"{args.mode}_{args.backbone}_{args.mass_mode}" \
                   f"{'_' + '_'.join(sorted(ABL)) if ABL else ''}"
 OUT = args.out_root or os.path.join(ROOT, "outputs", "audit", args.region, TAG)
@@ -127,7 +151,12 @@ c, qc_report = load_cohort(ROOT, args.region, SPLITS,
                            qc="qc" in ABL)
 norm = ArgoNorm.fit(c, "train")
 LEV = c.levels
-BOX = P.REGIONS[args.region]
+#: the global run is one domain over the whole ocean; the regional boxes stay
+#: available for comparison with the committed regional study
+BOX = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0)) if args.region == "global"
+       else P.REGIONS[args.region])
+if args.setconv_grid == "auto":
+    args.setconv_grid = "180x360" if args.region == "global" else "50x102"
 LA0, LA1 = (float(x) for x in BOX["lat"]); LO0, LO1 = (float(x) for x in BOX["lon"])
 STD = {ch: torch.as_tensor(norm.std[ch], dtype=torch.float32, device=dev) for ch in CH}
 band_of_level = []
@@ -157,6 +186,7 @@ def xlon(lon):
 
 
 SURF = None
+SURF_Z: dict = {}          # month -> {var: (ny, nx) z-scored field, NaN kept}
 if args.surface:
     import xarray as _xr
     _ny, _nx = (int(v) for v in args.setconv_grid.split("x"))
@@ -183,8 +213,12 @@ if args.surface:
     for _m, _ch in list(SURF.items()):
         _x = (np.stack(_ch) - _mu) / _sd
         _ok = np.isfinite(_x).all(0, keepdims=True).astype("float32")
+        SURF_Z[_m] = {v: torch.as_tensor(_x[k], dtype=torch.float32, device=dev)
+                      for k, v in enumerate(_VARS)}
         SURF[_m] = torch.as_tensor(np.concatenate([np.nan_to_num(_x), _ok]),
                                    dtype=torch.float32, device=dev)
+    GRID_LAT = torch.as_tensor(_glat, dtype=torch.float32, device=dev)
+    GRID_LON = torch.as_tensor(_glon, dtype=torch.float32, device=dev)
     print(f"  surface channels: {len(SURF)} months "
           f"({2000 + min(SURF) // 12}-{2000 + max(SURF) // 12}), "
           f"{len(_VARS)} fields {_VARS} + validity", flush=True)
@@ -244,6 +278,7 @@ def make_sample(t_src, lead, src_rows, tgt_rows, n_queries, rng=None,
         level_index=t(li, torch.long),
         target=t(np.nan_to_num(target)), target_mask=t(tmask, torch.bool),
         surface=(None if SURF is None else SURF.get(int(t_src))),
+        surface_z=SURF_Z.get(int(t_src)),
         wmo=np.repeat(c.wmo[tgt_rows], LEV.size)[:target.shape[0]] if not n_queries
         else None, lead=int(lead), n_src=int(src_rows.size))
 
@@ -273,7 +308,12 @@ class Row(torch.nn.Module):
             n_heads=args.n_heads, n_self_blocks=args.n_self_blocks,
             seed=args.seed, n_dec_blocks=args.n_dec_blocks,
             max_lead=max(LEADS + [1]), query_chunk=2048,
-            **({"anchor_box": BOX} if args.backbone == "gaot" else {}))
+            with_ssh=bool(args.surface and "SLA" in args.surface_vars),
+            patch_surf=((args.surface_patch, args.surface_patch)
+                        if args.surface else None),
+            **({"anchor_box": BOX} if args.backbone == "gaot" else {}),
+            **({"n_slots": args.n_slots, "proj_hidden": args.proj_hidden}
+               if args.backbone == "lno" else {}))
         if "level_tokens" in ABL:
             # one token per level instead of five depth-band tokens: band edges
             # at the midpoints between levels, so a token's own depth is its
@@ -314,6 +354,15 @@ class Row(torch.nn.Module):
                             surface=s.get("surface"))
         obs = {"profiles": dict(prof=s["prof"][None], lat=s["lat"][None],
                                 lon=s["lon"][None], month=s["month"])}
+        sz = s.get("surface_z")
+        if args.surface and sz:
+            # satellite fields as gridded patch tokens through the shared
+            # surface / SSH encoders (the streams the global figure model uses)
+            g = dict(lat=GRID_LAT, lon=GRID_LON, month=s["month"])
+            if "SST" in sz and "SSS" in sz:
+                obs["surf"] = dict(field=torch.stack([sz["SST"], sz["SSS"]])[None], **g)
+            if "SLA" in sz:
+                obs["ssh"] = dict(field=sz["SLA"][None, None], **g)
         q = s["query"][None]
         lead = torch.full(q.shape[:2], s["lead"], dtype=torch.long, device=dev)
         tokens = self.net.encode(obs, batch=1, device=dev)
@@ -363,8 +412,12 @@ def score(model, samples):
     return out
 
 
-def build_eval(split, n_months=None, seed=None):
-    """A FIXED evaluation set: same months, same input draws, all target cells."""
+def build_eval(split, n_months=None, seed=None, max_cells=0):
+    """A FIXED evaluation set: same months, same input draws, same cells.
+
+    ``max_cells`` caps the scored cells per month with a generator seeded by the
+    month alone, so every arm and every seed is scored on the identical subset.
+    """
     seed = args.seed if seed is None else seed
     months = ELIG[split]
     if n_months and months.size > n_months:
@@ -373,9 +426,30 @@ def build_eval(split, n_months=None, seed=None):
     for m in months:
         src = pick_inputs(int(m), seed)
         tgt = c.month(int(m), float_split="heldout_float")
-        s = make_sample(int(m), 0, src, tgt, 0)
+        s = make_sample(int(m), 0, src, tgt, max_cells,
+                        rng=np.random.default_rng([20260918, int(m)]))
         if s is not None:
             out.append(s)
+    return out
+
+
+QUERY_KEYS = ("query", "query_true", "level_index", "target", "target_mask")
+
+
+def subsample(s, n, rng):
+    """Train on n of a fixed sample's cells per step (all are scored).
+
+    The overfit rungs fix up to --eval-cells cells per month; stepping on all of
+    them would cost 8x the queries of a normal step. Drawing n of the SAME fixed
+    cells each step is still memorisation of that set, at normal step cost.
+    """
+    Q = s["target"].shape[0]
+    if not n or Q <= n:
+        return s
+    pick = torch.as_tensor(rng.choice(Q, n, replace=False), device=s["target"].device)
+    out = dict(s)
+    for k in QUERY_KEYS:
+        out[k] = s[k][pick]
     return out
 
 
@@ -429,9 +503,12 @@ if args.mode in ("memorise", "copy", "small"):
         pool = c.month(int(m), float_split="cohort_float")
         floats = np.unique(c.wmo[pool])
         if args.mode == "copy":
-            src = _select_profiles(c, pool, min(args.n_profiles or 128, 128),
-                                   np.random.default_rng([args.seed, int(m)]))
-            tgt = src                              # answer what you were shown
+            src = (pool if args.n_profiles <= 0 else _select_profiles(
+                c, pool, args.n_profiles, np.random.default_rng([args.seed, int(m)])))
+            # answer what you were shown: targets are input profiles themselves
+            # (512 of them, so the query set stays the size of the other rungs)
+            tgt = np.sort(np.random.default_rng([args.seed, int(m), 1]).choice(
+                src, min(512, src.size), replace=False))
         else:
             tf = set(rng.choice(floats, max(1, int(0.3 * floats.size)),
                                 replace=False).tolist())
@@ -439,7 +516,8 @@ if args.mode in ("memorise", "copy", "small"):
                                    args.n_profiles,
                                    np.random.default_rng([args.seed, int(m)]))
             tgt = pool[np.isin(c.wmo[pool], list(tf))]
-        s = make_sample(int(m), 0, src, tgt, 0)
+        s = make_sample(int(m), 0, src, tgt, args.eval_cells,
+                        rng=np.random.default_rng([20260918, int(m)]))
         if s is not None:
             fixed.append(s)
     train_set, eval_sets = fixed, {"overfit": fixed}
@@ -449,9 +527,10 @@ if args.mode in ("memorise", "copy", "small"):
           f"{fixed[0]['n_src']} input profiles", flush=True)
 else:
     train_set = None
-    eval_sets = {"validation": build_eval("validation"),
+    eval_sets = {"validation": build_eval("validation", max_cells=args.eval_cells),
                  args.eval_split: build_eval(args.eval_split),
-                 "train_subset": build_eval("train", n_months=12)}
+                 "train_subset": build_eval("train", n_months=12,
+                                            max_cells=args.eval_cells)}
     # only the selection set is scored during training — the held-out and
     # train-subset passes cost more than the training steps between them and
     # are needed once, on the selected weights
@@ -467,7 +546,8 @@ for step in range(args.steps):
     tot = 0.0
     for _ in range(args.batch):
         if train_set is not None:
-            s = train_set[int(rng.integers(len(train_set)))]
+            s = subsample(train_set[int(rng.integers(len(train_set)))],
+                          args.queries, rng)
         else:
             m = int(rng.choice(ELIG["train"]))
             ok = [L for L in LEADS if (m + L) in TRAIN_MONTHS]

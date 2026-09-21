@@ -693,3 +693,103 @@ def test_gaot_anchor_out_of_reach_gets_no_mass_and_stays_finite():
     with torch.no_grad():
         out = m(far, _box_q(), lead=torch.zeros(1, 11, dtype=torch.long))
     assert torch.isfinite(out).all()
+
+
+# --------------------------------------------------------------------------
+# DFS-LNO: Latent Neural Operator physics-cross-attention fuse stage
+# --------------------------------------------------------------------------
+def _lno(variant="lno", seed=0):
+    from ocean_tokenizer.fusion import build_fusion_model
+    m = build_fusion_model(variant, _Grid(), d_model=D_MODEL, n_latent=N_LATENT,
+                           n_heads=N_HEADS, n_self_blocks=2, seed=seed, max_lead=6)
+    m.eval()
+    return m
+
+
+def test_lno_is_size_matched_to_the_perceiver_backbone():
+    from ocean_tokenizer.fusion import build_fusion_model
+    n_l = sum(p.numel() for p in _lno().parameters())
+    n_p = sum(p.numel() for p in build_fusion_model(
+        "d4rt", _Grid(), d_model=D_MODEL, n_latent=N_LATENT, n_heads=N_HEADS,
+        n_self_blocks=2, seed=0, max_lead=6).parameters())
+    assert abs(n_l - n_p) / n_p < 0.01
+
+
+def test_lno_arms_are_parameter_identical():
+    counts = {v: sum(p.numel() for p in _lno(v).parameters())
+              for v in ("lno", "lno_uniform", "lno_count")}
+    assert len(set(counts.values())) == 1
+
+
+def test_lno_forward_is_finite_with_and_without_profiles():
+    m, q = _lno(), _box_q()
+    lead = torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        assert torch.isfinite(m(_box_obs(), q, lead=lead)).all()
+        assert torch.isfinite(m({}, q, lead=lead)).all()
+
+
+def test_lno_slot_softmax_conserves_total_evidence():
+    """Softmax over the slots: each token spreads exactly its evidence, so the
+    slot masses sum to the total DFS evidence — the conservation property."""
+    for v in ("lno", "lno_uniform"):
+        ev = _masses(_lno(v), _box_obs())
+        tot = torch.nan_to_num(ev["tau"]).sum()
+        assert torch.allclose(ev["nu"].sum(), tot, rtol=1e-4), v
+
+
+def test_lno_duplicated_evidence_does_not_inflate_uniform_mass_per_token():
+    """Uniform: every token carries unit mass, so total slot mass = token count."""
+    m = _lno("lno_uniform")
+    ev = _masses(m, _box_obs(P=7))
+    tok = m.encode(_box_obs(P=7), batch=1, device=torch.device("cpu"))
+    obs_mask, _ = m._split(tok)
+    assert torch.allclose(ev["nu"].sum(), obs_mask.sum().to(ev["nu"].dtype), rtol=1e-4)
+
+
+def test_lno_count_arm_is_not_the_uniform_arm():
+    q, lead = _box_q(), torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        u = _lno("lno_uniform")(_box_obs(), q, lead=lead)
+        c = _lno("lno_count")(_box_obs(), q, lead=lead)
+    assert not torch.allclose(u, c)
+
+
+def test_lno_slot_weights_depend_on_position_only():
+    """Physics-cross-attention: the encoder's attention sees coordinates, never
+    the measured value — changing the values leaves the weights untouched."""
+    m = _lno()
+    a, b = _box_obs(seed=0), _box_obs(seed=0)
+    b["profiles"]["prof"] = b["profiles"]["prof"] * 5.0 + 3.0
+    ta = m.encode(a, batch=1, device=torch.device("cpu"))
+    tb = m.encode(b, batch=1, device=torch.device("cpu"))
+    with torch.no_grad():
+        assert torch.allclose(m.slot_weights(ta.coord), m.slot_weights(tb.coord))
+
+
+def test_lno_prediction_does_not_depend_on_other_queries():
+    m, q = _lno(), _box_q()
+    with torch.no_grad():
+        full = m(_box_obs(), q, lead=torch.zeros(1, 11, dtype=torch.long))
+        part = m(_box_obs(), q[:, :4], lead=torch.zeros(1, 4, dtype=torch.long))
+    assert torch.allclose(full[:, :4], part, atol=1e-5)
+
+
+def test_lno_is_invariant_to_profile_order():
+    m, q = _lno(), _box_q()
+    obs = _box_obs()
+    perm = torch.randperm(9)
+    obs_p = {"profiles": {k: (v[:, perm] if k != "month" else v)
+                          for k, v in obs["profiles"].items()}}
+    lead = torch.zeros(1, 11, dtype=torch.long)
+    with torch.no_grad():
+        assert torch.allclose(m(obs, q, lead=lead), m(obs_p, q, lead=lead), atol=1e-4)
+
+
+def test_lno_gradients_reach_the_position_projector():
+    m = _lno(); m.train()
+    out = m(_box_obs(), _box_q(), lead=torch.zeros(1, 11, dtype=torch.long))
+    out.square().mean().backward()
+    g = m.phca_proj[0].weight.grad
+    assert g is not None and torch.isfinite(g).all() and float(g.abs().sum()) > 0
+

@@ -8,7 +8,7 @@ mirrors `experiments/<folder>/`, and each generator writes into its own folder.
 | report | what it is | regenerate with |
 |---|---|---|
 | [`real_data/main_tables.md`](real_data/main_tables.md) | Tables 1–4: DFS / Uniform / Count by lead, by depth band, against baselines, against EN4/ECCO | `experiments/real_data/57_main_tables.py` |
-| [`real_data/pipeline_audit.md`](real_data/pipeline_audit.md) | **Read with the tables.** What the data path does to the numbers, and a zero-parameter kriging OI on the identical held-out floats | `experiments/real_data/61_pipeline_audit.py` |
+| [`real_data/pipeline_audit.md`](real_data/pipeline_audit.md) | **Read with the tables.** What the data path does to the numbers, and how predictable the anomaly is at a held-out float | `experiments/real_data/61_pipeline_audit.py` |
 | [`crosscheck/final_crosscheck_report.md`](crosscheck/final_crosscheck_report.md) | Track A vs Track B across every cross-check package | `experiments/real_data/47_argo_reports.py` |
 | [`real_data/tau_spread.md`](real_data/tau_spread.md) | How much the DFS evidence estimate actually varies on real input | `experiments/real_data/59_tau_spread.py` |
 | [`real_data/input_density.md`](real_data/input_density.md) | What the `--n-profiles` cap really delivers per month | `experiments/real_data/60_input_density.py` |
@@ -23,7 +23,7 @@ Current real-observation results.
 - `fig_argo_global_*`, `fig_en4_smoke*`, `fig_diag_*` — global 2-D reconstruction maps, `53_argo_global_recon.py` (`_en4` = scored against EN4, `_demean` = annual mean removed)
 - `godas_rows.md` — first real GODAS run, `14_godas_dfs_d4rt.py`
 - `main_equatorial_reconstruction.md` — hand-written note on the equatorial Pacific
-- `pipeline_audit.md` — the 2026-09-17 audit of data prep / normalisation / tokenisation, with the kriging-OI ceiling, `61_pipeline_audit.py` + `63_audit_report.py`
+- `pipeline_audit.md` — the 2026-09-17 audit of data prep / normalisation / tokenisation, with the predictability floor, `61_pipeline_audit.py` + `63_audit_report.py`
 - `overfit_sanity.md` — can the model fit data it is allowed to memorise, `62_sanity_train.py --mode memorise|copy|small`
 - `ablation_ladder.md` — one switch at a time on a fixed held-out set, `62_sanity_train.py --ablation ...`
 - `fig_pair_correlation.png`, `fig_overfit.png`, `fig_loss_curves.png`, `fig_ablation.png`, `fig_architecture.{png,svg}` — the audit's figures, `63`/`64`

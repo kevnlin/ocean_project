@@ -15,11 +15,10 @@ Three things the audit needs that the registered pipeline does not provide:
   across that distance as a spurious "anomaly".  :func:`exact_position_anomaly`
   rebuilds the target with the climatology interpolated to the profile itself.
 
-* **A properly specified optimal interpolation.**  ``objective_interpolation``
-  is a kernel-weighted mean with length scales set for the GODAS box and no
-  covariance inversion.  :class:`KrigingOI` fits a covariance to the training
-  years' observations and solves the full system, so it is the reference for
-  how much of the held-out signal the observing geometry makes recoverable.
+* **How predictable the anomaly is at all.**  :func:`pair_correlation` and
+  :func:`fit_cov` measure how fast the anomaly decorrelates between floats, and
+  the nugget of the fit is the share of the variance no other float sees — the
+  floor on skill at a held-out float.
 """
 from __future__ import annotations
 
@@ -108,13 +107,13 @@ def woa_monthly(root: str):
     return w.assign_coords(lon=(w.lon % 360.0)).sortby("lon")
 
 
-def exact_position_anomaly(raw: ArgoCohort, root: str,
-                           chunk: int = 20000) -> dict[str, np.ndarray]:
-    """TEMP/SALT minus WOA23 interpolated to each profile's own lat/lon/month.
+def climatology_anomaly(raw: ArgoCohort, root: str, lat: np.ndarray,
+                        lon: np.ndarray, chunk: int = 20000) -> dict[str, np.ndarray]:
+    """TEMP/SALT minus WOA23 read at (``lat``, ``lon``) in each profile's month.
 
-    Same climatology, same levels, same calendar month as the registered
-    anomaly; the only change is WHERE the climatology is read.  Returns arrays
-    aligned with ``raw`` (which is month-sorted by ``ArgoCohort.load``).
+    Passing the profiles' own positions gives the exact-position anomaly; passing
+    their grid-cell centres reproduces how the registered cohorts were built.
+    Arrays are aligned with ``raw`` (month-sorted by ``ArgoCohort.load``).
     """
     import xarray as xr
     w = woa_monthly(root)
@@ -127,62 +126,86 @@ def exact_position_anomaly(raw: ArgoCohort, root: str,
             sl = slice(i, i + chunk)
             clim[sl] = da.interp(
                 time=xr.DataArray(cm[sl], dims="p"),
-                lat=xr.DataArray(raw.lat[sl], dims="p"),
-                lon=xr.DataArray(raw.lon[sl] % 360.0, dims="p"),
+                lat=xr.DataArray(lat[sl], dims="p"),
+                lon=xr.DataArray(lon[sl] % 360.0, dims="p"),
                 depth=xr.DataArray(raw.levels, dims="l"),
                 method="linear").transpose("p", "l").values
         out[ch] = getattr(raw, ch) - clim
     return out
 
 
+def exact_position_anomaly(raw: ArgoCohort, root: str,
+                           chunk: int = 20000) -> dict[str, np.ndarray]:
+    """The anomaly with the climatology at each profile's own lat/lon."""
+    return climatology_anomaly(raw, root, raw.lat, raw.lon, chunk)
+
+
+def cohort_path(root: str, region: str) -> str:
+    """The RAW cohort file: ``global_global.nc`` for the global run, else
+    ``<region>_ext.nc`` (the extended 23-level regional cohorts)."""
+    base = os.path.join(root, "data", "argo_cohort")
+    return os.path.join(base, "global_global.nc" if region == "global"
+                        else f"{region}_ext.nc")
+
+
 def load_cohort(root: str, region: str, split_table: dict | None = None,
                 anomaly: str = "cell", qc: bool = False,
                 k_sigma: float = 8.0) -> tuple[ArgoCohort, QCReport | None]:
-    """The regional anomaly cohort under the audit's switches.
+    """An anomaly cohort under the audit's switches.
 
-    ``anomaly="cell"`` is the registered ``<region>_ext_anom.nc``;
-    ``anomaly="exact"`` recomputes the target from ``<region>_ext.nc`` with the
-    climatology at each profile's position (cached next to the cohort).
-    ``qc=True`` applies :func:`robust_qc` after the split table is set, so its
-    statistics come from the training years of THAT protocol.
+    ``anomaly="cell"`` subtracts WOA23 at the centre of the profile's grid cell
+    (how the registered regional cohorts were built); ``"exact"`` at the
+    profile's own position. Regional cells come from the shipped
+    ``<region>_ext_anom.nc``; the global cohort ships raw values, so both
+    variants are computed from it and cached. ``qc=True`` applies
+    :func:`robust_qc` after the split table is set, so its statistics come from
+    the training years of THAT protocol.
     """
     base = os.path.join(root, "data", "argo_cohort")
-    if anomaly == "cell":
+    raw_path = cohort_path(root, region)
+    if anomaly not in ("cell", "exact"):
+        raise ValueError(anomaly)
+    if anomaly == "cell" and region != "global":
         c = ArgoCohort.load(os.path.join(base, f"{region}_ext_anom.nc"))
-    elif anomaly == "exact":
-        c = ArgoCohort.load(os.path.join(base, f"{region}_ext.nc"))
-        cache = os.path.join(base, f"{region}_ext_anomx.npz")
+    else:
+        c = ArgoCohort.load(raw_path)
+        tag = "anomx" if anomaly == "exact" else "anomcell"
+        cache = os.path.join(base, (f"{region}_{tag}.npz" if region == "global"
+                                    else f"{region}_ext_{tag}.npz"))
         if os.path.exists(cache):
             z = np.load(cache)
-            assert z["n"] == c.TEMP.shape[0], "stale exact-anomaly cache"
+            assert z["n"] == c.TEMP.shape[0], "stale anomaly cache"
             c.TEMP, c.SALT = z["TEMP"].astype(float), z["SALT"].astype(float)
         else:
-            a = exact_position_anomaly(c, root)
+            if anomaly == "exact":
+                a = exact_position_anomaly(c, root)
+            else:
+                (la0, la1), (lo0, lo1) = ((-90.0, 90.0), (0.0, 360.0))
+                NY, NX = c.grid
+                a = climatology_anomaly(
+                    c, root, la0 + (c.grid_y + 0.5) * (la1 - la0) / NY,
+                    lo0 + (c.grid_x + 0.5) * (lo1 - lo0) / NX)
             np.savez(cache, TEMP=a["TEMP"], SALT=a["SALT"], n=c.TEMP.shape[0])
             c.TEMP, c.SALT = a["TEMP"].astype(float), a["SALT"].astype(float)
-    else:
-        raise ValueError(anomaly)
     if split_table is not None:
         c.apply_splits(split_table)
     rep = None
     if qc:
         import xarray as xr
-        order = np.argsort(np.asarray(
-            xr.open_dataset(os.path.join(base, f"{region}_ext.nc"))["month_index"].values,
-            int), kind="stable")
-        dm = np.asarray(xr.open_dataset(
-            os.path.join(base, f"{region}_ext.nc"))["data_mode"].values).astype(str)[order]
+        d = xr.open_dataset(raw_path)
+        order = np.argsort(np.asarray(d["month_index"].values, int), kind="stable")
+        dm = np.asarray(d["data_mode"].values).astype(str)[order]
         rep = robust_qc(c, k_sigma=k_sigma, data_mode=dm)
     return c, rep
 
 
-# --------------------------------------------------------------------------
 BINS_KM = np.array([0, 10, 25, 50, 75, 100, 150, 200, 300, 400, 600, 800, 1200])
 
 
 def pair_correlation(c: ArgoCohort, norm: ArgoNorm, ch: str, level: int,
                      months: np.ndarray, bins=BINS_KM, max_months: int = 200,
-                     seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+                     seed: int = 0, max_profiles: int = 1500,
+                     rows: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Same-month correlation of z-anomalies between DIFFERENT floats, by distance.
 
     Returns (correlation per bin, pair count per bin).  Pairs from one float are
@@ -194,8 +217,17 @@ def pair_correlation(c: ArgoCohort, norm: ArgoNorm, ch: str, level: int,
         months = rng.choice(months, max_months, replace=False)
     nb = len(bins) - 1
     num, den, cnt = np.zeros(nb), np.zeros(nb), np.zeros(nb)
+    in_rows = None if rows is None else np.zeros(c.TEMP.shape[0], bool)
+    if in_rows is not None:
+        in_rows[rows] = True
     for m in months:
         idx = c.month(int(m))
+        if in_rows is not None:
+            idx = idx[in_rows[idx]]
+        # a global month holds ~7 600 profiles; the pair count is quadratic, and
+        # a random subset estimates the same binned correlation
+        if idx.size > max_profiles:
+            idx = np.sort(rng.choice(idx, max_profiles, replace=False))
         v = (getattr(c, ch)[idx, level] - norm.mean[ch][level]) / norm.std[ch][level]
         ok = np.isfinite(v)
         idx, v = idx[ok], v[ok]
@@ -256,40 +288,14 @@ def fit_cov(corr: np.ndarray, cnt: np.ndarray, bins=BINS_KM) -> CovModel:
     return best[1]
 
 
-class KrigingOI:
-    """Simple kriging per level and channel in z space, zero prior mean.
+#: absolute-latitude bands for the global covariance fit: a front-dominated
+#: mid-latitude ocean and the tropical wave guide do not share one covariance
+LAT_BANDS = ((0.0, 20.0), (20.0, 45.0), (45.0, 90.1))
 
-    ``cov[ch][level]`` is a :class:`CovModel`.  Inputs are the source month's
-    profiles, targets are queried at their own level, so there is no
-    vertical-coordinate convention to get wrong.
-    """
 
-    def __init__(self, cov: dict):
-        self.cov = cov
-
-    def predict(self, c: ArgoCohort, norm: ArgoNorm, src_rows: np.ndarray,
-                tgt_rows: np.ndarray) -> np.ndarray:
-        """-> (R, L, 2) z-space predictions at every target profile level."""
-        L = c.levels.size
-        out = np.zeros((tgt_rows.size, L, len(CHANNELS)))
-        if src_rows.size == 0 or tgt_rows.size == 0:
-            return out
-        dxx = haversine_km(c.lat[src_rows][:, None], c.lon[src_rows][:, None],
-                           c.lat[src_rows][None], c.lon[src_rows][None])
-        dqx = haversine_km(c.lat[tgt_rows][:, None], c.lon[tgt_rows][:, None],
-                           c.lat[src_rows][None], c.lon[src_rows][None])
-        for j, ch in enumerate(CHANNELS):
-            Z = (getattr(c, ch)[src_rows] - norm.mean[ch]) / norm.std[ch]
-            for lv in range(L):
-                ok = np.isfinite(Z[:, lv])
-                if not ok.any():
-                    continue
-                cm = self.cov[ch][lv]
-                K = cm(dxx[np.ix_(ok, ok)]) + cm.nugget * np.eye(int(ok.sum()))
-                k = cm(dqx[:, ok])
-                try:
-                    alpha = np.linalg.solve(K, Z[ok, lv])
-                except np.linalg.LinAlgError:
-                    alpha = np.linalg.lstsq(K, Z[ok, lv], rcond=None)[0]
-                out[:, lv, j] = k @ alpha
-        return out
+def band_of_lat(lat: np.ndarray, bands=LAT_BANDS) -> np.ndarray:
+    a = np.abs(np.asarray(lat))
+    out = np.zeros(a.shape, int)
+    for i, (lo, hi) in enumerate(bands):
+        out[(a >= lo) & (a < hi)] = i
+    return out

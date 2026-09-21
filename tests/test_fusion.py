@@ -100,6 +100,7 @@ def test_gradient_flow(variant):
     g = model.encoders["profiles"].level_mlp[0].weight.grad
     assert g is not None and torch.isfinite(g).all() and g.abs().sum() > 0
     lat = (model.gaot_anchor_proj.weight if variant.startswith("gaot")
+           else model.slot_emb if variant.startswith("lno")
            else model.latent0)
     g = lat.grad
     assert g is not None and torch.isfinite(g).all() and g.abs().sum() > 0

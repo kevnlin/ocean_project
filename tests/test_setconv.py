@@ -149,3 +149,13 @@ def test_query_depth_picks_the_right_level():
     assert out.shape == (LEVELS.size, 2)
     # different levels must give different answers — no vertical pooling
     assert len({tuple(np.round(r, 6)) for r in out.detach().numpy()}) == LEVELS.size
+
+
+def test_chunked_encoding_equals_the_one_shot_sum():
+    """The global run encodes ~7 600 profiles in chunks; chunking must not
+    change a single value."""
+    m = _model()
+    prof, lat, lon = _obs(k=37)
+    a = m.setconv(prof, lat, lon, chunk=1000)
+    b = m.setconv(prof, lat, lon, chunk=5)
+    assert torch.allclose(a, b, atol=1e-5)

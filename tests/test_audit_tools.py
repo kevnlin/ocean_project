@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from ocean_tokenizer.argo_obs import ArgoCohort, ArgoNorm
-from ocean_tokenizer.audit_tools import (BINS_KM, CovModel, KrigingOI, fit_cov,
+from ocean_tokenizer.audit_tools import (BINS_KM, CovModel, fit_cov,
                                          haversine_km, pair_correlation,
                                          robust_qc)
 
@@ -125,45 +125,15 @@ def test_cov_model_nugget_is_the_unexplained_variance():
     assert m(np.array([0.0]))[0] == pytest.approx(0.8, abs=1e-9)
 
 
-# ------------------------------------------------------------------ kriging
-def test_kriging_beats_climatology_on_a_field_it_knows():
-    c = _cohort(n_floats=30, n_cycles=3, scale_km=200.0, seed=3)
+def test_latitude_band_covariances_are_used_per_target():
+    from ocean_tokenizer.audit_tools import band_of_lat
+    assert band_of_lat(np.array([0.0, -19.9, 30.0, -60.0, 89.9])).tolist() == [0, 0, 1, 2, 2]
+
+
+def test_pair_correlation_restricted_to_rows_uses_only_those_rows():
+    c = _cohort(n_floats=25, n_cycles=4, scale_km=200.0)
     norm = ArgoNorm.fit(c, "train")
-    cov = {ch: [CovModel(0.0, 0.85, 200.0, 0.0, 900.0) for _ in c.levels]
-           for ch in ("TEMP", "SALT")}
-    oi = KrigingOI(cov)
-    se = se0 = n = 0.0
-    for m in c.months_in("train"):
-        src = c.month(int(m), float_split="cohort_float")
-        tgt = c.month(int(m), float_split="heldout_float")
-        if src.size == 0 or tgt.size == 0:
-            continue
-        pred = oi.predict(c, norm, src, tgt)
-        y = (c.TEMP[tgt] - norm.mean["TEMP"]) / norm.std["TEMP"]
-        se += float(((pred[..., 0] - y) ** 2).sum())
-        se0 += float((y ** 2).sum()); n += y.size
-    assert n > 0
-    assert np.sqrt(se / n) < 0.85 * np.sqrt(se0 / n), "kriging did not beat the mean"
-
-
-def test_kriging_returns_zero_without_observations():
-    c = _cohort()
-    norm = ArgoNorm.fit(c, "train")
-    cov = {ch: [CovModel(0.0, 0.8, 100.0, 0.0, 900.0) for _ in c.levels]
-           for ch in ("TEMP", "SALT")}
-    out = KrigingOI(cov).predict(c, norm, np.array([], int), c.month(0)[:2])
-    assert out.shape == (2, c.levels.size, 2)
-    assert np.all(out == 0.0)
-
-
-def test_kriging_ignores_a_level_no_input_reported():
-    c = _cohort(n_floats=8, n_cycles=3)
-    norm = ArgoNorm.fit(c, "train")
-    src = c.month(0, float_split="cohort_float")
-    tgt = c.month(0, float_split="heldout_float")
-    c.TEMP[src, 2] = np.nan                      # nobody measured level 2
-    cov = {ch: [CovModel(0.0, 0.8, 200.0, 0.0, 900.0) for _ in c.levels]
-           for ch in ("TEMP", "SALT")}
-    out = KrigingOI(cov).predict(c, norm, src, tgt)
-    assert np.all(out[:, 2, 0] == 0.0), "predicted from levels with no data"
-    assert np.isfinite(out).all()
+    rows = np.flatnonzero(c.lat < 35.0)
+    rho, cnt = pair_correlation(c, norm, "TEMP", 0, c.months_in("train"), rows=rows)
+    _, cnt_all = pair_correlation(c, norm, "TEMP", 0, c.months_in("train"))
+    assert 0 < cnt.sum() < cnt_all.sum()
