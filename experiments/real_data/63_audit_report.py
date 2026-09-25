@@ -179,10 +179,8 @@ LOSS_RUNS = [("baseline", 1234, "Perceiver-IO baseline"),
              ("backbone_lno", 1234, "PhCA-style (LNO) backbone"),
              ("refiner_gate1", 1234, "refiner gate 1.0"),
              ("backbone_lno_uniform", 1234, "PhCA-style + uniform mass")]
-VAL_RUNS = [("baseline", 1234, "baseline, seed 1234"),
-            ("baseline", 1235, "baseline, seed 1235"),
-            ("refiner_gate1", 1234, "refiner gate 1.0, seed 1234"),
-            ("refiner_gate1", 1235, "refiner gate 1.0, seed 1235")]
+#: the same four arms as the loss panel, in the same colours, seed 1234 only
+VAL_RUNS = list(LOSS_RUNS)
 fig, axes = plt.subplots(1, 2, figsize=(11.5, 3.9))
 any_curve = False
 for i, (tag, seed, label) in enumerate(LOSS_RUNS):
@@ -200,14 +198,14 @@ for i, (tag, seed, label) in enumerate(VAL_RUNS):
           if "validation/macro_z" in r]
     if vl:
         st, v = zip(*vl)
-        axes[1].plot(st, v, color=SERIES[[0, 0, 2, 2][i]], label=label, marker="o",
-                     ls="-" if seed == 1234 else (0, (4, 2)))
+        axes[1].plot(st, v, color=SERIES[i], label=label, marker="o", ms=3.5)
 if any_curve:
     axes[0].set_xlabel("training step"); axes[0].set_ylabel("training loss (MSE, z²), smoothed")
     axes[0].set_title("Training loss (seed 1234)"); axes[0].legend()
     axes[1].set_xlabel("training step")
     axes[1].set_ylabel("validation RMSE (z, mean of T and S)")
-    axes[1].set_title(f"Validation RMSE ({VAL}) — both seeds"); axes[1].legend()
+    axes[1].set_title(f"Validation RMSE ({VAL}) — seed {SEEDS[0]}")
+    axes[1].legend(fontsize=8)
     fig.tight_layout()
     fig.savefig(os.path.join(REP, "fig_loss_curves.png"), bbox_inches="tight")
 plt.close(fig)
@@ -621,11 +619,13 @@ if ROWS:
 
 A.append("## 3. Training curves\n")
 A.append("![training curves](fig_loss_curves.png)\n")
-A.append("Left: training loss (smoothed; batch size 1). Right: validation RMSE for "
-         "both seeds of the baseline and of the refiner-gate fix — the baseline's "
-         "seed 1235 plateaus near the climatology while the fixed arm's two seeds "
-         "track each other. Every run also logs to W&B (offline in `outputs/wandb/`; "
-         "`wandb sync outputs/wandb/wandb/offline-run-*`).\n")
+A.append(f"Both panels show the same four arms in the same colours, on seed "
+         f"{SEEDS[0]}: training loss on the left (smoothed; batch size 1), "
+         f"validation RMSE on {VAL} on the right. The refiner-gate arm reaches its "
+         "level by 4 k steps; PhCA with uniform mass stays above the rest in both "
+         "panels. Per-seed end points, including the seed-1235 collapses, are in "
+         "the tables above. Every run also logs to W&B (offline in "
+         "`outputs/wandb/`; `wandb sync outputs/wandb/wandb/offline-run-*`).\n")
 with open(os.path.join(REP, "ablation_ladder.md"), "w") as fh:
     fh.write("\n".join(A))
 print("wrote reports/real_data/ablation_ladder.md")

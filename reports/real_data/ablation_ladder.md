@@ -4,7 +4,7 @@
 
 > Every arm is the same training run with exactly one switch moved, scored on a FIXED held-out set: the same months, the same input profiles and the same held-out floats. Selection uses 2021; the test columns are 2022-2023, scored on every held-out cell. Two seeds per arm.
 
-> **Δ is paired**: the mean over seeds of (arm − reference) at the same seed. The two seeds differ by more than most switches do, so only same-seed differences are meaningful. The reference is the baseline for most arms, `backbone_lno` for the LNO variants, `cap1000` for per-level tokens.
+> **Δ is paired**: the mean over seeds of (arm − reference) at the same seed. The two seeds differ by more than most switches do, so only same-seed differences are meaningful. The reference is the baseline for most arms, `backbone_lno` for the PhCA uniform-mass arm, `cap1000` for per-level tokens.
 
 > **`qc` and `anomaly_exact` change the target itself**; compare those two by J.
 
@@ -49,4 +49,4 @@ Runs marked **collapsed** end with held-out TEMP J above 0.94: they end near the
 
 ![training curves](fig_loss_curves.png)
 
-Left: training loss (smoothed; batch size 1). Right: validation RMSE for both seeds of the baseline and of the refiner-gate fix — the baseline's seed 1235 plateaus near the climatology while the fixed arm's two seeds track each other. Every run also logs to W&B (offline in `outputs/wandb/`; `wandb sync outputs/wandb/wandb/offline-run-*`).
+Both panels show the same four arms in the same colours, on seed 1234: training loss on the left (smoothed; batch size 1), validation RMSE on 2021 on the right. The refiner-gate arm reaches its level by 4 k steps; PhCA with uniform mass stays above the rest in both panels. Per-seed end points, including the seed-1235 collapses, are in the tables above. Every run also logs to W&B (offline in `outputs/wandb/`; `wandb sync outputs/wandb/wandb/offline-run-*`).

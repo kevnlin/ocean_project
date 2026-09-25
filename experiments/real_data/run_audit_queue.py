@@ -50,6 +50,24 @@ ABLATIONS = [
     ("backbone_lno_uniform", ["--backbone", "lno", "--ablation", "mass_uniform"]),
 ]
 FIXED = "refiner_local,refiner_gate1"
+
+#: the 20 k contribution study: one switch per thing this model claims to add,
+#: all against the same baseline, tags prefixed so the 12 k audit runs stand.
+#: 20 000 steps, checkpoint every 5 000; everything else as in the audit.
+CONTRIB = [("k20_baseline", []),
+           # evidence
+           ("k20_mass_uniform", ["--ablation", "mass_uniform"]),
+           ("k20_mass_count", ["--ablation", "mass_count"]),
+           ("k20_refiner_no_mass", ["--ablation", "refiner_no_mass"]),
+           # architecture
+           ("k20_backbone_lno", ["--backbone", "lno"]),
+           ("k20_no_latent", ["--ablation", "no_latent"]),
+           ("k20_no_refiner", ["--ablation", "no_refiner"]),
+           ("k20_no_refslots", ["--ablation", "no_refslots"]),
+           ("k20_no_experts", ["--ablation", "no_experts"]),
+           # objective, and the audit's refiner fix
+           ("k20_loss_balanced", ["--ablation", "loss_balanced"]),
+           ("k20_refiner_gate1", ["--ablation", "refiner_gate1"])]
 OVERFIT = [("mem_d4rt", ["--mode", "memorise", "--steps", "4000"]),
            ("copy_d4rt", ["--mode", "copy", "--steps", "4000"]),
            ("small8_d4rt", ["--mode", "small", "--overfit-months", "8",
@@ -58,12 +76,14 @@ OVERFIT = [("mem_d4rt", ["--mode", "memorise", "--steps", "4000"]),
            ("copy_fixed", ["--mode", "copy", "--steps", "4000", "--ablation", FIXED])]
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--queue", default="ablation", choices=["ablation", "overfit"])
+ap.add_argument("--queue", default="ablation", choices=["ablation", "overfit", "contrib"])
 ap.add_argument("--gpus", required=True, help="explicit list, e.g. 0,2")
 ap.add_argument("--jobs", type=int, default=6, help="concurrent jobs in total")
 ap.add_argument("--regions", default="global")
 ap.add_argument("--seeds", default="1234,1235")
 ap.add_argument("--steps", type=int, default=12000)
+ap.add_argument("--ckpt-every", type=int, default=0,
+                help="pass through to 62: save a checkpoint every n steps")
 ap.add_argument("--min-free-mb", type=int, default=24000,
                 help="a job starts only on a listed GPU with at least this much "
                      "free memory; below it the runner waits. A global Perceiver "
@@ -85,11 +105,14 @@ print("using gpus " + ", ".join(f"{g} ({free[g][0]} MiB free, {free[g][1]}% util
 jobs = []
 for region in args.regions.split(","):
     for seed in args.seeds.split(","):
-        for tag, extra in (OVERFIT if args.queue == "overfit" else ABLATIONS):
+        queue = {"overfit": OVERFIT, "contrib": CONTRIB}.get(args.queue, ABLATIONS)
+        for tag, extra in queue:
             cmd = [PY, DRIVER, "--region", region, "--seed", seed, "--tag", tag,
                    "--wandb", "--leads", "0"]
             if "--steps" not in extra:
                 cmd += ["--steps", str(args.steps)]
+            if args.ckpt_every:
+                cmd += ["--ckpt-every", str(args.ckpt_every)]
             jobs.append((f"{region}/{tag}/s{seed}", cmd + extra))
 
 os.makedirs(LOGS, exist_ok=True)

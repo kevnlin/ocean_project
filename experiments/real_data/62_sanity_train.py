@@ -34,7 +34,7 @@ not one number.
 """
 from __future__ import annotations
 
-import argparse, json, os, sys, time
+import argparse, json, os, sys, time, types
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 import warnings; warnings.filterwarnings("ignore")
@@ -72,6 +72,9 @@ ap.add_argument("--warmup", type=int, default=300)
 ap.add_argument("--weight-decay", type=float, default=0.01)
 ap.add_argument("--queries", type=int, default=1024)
 ap.add_argument("--val-every", type=int, default=1000)
+ap.add_argument("--ckpt-every", type=int, default=0,
+                help="also save model_seed<seed>_step<n>.pt every n steps "
+                     "(0 = only the final/best state)")
 ap.add_argument("--leads", default="0")
 ap.add_argument("--d-model", type=int, default=64)
 ap.add_argument("--n-latent", type=int, default=32)
@@ -125,7 +128,13 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABL = {a for a in args.ablation.split(",") if a and a != "none"}
 KNOWN = {"qc", "anomaly_exact", "level_tokens", "refiner_local", "refiner_gate1", "cap1000",
          "coords_region", "all_profiles", "batch8", "no_latent",
-         "no_target_dropout", "mass_uniform", "mass_count"}
+         "no_target_dropout", "mass_uniform", "mass_count",
+         # one switch per architectural contribution, for the 20 k study
+         "no_refiner",      # drop the query-local refiner branch entirely
+         "no_refslots",     # drop the availability-conditioned reference slots
+         "no_experts",      # both channels from the shared head, no salt expert
+         "refiner_no_mass", # refiner scores ignore the DFS evidence (beta = 0)
+         "loss_balanced"}   # equal loss weight per channel and per level
 if ABL - KNOWN:
     raise SystemExit(f"unknown ablation(s): {sorted(ABL - KNOWN)}")
 if "mass_uniform" in ABL: args.mass_mode = "uniform"
@@ -346,6 +355,27 @@ class Row(torch.nn.Module):
             if "refiner_gate1" in ABL:
                 for r in ref:
                     r.gate.fill_(1.0)
+            if "no_refiner" in ABL:
+                # the branch stays in the graph but contributes nothing and
+                # cannot learn its way back: q + 0 * refiner(q)
+                for r in ref:
+                    r.gate.zero_(); r.gate.requires_grad_(False)
+            if "refiner_no_mass" in ABL:
+                # scores keep content + distance, lose beta_head * log tau
+                for r in ref:
+                    r.beta_head.zero_(); r.beta_head.requires_grad_(False)
+        if "no_refslots" in ABL:
+            # no availability-conditioned reference slots in the fusion kv
+            self.net._extra_kv = lambda tokens: None
+        if "no_experts" in ABL:
+            # shared head emits both channels; the salt refiner/head go unused
+            exp = self.net.qdec.experts
+            def _shared_only(self_, q, query_coord, lead, emb, coord, tau,
+                             time_offset, mask):
+                h = self_.shared_refiner(q, query_coord, lead, emb=emb, coord=coord,
+                                         tau=tau, time_offset=time_offset, mask=mask)
+                return self_.shared_head(h)
+            exp.forward = types.MethodType(_shared_only, exp)
 
     def forward(self, s):
         if self.kind == "setconv":
@@ -573,7 +603,18 @@ for step in range(args.steps):
         msk = s["target_mask"]
         if not bool(msk.any()):
             continue
-        loss = (((pred - s["target"]) ** 2) * msk).sum() / msk.sum()
+        se = ((pred - s["target"]) ** 2) * msk
+        if "loss_balanced" in ABL:
+            # plain MSE weights a (channel, level) by how many cells it happens
+            # to have; this gives every channel and every level equal weight, so
+            # the sparse deep levels are not drowned by the well-sampled ones
+            li = s["level_index"].long()
+            n = torch.zeros(LEV.size, 2, device=se.device).index_add_(
+                0, li, msk.float())
+            w = msk.float() / n.clamp(min=1.0)[li]
+            loss = (se * w).sum() / w.sum()
+        else:
+            loss = se.sum() / msk.sum()
         (loss / args.batch).backward()
         tot += float(loss) / args.batch
     gn = float(torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0))
@@ -582,6 +623,9 @@ for step in range(args.steps):
     if (step + 1) % 20 == 0:
         log(step + 1, train_loss=float(np.mean(loss_run[-20:])),
             lr=float(sched.get_last_lr()[0]), grad_norm=gn)
+    if args.ckpt_every and (step + 1) % args.ckpt_every == 0:
+        torch.save(model.state_dict(),
+                   os.path.join(OUT, f"model_seed{args.seed}_step{step + 1}.pt"))
     if (step + 1) % args.val_every == 0 or step + 1 == args.steps:
         sc = {k: score(model, eval_sets[k]) for k in during}
         flat = {f"{k}/{ch}_{m}": sc[k][ch][m]
