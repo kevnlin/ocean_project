@@ -6,7 +6,7 @@
 #   bash experiments/synthetic/run_oi_queue.sh
 set -u
 cd "$(dirname "$0")/../.."
-PY=${PY:-/home/nvidia/.venv/bin/python}
+PY=${PY:-.venv/bin/python}
 mkdir -p outputs/logs
 
 echo "[$(date +%T)] stage 1/3: OI tuning on validation months"
