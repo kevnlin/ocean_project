@@ -75,8 +75,74 @@ OVERFIT = [("mem_d4rt", ["--mode", "memorise", "--steps", "4000"]),
            ("mem_fixed", ["--mode", "memorise", "--steps", "4000", "--ablation", FIXED]),
            ("copy_fixed", ["--mode", "copy", "--steps", "4000", "--ablation", FIXED])]
 
+#: the 2026-09-26 plan on the SYNTHETIC CESM2 cohort (known truth, Argo-only,
+#: uniform random positions): these queues always run with --region synthetic.
+#: syn_overfit: memorise one fixed month / copy the inputs, 20 k steps, and the
+#: bottleneck split — latent + local refiner (base), latent only (no_refiner),
+#: raw local tokens only (no_latent) — plus the refiner fix and per-level tokens.
+LOCAL = ["--refiner-km", "150", "--refiner-gate", "1.0"]
+SYN_OVERFIT = []
+for _mode, _pre in (("memorise", "syn_mem"), ("copy", "syn_copy")):
+    _m = ["--mode", _mode, "--steps", "20000", "--val-every", "1000"]
+    SYN_OVERFIT += [(f"{_pre}_base", _m),
+                    (f"{_pre}_latent_only", _m + ["--ablation", "no_refiner"]),
+                    (f"{_pre}_tokens_only", _m + ["--ablation", "no_latent"]),
+                    (f"{_pre}_local", _m + LOCAL)]
+# (per-level tokens were dropped from this queue: 4x the tokens and a quadratic
+# DFS search projected ~50 h per 20 k-step run on two shared GPUs)
+SYN_OVERFIT.insert(1, ("syn_mem_wd0", ["--mode", "memorise", "--steps", "20000",
+                                       "--val-every", "1000", "--weight-decay", "0"]))
+#: syn_refiner: held-out training, 12 k steps. The refiner's initial reach x
+#: gate on the at-position target, plus the registered cell-centre target at the
+#: registered init (plan items 4 and 5). Registered init = (0.35, 0.35, 0.30,
+#: 3.0) on (lon/180, lat/90, depth/1000 m, month): ~3 500 km, 300 m, gate 0.05.
+EXACT = ["--ablation", "anomaly_exact"]
+SYN_REFINER = [("syn_reg_cell", []), ("syn_reg", EXACT),
+               ("syn_reg_g1", EXACT + ["--refiner-gate", "1.0"])]
+for _km in (150, 500, 1500):
+    for _g, _gv in (("g005", "0.05"), ("g1", "1.0")):
+        SYN_REFINER.append((f"syn_r{_km}_{_g}",
+                            EXACT + ["--refiner-km", str(_km), "--refiner-gate", _gv]))
+#: syn_final: plan items 7-8 on the validated configuration — the at-position
+#: target and the refiner init selected on validation in syn_refiner
+#: (500 km / 100 m, gate 1.0; lowest validation macro J over 3 seeds). That
+#: configuration at 32 slots, Perceiver-IO, DFS is `syn_r500_g1` itself, which
+#: serves as the reference and is not re-run. Mass rules go through --mass-mode
+#: so they do not overwrite the anomaly_exact ablation.
+FIX = EXACT + ["--refiner-km", "500", "--refiner-gate", "1.0"]
+SYN_FINAL = [("syn_fix_l64", FIX + ["--n-latent", "64"]),
+             ("syn_fix_l128", FIX + ["--n-latent", "128"]),
+             ("syn_fix_uniform", FIX + ["--mass-mode", "uniform"]),
+             ("syn_fix_count", FIX + ["--mass-mode", "count"]),
+             ("syn_fix_lno", FIX + ["--backbone", "lno"]),
+             ("syn_fix_lno_uniform", FIX + ["--backbone", "lno", "--mass-mode", "uniform"]),
+             ("syn_fix_lno_count", FIX + ["--backbone", "lno", "--mass-mode", "count"]),
+             # item 7 on the PhCA-style fuse too: only the slot count changes
+             # (position-MLP width stays 96), against `syn_fix_lno` at 32 slots
+             ("syn_fix_lno_s64", FIX + ["--backbone", "lno", "--n-slots", "64"]),
+             ("syn_fix_lno_s128", FIX + ["--backbone", "lno", "--n-slots", "128"])]
+SYN_QUEUES = {"syn_overfit": SYN_OVERFIT, "syn_refiner": SYN_REFINER,
+              "syn_final": SYN_FINAL}
+
+#: pre-shutdown validation on REAL Argo (2026-09-29 plan, experiments A-C).
+#: `baseline` / `anomaly_exact` seeds 1234-1235 already exist and are reused;
+#: seed 1236 is added. B uses the refiner the synthetic audit selected.
+R500 = ["--refiner-km", "500", "--refiner-dz", "100", "--refiner-gate", "1.0"]
+_mem = ["--mode", "memorise", "--steps", "20000", "--val-every", "1000"]
+REAL_FINAL = [
+    ("real_exact_r500_g1", ["--ablation", "anomaly_exact"] + R500),   # B (fix)
+    ("baseline", []),                                                  # A (old), seed 1236
+    ("anomaly_exact", ["--ablation", "anomaly_exact"]),                # A (new) / B (old)
+    ("real_cell_r500_g1", R500),                                       # A at the local refiner
+    ("real_mem20k", _mem),                                             # C
+    ("real_mem20k_latent_only", _mem + ["--ablation", "no_refiner"]),
+    ("real_mem20k_tokens_only", _mem + ["--ablation", "no_latent"])]
+REAL_QUEUES = {"real_final": REAL_FINAL[:4], "real_overfit": REAL_FINAL[4:]}
+
 ap = argparse.ArgumentParser()
-ap.add_argument("--queue", default="ablation", choices=["ablation", "overfit", "contrib"])
+ap.add_argument("--queue", default="ablation",
+                choices=["ablation", "overfit", "contrib"] + sorted(SYN_QUEUES)
+                + sorted(REAL_QUEUES))
 ap.add_argument("--gpus", required=True, help="explicit list, e.g. 0,2")
 ap.add_argument("--jobs", type=int, default=6, help="concurrent jobs in total")
 ap.add_argument("--regions", default="global")
@@ -103,9 +169,12 @@ print("using gpus " + ", ".join(f"{g} ({free[g][0]} MiB free, {free[g][1]}% util
                                 for g in gpus), flush=True)
 
 jobs = []
+if args.queue in SYN_QUEUES:
+    args.regions = "synthetic"
 for region in args.regions.split(","):
     for seed in args.seeds.split(","):
-        queue = {"overfit": OVERFIT, "contrib": CONTRIB}.get(args.queue, ABLATIONS)
+        queue = {"overfit": OVERFIT, "contrib": CONTRIB,
+                 **SYN_QUEUES, **REAL_QUEUES}.get(args.queue, ABLATIONS)
         for tag, extra in queue:
             cmd = [PY, DRIVER, "--region", region, "--seed", seed, "--tag", tag,
                    "--wandb", "--leads", "0"]

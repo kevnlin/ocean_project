@@ -5,7 +5,9 @@ ocean, every profile a month delivers (~7 600, no cap), 20 levels to 985 m,
 target = WOA23 monthly anomaly, split in the satellite era (train 2016-2020,
 validate 2021, test 2022-23) so profile-only and satellite arms share one
 table. `--region gulfstream|npac_gyre` reproduces the committed regional study
-(with its own --split-table / --n-profiles).
+(with its own --split-table / --n-profiles). `--region synthetic` runs the same
+machinery on the CESM2 cohort of `experiments/synthetic/41_synth_argo_cohort.py`
+(uniform random positions, known truth; train 2000-03 / val 2004 / test 2005).
 
 The 2026-09-17 meeting asked for three things this script does:
 
@@ -55,7 +57,8 @@ BANDS = (("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-700m", 300.0, 700.0), ("700-1400m", 700.0, 1401.0))
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--region", default="global", choices=["global"] + list(P.REGIONS))
+ap.add_argument("--region", default="global",
+                choices=["global", "synthetic"] + list(P.REGIONS))
 ap.add_argument("--seed", type=int, default=1234)
 ap.add_argument("--mode", default="train",
                 choices=["train", "memorise", "copy", "small"])
@@ -104,10 +107,18 @@ ap.add_argument("--surface-vars", default="SST,SLA,SSS",
                 help="which surface fields to use with --surface. SLA alone is "
                      "the clean control: altimetry assimilates no in-situ "
                      "profile, while the L4 SST/SSS analyses do")
-ap.add_argument("--split-table",
-                default='{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}',
+ap.add_argument("--split-table", default=None,
                 help='JSON override of the year splits, e.g. \'{"train":[2016,2020],'
-                     '"validation":[2021,2021],"development":[2022,2023]}\'')
+                     '"validation":[2021,2021],"development":[2022,2023]}\' '
+                     '(default: that satellite-era table; 2000-03 / 2004 / 2005 '
+                     'for --region synthetic)')
+ap.add_argument("--refiner-km", type=float, default=None,
+                help="initial horizontal length scale of both local refiners in km "
+                     "(default: the registered init, ~3 500 km; refiner_local = 150)")
+ap.add_argument("--refiner-dz", type=float, default=100.0,
+                help="initial vertical length scale in m, used with --refiner-km")
+ap.add_argument("--refiner-gate", type=float, default=None,
+                help="initial refiner gate (registered 0.05; refiner_gate1 = 1.0)")
 ap.add_argument("--setconv-width", type=int, default=28)
 ap.add_argument("--n-slots", type=int, default=32,
                 help="LNO latent slots (32 = the Perceiver's latent count)")
@@ -123,6 +134,14 @@ ap.add_argument("--wandb-project", default="ocean-audit")
 ap.add_argument("--eval-split", default="development")
 ap.add_argument("--out-root", default=None)
 args = ap.parse_args()
+if args.split_table is None:
+    args.split_table = (
+        '{"train":[2000,2003],"validation":[2004,2004],"development":[2005,2005]}'
+        if args.region == "synthetic" else
+        '{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}')
+if args.region == "synthetic" and args.surface:
+    raise SystemExit("--surface reads the real satellite store; the synthetic "
+                     "task is Argo-only")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABL = {a for a in args.ablation.split(",") if a and a != "none"}
@@ -162,10 +181,12 @@ norm = ArgoNorm.fit(c, "train")
 LEV = c.levels
 #: the global run is one domain over the whole ocean; the regional boxes stay
 #: available for comparison with the committed regional study
-BOX = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0)) if args.region == "global"
+BOX = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0))
+       if args.region in ("global", "synthetic")
        else P.REGIONS[args.region])
 if args.setconv_grid == "auto":
-    args.setconv_grid = "180x360" if args.region == "global" else "50x102"
+    args.setconv_grid = ("180x360" if args.region in ("global", "synthetic")
+                         else "50x102")
 LA0, LA1 = (float(x) for x in BOX["lat"]); LO0, LO1 = (float(x) for x in BOX["lon"])
 STD = {ch: torch.as_tensor(norm.std[ch], dtype=torch.float32, device=dev) for ch in CH}
 band_of_level = []
@@ -335,7 +356,15 @@ class Row(torch.nn.Module):
                 LEV, c_vars=2, d_model=args.d_model, depth_bands=bands).to(dev)
         ref = [self.net.qdec.experts.shared_refiner, self.net.qdec.experts.salt_refiner]
         with torch.no_grad():
-            if "refiner_local" in ABL:
+            if args.refiner_km is not None:
+                # an explicit initial reach, for the scale sweep: same axes as
+                # refiner_local below (dx is already cos(lat)-scaled inside)
+                ell = torch.tensor([args.refiner_km / (180.0 * 111.195),
+                                    args.refiner_km / (90.0 * 111.195),
+                                    args.refiner_dz / 1000.0, 1.0])
+                for r in ref:
+                    r.log_scale.copy_(torch.log(ell))
+            elif "refiner_local" in ABL:
                 # 150 km horizontally, 100 m vertically, 1 month: the scales the
                 # measured correlation actually has. The registered init is
                 # (0.35, 0.35, 0.30, 3.0) on axes of lat/90 and lon/180, i.e.
@@ -355,6 +384,9 @@ class Row(torch.nn.Module):
             if "refiner_gate1" in ABL:
                 for r in ref:
                     r.gate.fill_(1.0)
+            if args.refiner_gate is not None:
+                for r in ref:
+                    r.gate.fill_(args.refiner_gate)
             if "no_refiner" in ABL:
                 # the branch stays in the graph but contributes nothing and
                 # cannot learn its way back: q + 0 * refiner(q)
@@ -655,6 +687,9 @@ summary = {"tag": TAG, "region": args.region, "seed": args.seed,
            "splits": {k: list(v) for k, v in SPLITS.items()},
            "backbone": args.backbone, "mass_mode": args.mass_mode,
            "ablations": sorted(ABL), "mode": args.mode, "params": int(n_par),
+           "n_latent": args.n_latent, "n_slots": args.n_slots,
+           "refiner_km": args.refiner_km, "refiner_gate": args.refiner_gate,
+           "lr": args.lr, "weight_decay": args.weight_decay,
            "steps": args.steps, "batch": args.batch, "n_profiles": args.n_profiles,
            "best_step": best["step"], "scores": final,
            "split_protocol": args.split_protocol,
