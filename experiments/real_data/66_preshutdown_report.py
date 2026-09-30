@@ -210,6 +210,10 @@ md += ["## Experiment A — anomaly target: climatology at the profile vs the ce
 
 # ============================================================ B
 dB = {ch: paired("real_exact_r500_g1", "anomaly_exact", ch) for ch in CH}
+okB = ok_seeds("real_exact_r500_g1", "anomaly_exact")
+dBok = {ch: paired("real_exact_r500_g1", "anomaly_exact", ch, okB) for ch in CH}
+sdB = {t: np.std([test(t, s_, "TEMP") for s_ in SEEDS if load(t, s_)], ddof=1)
+       for t in ("anomaly_exact", "real_exact_r500_g1")}
 dBv = paired("real_exact_r500_g1", "anomaly_exact", None, fn=lambda t, s, _: macro(t, s, "validation"))
 md += ["## Experiment B — local refiner scale\n",
        "```\nExperiment: B, local refiner\n"
@@ -223,7 +227,10 @@ md += ["## Experiment B — local refiner scale\n",
        "Seeds:      1234, 1235, 1236\n```\n",
        per_seed([("anomaly_exact", "registered refiner"), ("real_exact_r500_g1", "500 km / gate 1.0")]),
        f"Paired Δ (local − registered): validation macro J {fp(dBv, 3)}; test TEMP "
-       f"{fp(dB['TEMP'])} °C, SALT {fp(dB['SALT'], 5)} PSU.\n",
+       f"{fp(dB['TEMP'])} °C, SALT {fp(dB['SALT'], 5)} PSU; on the seeds where neither "
+       f"arm collapsed ({', '.join(map(str, okB)) or 'none'}): TEMP {fp(dBok['TEMP'])} °C, "
+       f"SALT {fp(dBok['SALT'], 5)} PSU. Seed-to-seed sd of test TEMP: "
+       f"{sdB['anomaly_exact']:.4f} °C registered vs {sdB['real_exact_r500_g1']:.4f} °C local.\n",
        "Paired Δ by depth, local − registered:\n",
        paired_bands("real_exact_r500_g1", "anomaly_exact")]
 
@@ -237,15 +244,17 @@ for tag, lab in OV:
         os.path.join(OUT, tag, "history.jsonl")) else []
     curves[tag] = h
     s = load(tag, 1234)
-    at = {k: next((r["overfit/macro_z"] for r in h if r["step"] == k), None) for k in (4000, 8000, 20000)}
+    at = {k: next((r["overfit/macro_z"] for r in h if r["step"] == k), None)
+          for k in (4000, 8000, 16000, 18000, 20000)}
     if s:
         sc = s["scores"]["overfit"]
         rows.append([lab, f(sc["TEMP"]["rmse_z"]), f(sc["TEMP"]["rmse_physical"]), f(sc["SALT"]["rmse_z"]),
                      f(sc["SALT"]["rmse_physical"]), f(at[4000], 3), f(at[8000], 3),
+                     f(at[16000], 3), f(at[18000], 3), f(at[20000], 3),
                      "**yes**" if max(sc["TEMP"]["rmse_z"], sc["SALT"]["rmse_z"]) <= 0.01 else "no"])
     else:
         last = h[-1] if h else None
-        rows.append([lab, "—", "—", "—", "—", f(at[4000], 3), f(at[8000], 3),
+        rows.append([lab, "—", "—", "—", "—", f(at[4000], 3), f(at[8000], 3), "—", "—", "—",
                      f"running (step {last['step']}: {last['overfit/macro_z']:.3f} z)" if last else "not run"])
 old = load("mem_d4rt_8k", 1234)
 old8 = (max(old["scores"]["overfit"][c]["rmse_z"] for c in CH) if old else None)
@@ -258,7 +267,7 @@ md += ["## Experiment C — real-data overfit sanity check\n",
        "            30 %), trained and scored on the same cells, 20 k steps, cosine decay\n"
        "Seed:       1234\n```\n",
        table(["decoder", "TEMP z", "TEMP °C", "SALT z", "SALT PSU", "macro z at 4 k",
-              "macro z at 8 k", "≤ 0.01 z?"], rows),
+              "8 k", "16 k", "18 k", "20 k", "≤ 0.01 z?"], rows),
        f"The 2026-09-19 real run with the same setup stopped at 8 k steps at "
        f"{f(old8, 3)} z (`mem_d4rt_8k`).\n",
        "![real overfit](fig_real_overfit.png)\n"]
