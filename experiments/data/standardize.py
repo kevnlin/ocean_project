@@ -31,9 +31,10 @@ import xarray as xr
 import warnings
 warnings.filterwarnings("ignore")
 
-ROOT = "/home/nvidia/ocean_project"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DATA = os.path.join(ROOT, "data")
-LE_DIR = "/home/nvidia/cesm2-le-ocean-sample"
+#: the raw CESM2-LE sample the full store was regridded from (not in the repo)
+LE_DIR = os.environ.get("CESM2_LE_DIR", os.path.join(ROOT, "..", "cesm2-le-ocean-sample"))
 
 RAW = {
     "cesm2": {

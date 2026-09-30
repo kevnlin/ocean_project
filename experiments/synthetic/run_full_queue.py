@@ -17,9 +17,9 @@ final config), e.g.:
 """
 import os, sys, json, time, subprocess
 
-ROOT = "/home/nvidia/ocean_project"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CACHE = os.path.join(ROOT, "outputs", "cache")
-PY = "/home/nvidia/.venv/bin/python"
+PY = os.environ.get("PY", os.path.join(ROOT, ".venv", "bin", "python"))
 
 import argparse
 ap = argparse.ArgumentParser()

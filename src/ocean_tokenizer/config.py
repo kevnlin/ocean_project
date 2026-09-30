@@ -10,10 +10,10 @@ import os
 # --------------------------------------------------------------------------
 # Paths
 # --------------------------------------------------------------------------
-# Overridable so the tree can be checked out on another machine without editing
-# source: export OCEAN_ROOT=/path/to/ocean_project.  Default = the box the
-# processed zarr stores live on.
-ROOT = os.environ.get("OCEAN_ROOT", "/home/nvidia/ocean_project")
+# Overridable with OCEAN_ROOT=/path/to/ocean_project; the default is this
+# checkout (src/ocean_tokenizer/ -> two levels up).
+ROOT = os.environ.get("OCEAN_ROOT", os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")))
 PROCESSED = os.path.join(ROOT, "processed")
 DATA = os.path.join(ROOT, "data")
 OUTPUTS = os.path.join(ROOT, "outputs")

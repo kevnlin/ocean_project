@@ -5,7 +5,9 @@ ocean, every profile a month delivers (~7 600, no cap), 20 levels to 985 m,
 target = WOA23 monthly anomaly, split in the satellite era (train 2016-2020,
 validate 2021, test 2022-23) so profile-only and satellite arms share one
 table. `--region gulfstream|npac_gyre` reproduces the committed regional study
-(with its own --split-table / --n-profiles).
+(with its own --split-table / --n-profiles). `--region synthetic` runs the same
+machinery on the CESM2 cohort of `experiments/synthetic/41_synth_argo_cohort.py`
+(uniform random positions, known truth; train 2000-03 / val 2004 / test 2005).
 
 The 2026-09-17 meeting asked for three things this script does:
 
@@ -55,34 +57,55 @@ BANDS = (("0-100m", 0.0, 100.0), ("100-300m", 100.0, 300.0),
          ("300-700m", 300.0, 700.0), ("700-1400m", 700.0, 1401.0))
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--region", default="global", choices=["global"] + list(P.REGIONS))
-ap.add_argument("--seed", type=int, default=1234)
+ap.add_argument("--region", default="global",
+                choices=["global", "synthetic"] + list(P.REGIONS),
+                help='global = real Argo, whole ocean; synthetic = the CESM2 cohort of 41_synth_argo_cohort.py; or a regional box')
+ap.add_argument("--seed", type=int, default=1234,
+                help='seeds model init, month/float draws and training order; eval sets are seed-independent')
 ap.add_argument("--mode", default="train",
-                choices=["train", "memorise", "copy", "small"])
+                choices=["train", "memorise", "copy", "small"],
+                help='train = held-out training; memorise / copy / small = the overfit rungs (see module docstring)')
 ap.add_argument("--tag", default=None, help="name of this run (dir + W&B)")
-ap.add_argument("--split-protocol", default="recent3", choices=sorted(P.SPLIT_PROTOCOLS))
-ap.add_argument("--backbone", default="d4rt", choices=["d4rt", "gaot", "lno", "setconv"])
-ap.add_argument("--mass-mode", default="dfs", choices=["dfs", "uniform", "count"])
+ap.add_argument("--split-protocol", default="recent3", choices=sorted(P.SPLIT_PROTOCOLS),
+                help='named year-split protocol (overridden by --split-table)')
+ap.add_argument("--backbone", default="d4rt", choices=["d4rt", "gaot", "lno", "setconv"],
+                help='fuse stage: d4rt = Perceiver-IO, lno = PhCA-style, gaot = anchored, setconv = SetConv U-Net')
+ap.add_argument("--mass-mode", default="dfs", choices=["dfs", "uniform", "count"],
+                help='evidence mass per token: dfs (DFS tau), uniform (1), count (multiplicity)')
 ap.add_argument("--n-profiles", type=int, default=0,
                 help="profiles per month (0 = every profile the month has)")
-ap.add_argument("--steps", type=int, default=12000)
+ap.add_argument("--steps", type=int, default=12000,
+                help='optimiser steps (cosine schedule decays to 0 at the last step)')
 ap.add_argument("--batch", type=int, default=1, help="months per optimiser step")
-ap.add_argument("--lr", type=float, default=1e-3)
-ap.add_argument("--warmup", type=int, default=300)
-ap.add_argument("--weight-decay", type=float, default=0.01)
-ap.add_argument("--queries", type=int, default=1024)
-ap.add_argument("--val-every", type=int, default=1000)
+ap.add_argument("--lr", type=float, default=1e-3,
+                help='AdamW peak learning rate')
+ap.add_argument("--warmup", type=int, default=300,
+                help='linear warm-up steps')
+ap.add_argument("--weight-decay", type=float, default=0.01,
+                help='AdamW weight decay')
+ap.add_argument("--queries", type=int, default=1024,
+                help='target cells scored per training step')
+ap.add_argument("--val-every", type=int, default=1000,
+                help='evaluate the selection set every n steps (the best one is kept)')
 ap.add_argument("--ckpt-every", type=int, default=0,
                 help="also save model_seed<seed>_step<n>.pt every n steps "
                      "(0 = only the final/best state)")
-ap.add_argument("--leads", default="0")
-ap.add_argument("--d-model", type=int, default=64)
-ap.add_argument("--n-latent", type=int, default=32)
-ap.add_argument("--n-heads", type=int, default=4)
-ap.add_argument("--n-self-blocks", type=int, default=2)
-ap.add_argument("--n-dec-blocks", type=int, default=2)
-ap.add_argument("--target-dropout", type=float, default=0.2)
-ap.add_argument("--overfit-months", type=int, default=8)
+ap.add_argument("--leads", default="0",
+                help='comma-separated forecast leads in months (0 = reconstruction)')
+ap.add_argument("--d-model", type=int, default=64,
+                help='token / latent width')
+ap.add_argument("--n-latent", type=int, default=32,
+                help='Perceiver-IO latent slots')
+ap.add_argument("--n-heads", type=int, default=4,
+                help='attention heads')
+ap.add_argument("--n-self-blocks", type=int, default=2,
+                help='latent self-attention blocks')
+ap.add_argument("--n-dec-blocks", type=int, default=2,
+                help='query-decoder cross-attention blocks')
+ap.add_argument("--target-dropout", type=float, default=0.2,
+                help="probability of hiding one channel's targets in a training step")
+ap.add_argument("--overfit-months", type=int, default=8,
+                help='months in the --mode small rung')
 # ---- the ablation switches (each is ONE component) ----
 ap.add_argument("--ablation", default="none", help=(
     "none | qc | anomaly_exact | level_tokens | refiner_local | refiner_gate1 | "
@@ -104,11 +127,20 @@ ap.add_argument("--surface-vars", default="SST,SLA,SSS",
                 help="which surface fields to use with --surface. SLA alone is "
                      "the clean control: altimetry assimilates no in-situ "
                      "profile, while the L4 SST/SSS analyses do")
-ap.add_argument("--split-table",
-                default='{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}',
+ap.add_argument("--split-table", default=None,
                 help='JSON override of the year splits, e.g. \'{"train":[2016,2020],'
-                     '"validation":[2021,2021],"development":[2022,2023]}\'')
-ap.add_argument("--setconv-width", type=int, default=28)
+                     '"validation":[2021,2021],"development":[2022,2023]}\' '
+                     '(default: that satellite-era table; 2000-03 / 2004 / 2005 '
+                     'for --region synthetic)')
+ap.add_argument("--refiner-km", type=float, default=None,
+                help="initial horizontal length scale of both local refiners in km "
+                     "(default: the registered init, ~3 500 km; refiner_local = 150)")
+ap.add_argument("--refiner-dz", type=float, default=100.0,
+                help="initial vertical length scale in m, used with --refiner-km")
+ap.add_argument("--refiner-gate", type=float, default=None,
+                help="initial refiner gate (registered 0.05; refiner_gate1 = 1.0)")
+ap.add_argument("--setconv-width", type=int, default=28,
+                help='channel width of the SetConv U-Net backbone')
 ap.add_argument("--n-slots", type=int, default=32,
                 help="LNO latent slots (32 = the Perceiver's latent count)")
 ap.add_argument("--proj-hidden", type=int, default=96,
@@ -118,11 +150,27 @@ ap.add_argument("--surface-patch", type=int, default=3,
                 help="satellite patch size in grid cells for the token backbones "
                      "(3 = 3 x 3 deg; the encoder default of 10 x 12 deg would "
                      "average away the mesoscale signal altimetry carries)")
-ap.add_argument("--wandb", action="store_true")
-ap.add_argument("--wandb-project", default="ocean-audit")
-ap.add_argument("--eval-split", default="development")
-ap.add_argument("--out-root", default=None)
+ap.add_argument("--wandb", action="store_true",
+                help='also log to Weights & Biases (offline unless WANDB_API_KEY is set)')
+ap.add_argument("--wandb-project", default="ocean-audit",
+                help='W&B project name')
+ap.add_argument("--eval-split", default="development",
+                help='year split used as the test set')
+ap.add_argument("--out-root", default=None,
+                help='output directory (default outputs/audit/<region>/<tag>)')
+ap.add_argument("--eval-only", action="store_true",
+                help="load <out>/model_seed<seed>.pt (the selected weights a finished "
+                     "run saved), score it on --eval-split only, and write "
+                     "summary_eval_seed<seed>.json; no training")
 args = ap.parse_args()
+if args.split_table is None:
+    args.split_table = (
+        '{"train":[2000,2003],"validation":[2004,2004],"development":[2005,2005]}'
+        if args.region == "synthetic" else
+        '{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}')
+if args.region == "synthetic" and args.surface:
+    raise SystemExit("--surface reads the real satellite store; the synthetic "
+                     "task is Argo-only")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABL = {a for a in args.ablation.split(",") if a and a != "none"}
@@ -162,10 +210,12 @@ norm = ArgoNorm.fit(c, "train")
 LEV = c.levels
 #: the global run is one domain over the whole ocean; the regional boxes stay
 #: available for comparison with the committed regional study
-BOX = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0)) if args.region == "global"
+BOX = (dict(lat=(-90.0, 90.0), lon=(0.0, 360.0))
+       if args.region in ("global", "synthetic")
        else P.REGIONS[args.region])
 if args.setconv_grid == "auto":
-    args.setconv_grid = "180x360" if args.region == "global" else "50x102"
+    args.setconv_grid = ("180x360" if args.region in ("global", "synthetic")
+                         else "50x102")
 LA0, LA1 = (float(x) for x in BOX["lat"]); LO0, LO1 = (float(x) for x in BOX["lon"])
 STD = {ch: torch.as_tensor(norm.std[ch], dtype=torch.float32, device=dev) for ch in CH}
 band_of_level = []
@@ -335,7 +385,15 @@ class Row(torch.nn.Module):
                 LEV, c_vars=2, d_model=args.d_model, depth_bands=bands).to(dev)
         ref = [self.net.qdec.experts.shared_refiner, self.net.qdec.experts.salt_refiner]
         with torch.no_grad():
-            if "refiner_local" in ABL:
+            if args.refiner_km is not None:
+                # an explicit initial reach, for the scale sweep: same axes as
+                # refiner_local below (dx is already cos(lat)-scaled inside)
+                ell = torch.tensor([args.refiner_km / (180.0 * 111.195),
+                                    args.refiner_km / (90.0 * 111.195),
+                                    args.refiner_dz / 1000.0, 1.0])
+                for r in ref:
+                    r.log_scale.copy_(torch.log(ell))
+            elif "refiner_local" in ABL:
                 # 150 km horizontally, 100 m vertically, 1 month: the scales the
                 # measured correlation actually has. The registered init is
                 # (0.35, 0.35, 0.30, 3.0) on axes of lat/90 and lon/180, i.e.
@@ -355,6 +413,9 @@ class Row(torch.nn.Module):
             if "refiner_gate1" in ABL:
                 for r in ref:
                     r.gate.fill_(1.0)
+            if args.refiner_gate is not None:
+                for r in ref:
+                    r.gate.fill_(args.refiner_gate)
             if "no_refiner" in ABL:
                 # the branch stays in the graph but contributes nothing and
                 # cannot learn its way back: q + 0 * refiner(q)
@@ -404,11 +465,12 @@ class Row(torch.nn.Module):
 
 # ------------------------------------------------------------------ scoring
 def score(model, samples):
-    """Pooled RMSE in z and physical units, plus per-band z RMSE and J."""
+    """Pooled RMSE in z and physical units and J, plus the same per depth band."""
     model.eval()
     se = {ch: 0.0 for ch in CH}; n = {ch: 0 for ch in CH}
     sep = {ch: 0.0 for ch in CH}; se0 = {ch: 0.0 for ch in CH}
-    band = {ch: {b: [0.0, 0] for b, _, _ in BANDS} for ch in CH}
+    # per band: [sum e^2 (z), count, sum e^2 (physical), sum target^2 (physical)]
+    band = {ch: {b: [0.0, 0, 0.0, 0.0] for b, _, _ in BANDS} for ch in CH}
     with torch.no_grad():
         for s in samples:
             pred = model(s)
@@ -423,10 +485,13 @@ def score(model, samples):
                 se0[ch] += float((s["target"][:, j][m] ** 2).sum())
                 bl = band_of_level[s["level_index"][m].cpu().numpy()]
                 ev = e.cpu().numpy()
+                evp = (e * sd ** 2).cpu().numpy()
+                tp = ((s["target"][:, j][m] * sd) ** 2).cpu().numpy()
                 for b, _, _ in BANDS:
                     k = bl == b
                     if k.any():
                         band[ch][b][0] += float(ev[k].sum()); band[ch][b][1] += int(k.sum())
+                        band[ch][b][2] += float(evp[k].sum()); band[ch][b][3] += float(tp[k].sum())
     model.train()
     out = {}
     for ch in CH:
@@ -437,6 +502,10 @@ def score(model, samples):
                    "unit": UNITS[ch], "J": rz / max(r0, 1e-9),
                    "climatology_z": r0, "n": n[ch],
                    "by_band_z": {b: (float(np.sqrt(v[0] / v[1])) if v[1] else float("nan"))
+                                 for b, v in band[ch].items()},
+                   "by_band_physical": {b: (float(np.sqrt(v[2] / v[1])) if v[1] else float("nan"))
+                                        for b, v in band[ch].items()},
+                   "by_band_J": {b: (float(np.sqrt(v[2] / v[3])) if v[3] else float("nan"))
                                  for b, v in band[ch].items()}}
     out["macro_z"] = float(np.mean([out[ch]["rmse_z"] for ch in CH if ch in out]))
     return out
@@ -569,6 +638,18 @@ else:
         print(f"  eval[{k}]: {len(v)} months, "
               f"{sum(int(s['target_mask'].sum()) for s in v):,} cells", flush=True)
 
+if args.eval_only:
+    ck = os.path.join(OUT, f"model_seed{args.seed}.pt")
+    model.load_state_dict(torch.load(ck, map_location=dev))
+    ev = {args.eval_split: score(model, eval_sets[args.eval_split])}
+    with open(os.path.join(OUT, f"summary_eval_seed{args.seed}.json"), "w") as f:
+        json.dump({"tag": TAG, "seed": args.seed, "checkpoint": ck, "scores": ev,
+                   "ablations": sorted(ABL), "runtime_s": time.time() - t0}, f,
+                  indent=1, default=float)
+    print(f"{TAG} s{args.seed} eval-only -> summary_eval_seed{args.seed}.json "
+          f"({time.time() - t0:.0f}s)")
+    raise SystemExit(0)
+
 best = {"macro_z": float("inf"), "step": -1, "state": None}
 loss_run = []
 for step in range(args.steps):
@@ -655,6 +736,9 @@ summary = {"tag": TAG, "region": args.region, "seed": args.seed,
            "splits": {k: list(v) for k, v in SPLITS.items()},
            "backbone": args.backbone, "mass_mode": args.mass_mode,
            "ablations": sorted(ABL), "mode": args.mode, "params": int(n_par),
+           "n_latent": args.n_latent, "n_slots": args.n_slots,
+           "refiner_km": args.refiner_km, "refiner_gate": args.refiner_gate,
+           "lr": args.lr, "weight_decay": args.weight_decay,
            "steps": args.steps, "batch": args.batch, "n_profiles": args.n_profiles,
            "best_step": best["step"], "scores": final,
            "split_protocol": args.split_protocol,

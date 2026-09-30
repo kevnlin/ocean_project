@@ -5,6 +5,82 @@ Argo-like profiles. The problem is framed as an **observing-system simulation
 experiment (OSSE)** on CESM2-LE, with WOA23 as an observational prior: the model
 climate is the (fully known) ground truth, so reconstructions can be scored exactly.
 
+## Quick start on a new machine (current pipeline)
+
+The current work is the **global real-Argo reconstruction** and its pipeline
+audit, plus a **synthetic audit** on CESM2 where the truth is known. The
+sections further down describe the earlier CESM2 OSSE line and are kept for
+reference.
+
+**1. Environment.** Python 3.12, one CUDA GPU (CPU works for smoke runs).
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt          # loose pins
+# or the exact environment the results were produced with:
+pip install -r requirements-lock.txt
+.venv/bin/python -m pytest -q             # 498 tests, ~30 s
+```
+
+**2. Data.** Everything the scripts read (processed Argo cohorts, WOA23,
+CESM2, satellite fields, synthetic cohort, run outputs, checkpoints) is on
+Hugging Face, laid out where the code expects it; see
+[`docs/DATA.md`](docs/DATA.md) for what each folder is, the splits, the target
+and the normalization.
+
+```bash
+hf download klin2323/ocean_project-data --repo-type dataset --local-dir .
+```
+
+**3. Preprocessing** (only to rebuild from raw; the processed files are in the download).
+
+```bash
+.venv/bin/python experiments/data/42_download_argo.py --regions global --start-year 2002
+.venv/bin/python experiments/data/44_build_argo_cohort.py --regions global --grid global \
+    --levels protocol --suffix _global                              # -> data/argo_cohort/global_global.nc
+.venv/bin/python experiments/data/41_download_real_obs.py --start 2016 --end 2023
+.venv/bin/python experiments/synthetic/41_synth_argo_cohort.py      # synthetic cohort
+```
+
+**4. Train and evaluate one model.** `62_sanity_train.py` trains, selects the
+best validation checkpoint and scores it on the test years in one run; it
+writes `outputs/audit/<region>/<tag>/summary_seed<seed>.json`.
+
+```bash
+# registered model, real data
+.venv/bin/python experiments/real_data/62_sanity_train.py --region global --seed 1234 --tag baseline
+# with the audit's fixes: target at the profile's position, local refiner
+.venv/bin/python experiments/real_data/62_sanity_train.py --region global --seed 1234 \
+    --tag real_exact_r500_g1 --ablation anomaly_exact --refiner-km 500 --refiner-dz 100 --refiner-gate 1.0
+# overfit sanity check: one fixed month, 20k steps
+.venv/bin/python experiments/real_data/62_sanity_train.py --region global --mode memorise --steps 20000 --tag real_mem20k
+```
+
+Every switch is listed by `--help`; `--ablation` takes a comma-separated list
+(`anomaly_exact`, `qc`, `no_refiner`, `no_latent`, `mass_uniform`, ...).
+
+**5. Reproduce the audits.** The queue runner spreads a job matrix over an
+explicit GPU list and skips runs that already have a summary.
+
+```bash
+R=experiments/real_data/run_audit_queue.py
+# real data: 2026-09-17 audit, 20k contribution study, pre-shutdown A/B/C
+.venv/bin/python $R --queue ablation --gpus 0,1
+.venv/bin/python $R --queue contrib --gpus 0,1
+.venv/bin/python $R --queue real_final --gpus 0,1 --seeds 1234,1235,1236
+.venv/bin/python $R --queue real_overfit --gpus 0,1 --seeds 1234
+.venv/bin/python experiments/real_data/61_pipeline_audit.py    # data audit
+.venv/bin/python experiments/real_data/63_audit_report.py      # -> reports/real_data/
+# synthetic audit
+.venv/bin/python experiments/synthetic/42_synth_argo_audit.py
+.venv/bin/python $R --queue syn_overfit --gpus 0,1 --seeds 1234
+.venv/bin/python $R --queue syn_refiner --gpus 0,1 --seeds 1234,1235,1236
+.venv/bin/python $R --queue syn_final --gpus 0,1 --seeds 1234,1235,1236
+.venv/bin/python experiments/synthetic/43_synth_argo_report.py # -> reports/synthetic/synth_argo_audit.md
+```
+
+Results so far: [`reports/final_summary.md`](reports/final_summary.md).
+
 ## What's here
 
 - **DFS-Attention** — the method: scale-aware *effective-evidence* fusion of
@@ -59,12 +135,7 @@ data/, processed/      raw NetCDF + standardized Zarr  (NOT tracked — see "Dat
 
 Python 3.12; a single GPU is used if available (CPU works for smoke runs).
 
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Reproduce
+## Reproduce (earlier CESM2 OSSE line)
 
 ```bash
 # DFS-Attention

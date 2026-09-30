@@ -26,6 +26,7 @@ import dataclasses
 import os
 
 import numpy as np
+import xarray as xr
 
 from .argo_obs import ArgoCohort, ArgoNorm
 
@@ -141,8 +142,11 @@ def exact_position_anomaly(raw: ArgoCohort, root: str,
 
 
 def cohort_path(root: str, region: str) -> str:
-    """The RAW cohort file: ``global_global.nc`` for the global run, else
+    """The RAW cohort file: ``global_global.nc`` for the global run, the CESM2
+    cohort of ``41_synth_argo_cohort.py`` for ``synthetic``, else
     ``<region>_ext.nc`` (the extended 23-level regional cohorts)."""
+    if region == "synthetic":
+        return os.path.join(root, "data", "synthetic_argo", "cesm2_uniform.nc")
     base = os.path.join(root, "data", "argo_cohort")
     return os.path.join(base, "global_global.nc" if region == "global"
                         else f"{region}_ext.nc")
@@ -165,7 +169,19 @@ def load_cohort(root: str, region: str, split_table: dict | None = None,
     raw_path = cohort_path(root, region)
     if anomaly not in ("cell", "exact"):
         raise ValueError(anomaly)
-    if anomaly == "cell" and region != "global":
+    if region == "synthetic":
+        # the synthetic cohort ships both climatologies (CESM2 train months, at
+        # the 1-deg cell centre and interpolated to the profile), so nothing is
+        # computed or cached here
+        c = ArgoCohort.load(raw_path)
+        d = xr.open_dataset(raw_path)
+        order = np.argsort(np.asarray(d["month_index"].values, int), kind="stable")
+        key = "POS" if anomaly == "exact" else "CELL"
+        for ch in CHANNELS:
+            clim = np.asarray(d[f"CLIM_{key}_{ch}"].values, float)[order]
+            setattr(c, ch, getattr(c, ch) - clim)
+        d.close()
+    elif anomaly == "cell" and region != "global":
         c = ArgoCohort.load(os.path.join(base, f"{region}_ext_anom.nc"))
     else:
         c = ArgoCohort.load(raw_path)
@@ -191,10 +207,11 @@ def load_cohort(root: str, region: str, split_table: dict | None = None,
         c.apply_splits(split_table)
     rep = None
     if qc:
-        import xarray as xr
         d = xr.open_dataset(raw_path)
-        order = np.argsort(np.asarray(d["month_index"].values, int), kind="stable")
-        dm = np.asarray(d["data_mode"].values).astype(str)[order]
+        dm = None
+        if "data_mode" in d:
+            order = np.argsort(np.asarray(d["month_index"].values, int), kind="stable")
+            dm = np.asarray(d["data_mode"].values).astype(str)[order]
         rep = robust_qc(c, k_sigma=k_sigma, data_mode=dm)
     return c, rep
 

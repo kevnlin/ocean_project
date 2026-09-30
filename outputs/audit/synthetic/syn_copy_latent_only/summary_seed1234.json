@@ -1,0 +1,73 @@
+{
+ "tag": "syn_copy_latent_only",
+ "region": "synthetic",
+ "seed": 1234,
+ "surface": null,
+ "splits": {
+  "train": [
+   2000,
+   2003
+  ],
+  "validation": [
+   2004,
+   2004
+  ],
+  "development": [
+   2005,
+   2005
+  ]
+ },
+ "backbone": "d4rt",
+ "mass_mode": "dfs",
+ "ablations": [
+  "no_refiner"
+ ],
+ "mode": "copy",
+ "params": 405063,
+ "n_latent": 32,
+ "n_slots": 32,
+ "refiner_km": null,
+ "refiner_gate": null,
+ "lr": 0.001,
+ "weight_decay": 0.01,
+ "steps": 20000,
+ "batch": 1,
+ "n_profiles": 0,
+ "best_step": 20000,
+ "scores": {
+  "overfit": {
+   "TEMP": {
+    "rmse_z": 0.005319113722304512,
+    "rmse_physical": 0.0026529418454346028,
+    "unit": "degC",
+    "J": 0.003999311047968755,
+    "climatology_z": 1.330007508419752,
+    "n": 7646,
+    "by_band_z": {
+     "0-100m": 0.006373670166155804,
+     "100-300m": 0.005627068825807387,
+     "300-700m": 0.0016117466898039196,
+     "700-1400m": 0.0009258667264763574
+    }
+   },
+   "SALT": {
+    "rmse_z": 0.005583307162082164,
+    "rmse_physical": 0.0005775317305044663,
+    "unit": "PSU",
+    "J": 0.005686770693698461,
+    "climatology_z": 0.9818062768504195,
+    "n": 7646,
+    "by_band_z": {
+     "0-100m": 0.006998314820089499,
+     "100-300m": 0.005477338173604174,
+     "300-700m": 0.0015260512974377865,
+     "700-1400m": 0.0010625765082973681
+    }
+   },
+   "macro_z": 0.005451210442193337
+  }
+ },
+ "split_protocol": "recent3",
+ "runtime_s": 30863.16741013527,
+ "qc": null
+}

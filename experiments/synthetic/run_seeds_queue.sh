@@ -13,7 +13,7 @@
 #   bash experiments/synthetic/run_seeds_queue.sh density 5
 set -u
 cd "$(dirname "$0")/../.."
-PY=${PY:-/home/nvidia/.venv/bin/python}
+PY=${PY:-.venv/bin/python}
 QUEUE=${1:?usage: run_seeds_queue.sh ssh|density GPU_INDEX [seeds]}
 GPU=${2:?usage: run_seeds_queue.sh ssh|density GPU_INDEX [seeds]}
 SEEDS=${3:-"1235 1236"}
