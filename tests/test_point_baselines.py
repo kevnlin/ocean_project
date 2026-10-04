@@ -7,7 +7,8 @@ import numpy as np
 import pytest
 
 from ocean_tokenizer.oi import oi_level
-from ocean_tokenizer.point_baselines import nearest_profile, oi_points, point_sweep
+from ocean_tokenizer.point_baselines import (Scores, band_of_levels, nearest_profile,
+                                             oi_points, point_sweep)
 
 
 def _obs(n=60, seed=0):
@@ -94,3 +95,56 @@ def test_point_sweep_sub_k_matches_a_fresh_solve():
     assert np.allclose(sweep.sub_k(6).analyse(v, 350.0, 0.03),
                        oi_points(lat, lon, val, q_lat, q_lon, 350.0, 0.03, 6),
                        rtol=0, atol=1e-10)
+
+
+# --------------------------------------------------------------------------
+# pooled scoring (the arithmetic of score() in 62_sanity_train.py)
+# --------------------------------------------------------------------------
+LEVELS = np.array([5.0, 50.0, 200.0, 500.0, 985.0])
+STD = {"TEMP": np.array([2.0, 1.0, 0.5, 0.25, 0.1]), "SALT": np.ones(5)}
+
+
+def test_band_of_levels_follows_the_training_script():
+    assert list(band_of_levels(LEVELS)) == ["0-100m", "0-100m", "100-300m",
+                                            "300-700m", "700-1400m"]
+
+
+def test_scores_hand_computed_case():
+    s = Scores(LEVELS, STD)
+    # two cells in 0-100 m (levels 0 and 1), one in 300-700 m (level 3)
+    s.add("TEMP", [1.0, 0.0, 2.0], [0.0, 2.0, 1.0], [0, 1, 3])
+    r = s.result()["TEMP"]
+    # squared errors 1, 4, 1; squared targets 0, 4, 1; std^2 4, 1, 0.0625
+    assert r["n"] == 3 and r["unit"] == "degC"
+    assert r["rmse_z"] == pytest.approx(np.sqrt(6 / 3))
+    assert r["climatology_z"] == pytest.approx(np.sqrt(5 / 3))
+    assert r["J"] == pytest.approx(np.sqrt(6 / 5))
+    assert r["rmse_physical"] == pytest.approx(np.sqrt((4 + 4 + 0.0625) / 3))
+    assert r["by_band_z"]["0-100m"] == pytest.approx(np.sqrt(5 / 2))
+    assert r["by_band_z"]["300-700m"] == pytest.approx(1.0)
+    assert np.isnan(r["by_band_z"]["100-300m"])
+    assert r["by_band_physical"]["0-100m"] == pytest.approx(np.sqrt(8 / 2))
+    assert r["by_band_J"]["0-100m"] == pytest.approx(np.sqrt(8 / 4))
+    assert r["by_band_J"]["300-700m"] == pytest.approx(1.0)
+
+
+def test_scores_skip_non_finite_targets_and_pool_across_calls():
+    s = Scores(LEVELS, STD)
+    s.add("SALT", [1.0, 5.0], [0.0, np.nan], [0, 1])
+    s.add("SALT", [3.0], [0.0], [2])
+    r = s.result()
+    assert r["SALT"]["n"] == 2
+    assert r["SALT"]["rmse_z"] == pytest.approx(np.sqrt((1 + 9) / 2))
+    assert "TEMP" not in r
+    assert r["macro_z"] == pytest.approx(r["SALT"]["rmse_z"])
+
+
+def test_zero_prediction_scores_j_one():
+    """Climatology (zero anomaly) is the J = 1 floor by construction."""
+    rng = np.random.default_rng(0)
+    t, li = rng.normal(size=200), rng.integers(0, 5, 200)
+    s = Scores(LEVELS, STD)
+    s.add("TEMP", np.zeros(200), t, li)
+    r = s.result()["TEMP"]
+    assert r["J"] == pytest.approx(1.0)
+    assert r["rmse_z"] == pytest.approx(r["climatology_z"])
