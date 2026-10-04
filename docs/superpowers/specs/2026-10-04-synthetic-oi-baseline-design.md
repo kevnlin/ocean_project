@@ -90,8 +90,9 @@ assumed:
 is scored. Its cell count `n` and `climatology_z` must equal the values stored
 in `outputs/audit/synthetic/syn_r500_g1/summary_seed1234.json` for both splits
 and both channels (test: 351,895 cells, 1.6557 TEMP / 1.6358 SALT; validation:
-92,517 cells, 1.9145 / 1.7182), to a relative tolerance of 1e-6. If any value
-differs the script exits with an error and writes nothing.
+92,517 cells, 1.9145 / 1.7182): the cell counts exactly, the climatology error
+to a relative tolerance of 1e-5 (the model's sums were accumulated in float32).
+If any value differs the script exits with an error and writes nothing.
 
 ## 4. Baselines
 
@@ -116,10 +117,11 @@ All three predict the z-scored anomaly at each query cell.
   `62_sanity_train.py`: 0-100, 100-300, 300-700, 700-1400 m), eight selections
   in all, each the minimum pooled validation RMSE in z over that band's
   validation cells.
-- **Edge rule.** If a selected value sits on the edge of its axis, the axis is
-  extended by one value in that direction (`L_km`: 100 or 2500; `gamma`: 0.003
-  or 1.0; `k`: 5 or 80) and the selection is repeated, at most twice per axis.
-  A selection still on an edge after that is reported as such.
+- **Edge rule.** If a selected value sits on an end of its axis, the next
+  value of that side's ladder is added and the selection is repeated: `L_km`
+  down 100 then 60, up 2500 then 4000; `gamma` down 0.003 then 0.001, up 1.0
+  then 3.0; `k` down 5, up 80. A selection still on an end when its ladder is
+  used up is reported as such.
 - **Test.** The test year is scored once, with the eight selected settings.
 - **Also recorded.** The best single setting per variable (no band split) and
   its test score, so the gain from per-band tuning is visible.
@@ -131,9 +133,9 @@ beaten a properly tuned baseline.
 
 | File | Change |
 |---|---|
-| `src/ocean_tokenizer/point_baselines.py` | New. `nearest_profile(...)`, `oi_points(...)` (thin wrapper over `oi.LevelSweep` for scattered queries), and `pooled_scores(...)`, which reproduces the arithmetic of `score()` in `62_sanity_train.py` on numpy arrays. |
-| `tests/test_point_baselines.py` | New. `oi_points` equals `oi.oi_level` on the same points laid out as a grid; `oi_points` returns an observation's own value as `gamma → 0`; `nearest_profile` skips non-finite levels; `pooled_scores` matches a hand-computed case, including J and the per-band split. |
-| `experiments/synthetic/44_synth_argo_oi.py` | New. Loads the cohort, builds the evaluation sets of §3, runs the identity check, the tuning of §5 and the three baselines, and writes the outputs of §7. `--smoke` runs one validation month on a 2 × 2 × 1 grid. |
+| `src/ocean_tokenizer/point_baselines.py` | New. `nearest_profile(...)`, `point_sweep(...)` / `oi_points(...)` (thin wrappers over `oi.LevelSweep` for scattered queries), and `band_of_levels(...)` / `Scores`, which reproduce the arithmetic of `score()` in `62_sanity_train.py` on numpy arrays. |
+| `tests/test_point_baselines.py` | New. `oi_points` equals `oi.oi_level` on the same points laid out as a grid; `oi_points` returns an observation's own value as `gamma → 0`; `nearest_profile` skips non-finite levels and crosses the date line; `Scores` matches a hand-computed case, including J and the per-band split. |
+| `experiments/synthetic/44_synth_argo_oi.py` | New. Loads the cohort, builds the evaluation sets of §3, runs the identity check, the tuning of §5 and the three baselines, and writes the outputs of §7. `--smoke` runs one validation month on a 2 × 2 × 1 grid and only prints. Months are spread over a process pool. |
 | `experiments/synthetic/43_synth_argo_report.py` | Add §9 and the todo status table (§8 below). Sections 1-8 are not touched. |
 | `README.md` | One line for `44_synth_argo_oi.py` in the synthetic audit commands. |
 
@@ -141,7 +143,8 @@ beaten a properly tuned baseline.
 
 `outputs/audit/synthetic/fixed_baselines/`:
 
-- `summary.json` — for each of `climatology`, `nearest_profile`, `oi`: the
+- `summary.json` — for each of `climatology`, `nearest_profile`, `oi` and
+  `oi_single` (one OI setting per variable): the
   `scores` block in the schema `62_sanity_train.py` writes (`rmse_z`,
   `rmse_physical`, `unit`, `J`, `climatology_z`, `n`, `by_band_z`,
   `by_band_physical`, `by_band_J`, `macro_z`) for `validation` and
@@ -157,8 +160,9 @@ Both files are small and are committed, like the run summaries.
 `43_synth_argo_report.py` regenerates `reports/synthetic/synth_argo_audit.md`
 with two additions:
 
-- **Todo status table**, directly under the title: the five items, the arms
-  that answer each, and the headline test numbers.
+- **Todo status table**, after the introduction and before the findings: the
+  five items, the arms that answer each, the input profiles per month and the
+  headline test numbers.
 - **§9 Fixed baselines.** A table of test TEMP (°C), SALT (PSU) and J for
   climatology, nearest profile, OI and the model (mean ± sd, 3 seeds), with
   model − OI as a difference and a percentage; a per-band table in z units
@@ -188,4 +192,4 @@ detuned and the model is not retuned in response.
 ## 11. Cost
 
 CPU only. About 35,000 small OI analyses for tuning (12 months × 2 variables ×
-20 levels × 72 settings) plus the test year: minutes to tens of minutes.
+20 levels × 72 settings) plus the test year: a few minutes on 12 processes.
