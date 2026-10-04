@@ -36,3 +36,24 @@ def nearest_profile(obs_lat, obs_lon, obs_val, q_lat, q_lon):
     # chord length on the unit sphere is monotone in great-circle distance
     _, idx = cKDTree(_lonlat_to_xyz(lat, lon)).query(_lonlat_to_xyz(q_lat, q_lon), k=1)
     return v[np.asarray(idx).ravel()]
+
+
+def point_sweep(obs_lat, obs_lon, obs_val, q_lat, q_lon, k):
+    """k-NN geometry over one level's finite observations, at scattered queries.
+
+    Returns ``(sweep, values)``: an :class:`oi.LevelSweep` whose analysis has
+    one entry per query, and the finite observation values it was built from
+    (pass them to ``sweep.analyse``). ``sweep.sub_k`` gives any smaller k from
+    the same geometry.
+    """
+    lat, lon, v = _finite(obs_lat, obs_lon, obs_val)
+    q_lat = np.asarray(q_lat, dtype=np.float64).ravel()
+    q_lon = np.asarray(q_lon, dtype=np.float64).ravel()
+    sweep = LevelSweep(lat, lon, q_lat, q_lon, np.ones(q_lat.size, dtype=bool), k=k)
+    return sweep, v
+
+
+def oi_points(obs_lat, obs_lon, obs_val, q_lat, q_lon, L_km, gamma, k):
+    """(Q,) optimal-interpolation analysis at scattered queries (see :mod:`oi`)."""
+    sweep, v = point_sweep(obs_lat, obs_lon, obs_val, q_lat, q_lon, k)
+    return sweep.analyse(v, L_km, gamma)
