@@ -4,6 +4,18 @@
 
 The 2026-09-26 plan, run on synthetic data only: CESM2-LE is the ocean, synthetic Argo profiles are drawn from it, so the truth at every query is known. No real observation is used anywhere below.
 
+## Todo status (2026-10-04)
+
+The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm below was given the same 6,080 input profiles a month, 12 k steps where it is trained, the same splits, and is scored on the same 351,895 test cells per variable; the report checks this when it is generated. Test year 2005; Δ are paired over seeds.
+
+| todo item | arms | inputs / month | seeds | test result | section |
+|---|---|---|---|---|---|
+| Anomaly target at the Argo position | `syn_reg_cell` → `syn_reg` | 6,080 | 3 | 0.311 → 0.237 °C (-24 %), 0.0600 → 0.0450 PSU (-25 %) | §5 |
+| Compare with a fixed baseline (OI) | `fixed_baselines` vs `syn_r500_g1` | 6,080 | 3 (model) | OI 0.0860 °C / 0.0226 PSU; model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU; the model loses to OI on both variables | §9 |
+| Local refiner sweep, 3 seeds each | 8 inits, `syn_reg` … `syn_r1500_g1` | 6,080 | 3 | selected on validation: `syn_r500_g1` (500 km / 100 m, gate 1.0), 0.2296 ± 0.0021 °C; vs the registered init -0.0075 ± 0.0021 (n=3) °C | §4 |
+| Slots 32 → 64 | `syn_r500_g1` → `syn_fix_l64` | 6,080 | 3 | +0.0008 ± 0.0026 (n=3) °C, -0.00022 ± 0.00016 (n=3) PSU | §7 |
+| DFS vs uniform vs count | `syn_r500_g1`, `syn_fix_uniform`, `syn_fix_count` | 6,080 | 3 | uniform +0.0013 ± 0.0010 (n=3) °C, count +0.0010 ± 0.0011 (n=3) °C against DFS | §8 |
+
 ## Findings
 
 1. **Task** — 7,600 synthetic profiles a month at uniform random positions, 1,520 fixed queries, train 2000-03 / validation 2004 / test 2005.
@@ -14,6 +26,8 @@ The 2026-09-26 plan, run on synthetic data only: CESM2-LE is the ocean, syntheti
 6. **z-score tails are physical** — the one data defect (a T = 0 / S = 0 regridding fill, z ≈ -369) is removed at source; the remaining |z| > 8 values are open-ocean signal, and 8σ QC would delete 92,167 TEMP / 33,780 SALT true values. The normalisation was left unchanged.
 7. **Latent capacity** — against 32 slots, 64 and 128 change test TEMP by +0.0008 to +0.0026 °C in the Perceiver-IO fuse and -0.0020 to -0.0002 °C in the PhCA-style fuse (seed sd ≈ 0.002): no effect in either fuse.
 8. **DFS / uniform / count, Perceiver-IO / PhCA-style** — all within -0.0010 to +0.0019 °C of their reference: ties. With uniform random positions there is no redundancy for DFS to handle, so this cohort shows only that DFS costs nothing when redundancy is absent.
+
+9. **Fixed baselines** — on the same 6,080 input profiles a month and the same 351,895 test cells, validation-tuned OI scores 0.0860 °C / 0.0226 PSU and the model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU: the model loses to OI on both variables (model − OI +0.1436 °C, +167.0 %; +0.01987 PSU, +87.7 %). Nearest profile: 0.1728 °C / 0.0371 PSU; climatology: 0.6528 °C / 0.1119 PSU.
 
 ## 1. The task: fixed Argo-only interpolation, controlled split
 
@@ -163,3 +177,43 @@ Validated configuration, same D4RT decoder; one switch per row. Mass rules are c
 | `syn_fix_lno` | PhCA-style (LNO) | DFS | 405,543 | 3 | 0.3942 ± 0.0033 | 0.2315 ± 0.0010 | 0.0424 ± 0.0002 | +0.0019 ± 0.0019 (n=3) vs `syn_r500_g1` |
 | `syn_fix_lno_uniform` | PhCA-style (LNO) | uniform | 405,543 | 3 | 0.3954 ± 0.0029 | 0.2321 ± 0.0027 | 0.0423 ± 0.0003 | +0.0006 ± 0.0020 (n=3) vs `syn_fix_lno` |
 | `syn_fix_lno_count` | PhCA-style (LNO) | count | 405,543 | 3 | 0.3948 ± 0.0042 | 0.2305 ± 0.0022 | 0.0423 ± 0.0004 | -0.0010 ± 0.0013 (n=3) vs `syn_fix_lno` |
+
+## 9. Fixed baselines: climatology, nearest profile, optimal interpolation
+
+Methods with no trainable parameters, written by `experiments/synthetic/44_synth_argo_oi.py` and scored on the cells the models are scored on: the same 6,080 input profiles a month (every method is given all of them), the same 1,520 query profiles, the at-position target, the train-year normalisation, and 351,895 test cells per variable. A zero prediction reproduces the cell counts and climatology error stored in the model summaries, and this report refuses to render if any cited arm saw a different number of profiles.
+
+OI is `ocean_tokenizer.oi` (Bretherton et al. 1976): level by level, Gaussian covariance in great-circle distance, the k nearest profiles. Length scale, noise ratio and k are selected on the validation year, one setting per variable and depth band; the test year is scored once.
+
+| method | inputs / month | selected on | test TEMP °C | test SALT PSU | J TEMP | J SALT |
+|---|---|---|---|---|---|---|
+| climatology (zero anomaly) | 6,080 | — | 0.6528 | 0.1119 | 1.000 | 1.000 |
+| nearest profile | 6,080 | — | 0.1728 | 0.0371 | 0.299 | 0.364 |
+| OI, one setting per variable | 6,080 | validation 2004 | 0.0860 | 0.0226 | 0.163 | 0.227 |
+| **OI, tuned per variable and depth band** | 6,080 | validation 2004 | 0.0860 | 0.0226 | 0.164 | 0.225 |
+| model `syn_r500_g1` (mean ± sd, 3 seeds) | 6,080 | validation 2004 | 0.2296 ± 0.0021 | 0.0425 ± 0.0002 | 0.3766 ± 0.0033 | 0.4488 ± 0.0008 |
+
+Model − OI on test: TEMP +0.1436 °C (+167.0 %, model seed sd 0.0021), SALT +0.01987 PSU (+87.7 %, seed sd 0.00017). Negative means the model is better.
+
+By depth band, test RMSE in z units:
+
+|  |  | 0-100m | 100-300m | 300-700m | 700-1400m |
+|---|---|---|---|---|---|
+| TEMP | OI | 0.2057 | 0.2490 | 0.3608 | 0.4047 |
+| TEMP | model (mean of seeds) | 0.4982 | 0.6899 | 0.6693 | 0.7665 |
+| TEMP | model − OI | +0.2925 | +0.4409 | +0.3085 | +0.3618 |
+| SALT | OI | 0.2924 | 0.3483 | 0.4824 | 0.5056 |
+| SALT | model (mean of seeds) | 0.5550 | 0.7901 | 0.8754 | 0.9366 |
+| SALT | model − OI | +0.2626 | +0.4419 | +0.3931 | +0.4310 |
+
+Selected OI settings:
+
+|  | band | L (km) | gamma | k | validation RMSE z | on a grid edge |
+|---|---|---|---|---|---|---|
+| TEMP | 0-100m | 400 | 0.003 | 20 | 0.2128 | — |
+| TEMP | 100-300m | 250 | 0.01 | 40 | 0.2686 | — |
+| TEMP | 300-700m | 250 | 0.01 | 40 | 0.3903 | — |
+| TEMP | 700-1400m | 250 | 0.003 | 20 | 0.3973 | — |
+| SALT | 0-100m | 250 | 0.01 | 40 | 0.2814 | — |
+| SALT | 100-300m | 250 | 0.01 | 40 | 0.3621 | — |
+| SALT | 300-700m | 250 | 0.03 | 40 | 0.4851 | — |
+| SALT | 700-1400m | 250 | 0.01 | 10 | 0.5105 | — |

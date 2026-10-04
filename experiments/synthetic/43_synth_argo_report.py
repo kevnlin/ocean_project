@@ -386,6 +386,133 @@ md += ["## 8. DFS vs uniform / count mass, Perceiver-IO vs PhCA-style fuse\n",
        md_table(["run", "fuse", "mass", "params", "seeds", "val macro J",
                  "test TEMP °C", "test SALT PSU", "paired Δ TEMP °C"], rows)]
 
+# ============================================ 9. fixed baselines (OI)
+FBP = os.path.join(OUTD, "fixed_baselines", "summary.json")
+FB = json.load(open(FBP)) if os.path.exists(FBP) else None
+N_IN = T["per_month"] - T["queries_per_month"]
+BK = ("0-100m", "100-300m", "300-700m", "700-1400m")   # band keys in the summaries
+
+
+def parity(tags):
+    """No cited arm may have seen fewer Argo profiles, a different schedule or
+    split, or be scored on other cells, than the validated configuration."""
+    def key(s):
+        return (s["n_profiles"], s["steps"], s["batch"],
+                json.dumps(s["splits"], sort_keys=True),
+                *[s["scores"][sp][ch]["n"] for sp in ("validation", "development")
+                  for ch in CH])
+    ref = summary(FIX, SEEDS[0])
+    if ref["n_profiles"] != 0:
+        raise SystemExit(f"{FIX} was not run on every input profile")
+    bad = [f"{t}/s{x}" for t in tags for x in seeds_done(t)
+           if key(summary(t, x)) != key(ref)]
+    if bad:
+        raise SystemExit(f"input parity violated against {FIX}: {bad}")
+
+
+def fb_parity():
+    """The fixed baselines saw the models' inputs and are scored on their cells."""
+    want = (N_IN, T["queries_per_month"])
+    got = {(v["inputs"], v["queries"]) for sp in FB["per_month"].values()
+           for v in sp.values()}
+    if got != {want} or (FB["inputs_per_month"], FB["queries_per_month"]) != want:
+        raise SystemExit(f"fixed baselines saw {got}, the models {want}")
+    ref = summary(FIX, SEEDS[0])["scores"]
+    for name, b in FB["baselines"].items():
+        for sp in ("validation", "development"):
+            for ch in CH:
+                if b["scores"][sp][ch]["n"] != ref[sp][ch]["n"]:
+                    raise SystemExit(f"{name} is scored on other cells than {FIX} "
+                                     f"({sp} {ch})")
+
+
+TODO_TAGS = (["syn_reg_cell"] + [t for t, _ in SWEEP]
+             + ["syn_fix_l64", "syn_fix_uniform", "syn_fix_count"])
+parity(TODO_TAGS)
+N_TEST = summary(FIX, SEEDS[0])["scores"]["development"]["TEMP"]["n"]
+
+
+def fbv(name, ch, key="rmse_physical", split="development"):
+    return float(FB["baselines"][name]["scores"][split][ch][key])
+
+
+def model(ch, key="rmse_physical"):
+    return [val(FIX, x, "development", ch, key) for x in SEEDS]
+
+
+def gap(ch):
+    """model - OI on test: (difference, per cent of OI, seed sd of the model)."""
+    m = model(ch)
+    d = float(np.mean(m)) - fbv("oi", ch)
+    return d, 100.0 * d / fbv("oi", ch), float(np.std(m, ddof=1))
+
+
+def verdict():
+    g = [gap(ch) for ch in CH]
+    if all(d < -2 * sd for d, _, sd in g):
+        return "the model beats OI on both variables"
+    if all(d > 2 * sd for d, _, sd in g):
+        return "the model loses to OI on both variables"
+    return "; ".join(
+        f"{ch}: the model is "
+        + ("better" if d < -2 * sd else "worse" if d > 2 * sd
+           else "tied with OI (within 2 seed sd)")
+        for ch, (d, _, sd) in zip(CH, g))
+
+
+md += ["## 9. Fixed baselines: climatology, nearest profile, optimal interpolation\n"]
+if FB is None:
+    md += ["Pending: run `experiments/synthetic/44_synth_argo_oi.py`.\n"]
+else:
+    fb_parity()
+    rows = [[lab, f"{N_IN:,}", tuned, f(fbv(n, "TEMP"), 4), f(fbv(n, "SALT"), 4),
+             f(fbv(n, "TEMP", "J"), 3), f(fbv(n, "SALT", "J"), 3)]
+            for n, lab, tuned in (
+                ("climatology", "climatology (zero anomaly)", "—"),
+                ("nearest_profile", "nearest profile", "—"),
+                ("oi_single", "OI, one setting per variable", "validation 2004"),
+                ("oi", "**OI, tuned per variable and depth band**", "validation 2004"))]
+    rows.append([f"model `{FIX}` (mean ± sd, {len(seeds_done(FIX))} seeds)", f"{N_IN:,}",
+                 "validation 2004", mean_sd(model("TEMP")), mean_sd(model("SALT")),
+                 mean_sd(model("TEMP", "J")), mean_sd(model("SALT", "J"))])
+    gT, gS = gap("TEMP"), gap("SALT")
+    md += ["Methods with no trainable parameters, written by "
+           "`experiments/synthetic/44_synth_argo_oi.py` and scored on the cells the "
+           f"models are scored on: the same {N_IN:,} input profiles a month (every "
+           f"method is given all of them), the same {T['queries_per_month']:,} query "
+           f"profiles, the at-position target, the train-year normalisation, and "
+           f"{N_TEST:,} test cells per variable. A zero prediction reproduces the "
+           "cell counts and climatology error stored in the model summaries, and "
+           "this report refuses to render if any cited arm saw a different number "
+           "of profiles.\n",
+           "OI is `ocean_tokenizer.oi` (Bretherton et al. 1976): level by level, "
+           "Gaussian covariance in great-circle distance, the k nearest profiles. "
+           "Length scale, noise ratio and k are selected on the validation year, "
+           "one setting per variable and depth band; the test year is scored once.\n",
+           md_table(["method", "inputs / month", "selected on", "test TEMP °C",
+                     "test SALT PSU", "J TEMP", "J SALT"], rows),
+           f"Model − OI on test: TEMP {gT[0]:+.4f} °C ({gT[1]:+.1f} %, model seed sd "
+           f"{gT[2]:.4f}), SALT {gS[0]:+.5f} PSU ({gS[1]:+.1f} %, seed sd "
+           f"{gS[2]:.5f}). Negative means the model is better.\n"]
+    rows = []
+    for ch in CH:
+        oi = [float(FB["baselines"]["oi"]["scores"]["development"][ch]["by_band_z"][b])
+              for b in BK]
+        mo = [float(np.mean([summary(FIX, x)["scores"]["development"][ch]["by_band_z"][b]
+                             for x in SEEDS])) for b in BK]
+        rows.append([ch, "OI"] + [f(v, 4) for v in oi])
+        rows.append([ch, "model (mean of seeds)"] + [f(v, 4) for v in mo])
+        rows.append([ch, "model − OI"] + [f"{m - o:+.4f}" for m, o in zip(mo, oi)])
+    md += ["By depth band, test RMSE in z units:\n",
+           md_table(["", "", *BK], rows)]
+    rows = [[ch, b, f"{o['L_km']:.0f}", o["gamma"], o["k"], f(o["val_rmse_z"], 4),
+             ", ".join(o["on_edge"]) or "—"]
+            for ch in CH for b, o in FB["oi_selection"][ch].items()]
+    md += ["Selected OI settings:\n",
+           md_table(["", "band", "L (km)", "gamma", "k", "validation RMSE z",
+                     "on a grid edge"], rows)]
+
+
 # ============================================ findings, one line per plan item
 def pmean(tag, ref, ch="TEMP"):
     p = paired(tag, ref, "development", ch)
@@ -446,7 +573,61 @@ find = ["## Findings\n",
         f"{min(lo8, lo8b):+.4f} to {max(hi8, hi8b):+.4f} °C of their reference: ties. "
         "With uniform random positions there is no redundancy for DFS to handle, so "
         "this cohort shows only that DFS costs nothing when redundancy is absent.\n"]
-md[3:3] = find
+if FB is not None:
+    gT, gS = gap("TEMP"), gap("SALT")
+    find.append(
+        f"9. **Fixed baselines** — on the same {N_IN:,} input profiles a month and "
+        f"the same {N_TEST:,} test cells, validation-tuned OI scores "
+        f"{fbv('oi', 'TEMP'):.4f} °C / {fbv('oi', 'SALT'):.4f} PSU and the model "
+        f"{mean_sd(model('TEMP'))} °C / {mean_sd(model('SALT'))} PSU: {verdict()} "
+        f"(model − OI {gT[0]:+.4f} °C, {gT[1]:+.1f} %; {gS[0]:+.5f} PSU, "
+        f"{gS[1]:+.1f} %). Nearest profile: {fbv('nearest_profile', 'TEMP'):.4f} °C / "
+        f"{fbv('nearest_profile', 'SALT'):.4f} PSU; climatology: "
+        f"{fbv('climatology', 'TEMP'):.4f} °C / {fbv('climatology', 'SALT'):.4f} PSU.\n")
+
+
+def tm(tag, ch):
+    return float(np.mean([val(tag, x, "development", ch) for x in SEEDS]))
+
+
+def pc(new, old):
+    return f"{100.0 * (new - old) / old:+.0f} %"
+
+
+todo_rows = [
+    ["Anomaly target at the Argo position", "`syn_reg_cell` → `syn_reg`", f"{N_IN:,}", "3",
+     f"{tm('syn_reg_cell', 'TEMP'):.3f} → {tm('syn_reg', 'TEMP'):.3f} °C "
+     f"({pc(tm('syn_reg', 'TEMP'), tm('syn_reg_cell', 'TEMP'))}), "
+     f"{tm('syn_reg_cell', 'SALT'):.4f} → {tm('syn_reg', 'SALT'):.4f} PSU "
+     f"({pc(tm('syn_reg', 'SALT'), tm('syn_reg_cell', 'SALT'))})", "§5"],
+    ["Compare with a fixed baseline (OI)", f"`fixed_baselines` vs `{FIX}`", f"{N_IN:,}",
+     "3 (model)",
+     ("pending" if FB is None else
+      f"OI {fbv('oi', 'TEMP'):.4f} °C / {fbv('oi', 'SALT'):.4f} PSU; model "
+      f"{mean_sd(model('TEMP'))} °C / {mean_sd(model('SALT'))} PSU; {verdict()}"),
+     "§9"],
+    ["Local refiner sweep, 3 seeds each",
+     f"{len(SWEEP)} inits, `syn_reg` … `syn_r1500_g1`", f"{N_IN:,}", "3",
+     f"selected on validation: `{FIX}` (500 km / 100 m, gate 1.0), "
+     f"{mean_sd(model('TEMP'))} °C; vs the registered init "
+     f"{fmt_pair(paired(FIX, REF, 'development', 'TEMP'))} °C", "§4"],
+    ["Slots 32 → 64", f"`{FIX}` → `syn_fix_l64`", f"{N_IN:,}", "3",
+     f"{fmt_pair(paired('syn_fix_l64', FIX, 'development', 'TEMP'))} °C, "
+     f"{fmt_pair(paired('syn_fix_l64', FIX, 'development', 'SALT'), 5)} PSU", "§7"],
+    ["DFS vs uniform vs count", f"`{FIX}`, `syn_fix_uniform`, `syn_fix_count`",
+     f"{N_IN:,}", "3",
+     f"uniform {fmt_pair(paired('syn_fix_uniform', FIX, 'development', 'TEMP'))} °C, "
+     f"count {fmt_pair(paired('syn_fix_count', FIX, 'development', 'TEMP'))} °C "
+     f"against DFS", "§8"]]
+todo = ["## Todo status (2026-10-04)\n",
+        f"The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every "
+        f"arm below was given the same {N_IN:,} input profiles a month, 12 k steps "
+        f"where it is trained, the same splits, and is scored on the same "
+        f"{N_TEST:,} test cells per variable; the report checks this when it is "
+        f"generated. Test year 2005; Δ are paired over seeds.\n",
+        md_table(["todo item", "arms", "inputs / month", "seeds", "test result",
+                  "section"], todo_rows)]
+md[3:3] = todo + find
 
 with open(os.path.join(REP, "synth_argo_audit.md"), "w") as fh:
     fh.write("\n".join(md))
