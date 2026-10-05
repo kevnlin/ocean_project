@@ -76,6 +76,8 @@ R=experiments/real_data/run_audit_queue.py
 .venv/bin/python $R --queue syn_overfit --gpus 0,1 --seeds 1234
 .venv/bin/python $R --queue syn_refiner --gpus 0,1 --seeds 1234,1235,1236
 .venv/bin/python $R --queue syn_final --gpus 0,1 --seeds 1234,1235,1236
+.venv/bin/python $R --queue syn_refiner_k15 --gpus 0,1 --seeds 1234,1235,1236      # refiner sweep at 15 k steps
+.venv/bin/python $R --queue syn_refiner_k15_l64 --gpus 0,1 --seeds 1234,1235,1236  # the same with 64 latent slots
 .venv/bin/python experiments/synthetic/44_synth_argo_oi.py     # fixed baselines: climatology, nearest profile, OI
 .venv/bin/python experiments/synthetic/43_synth_argo_report.py # -> reports/synthetic/synth_argo_audit.md
 ```

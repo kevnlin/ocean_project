@@ -121,8 +121,19 @@ SYN_FINAL = [("syn_fix_l64", FIX + ["--n-latent", "64"]),
              # (position-MLP width stays 96), against `syn_fix_lno` at 32 slots
              ("syn_fix_lno_s64", FIX + ["--backbone", "lno", "--n-slots", "64"]),
              ("syn_fix_lno_s128", FIX + ["--backbone", "lno", "--n-slots", "128"])]
+#: syn_refiner_k15: the syn_refiner queue re-run at 15 k steps (2026-10-04).
+#: Every seed of the arm selected at 12 k had its best validation score at the
+#: last step, so those runs were still improving when they stopped. Same nine
+#: arms, tags prefixed so the 12 k runs stand.
+SYN_REFINER_K15 = [(f"k15_{_tag}", _extra + ["--steps", "15000"])
+                   for _tag, _extra in SYN_REFINER]
+#: syn_refiner_k15_l64: the same 15 k sweep with 64 latent slots instead of 32
+#: (--n-latent, the switch of `syn_fix_l64`; each slot stays 64 channels wide).
+SYN_REFINER_K15_L64 = [(f"k15_l64_{_tag}", _extra + ["--n-latent", "64", "--steps", "15000"])
+                       for _tag, _extra in SYN_REFINER]
 SYN_QUEUES = {"syn_overfit": SYN_OVERFIT, "syn_refiner": SYN_REFINER,
-              "syn_final": SYN_FINAL}
+              "syn_final": SYN_FINAL, "syn_refiner_k15": SYN_REFINER_K15,
+              "syn_refiner_k15_l64": SYN_REFINER_K15_L64}
 
 #: pre-shutdown validation on REAL Argo (2026-09-29 plan, experiments A-C).
 #: `baseline` / `anomaly_exact` seeds 1234-1235 already exist and are reused;
