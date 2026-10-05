@@ -6,14 +6,14 @@ The 2026-09-26 plan, run on synthetic data only: CESM2-LE is the ocean, syntheti
 
 ## Todo status (2026-10-04)
 
-The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm below was given the same 6,080 input profiles a month, 12 k steps where it is trained, the same splits, and is scored on the same 351,895 test cells per variable; the report checks this when it is generated. Test year 2005; Δ are paired over seeds.
+The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm below was given the same 6,080 input profiles a month, 12 k steps where it is trained (15 k for the re-runs of §10), the same splits, and is scored on the same 351,895 test cells per variable; the report checks this when it is generated. Test year 2005; Δ are paired over seeds.
 
 | todo item | arms | inputs / month | seeds | test result | section |
 |---|---|---|---|---|---|
 | Anomaly target at the Argo position | `syn_reg_cell` → `syn_reg` | 6,080 | 3 | 0.311 → 0.237 °C (-24 %), 0.0600 → 0.0450 PSU (-25 %) | §5 |
 | Compare with a fixed baseline (OI) | `fixed_baselines` vs `syn_r500_g1` | 6,080 | 3 (model) | OI 0.0860 °C / 0.0226 PSU; model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU; the model loses to OI on both variables | §9 |
-| Local refiner sweep, 3 seeds each | 8 inits, `syn_reg` … `syn_r1500_g1` | 6,080 | 3 | selected on validation: `syn_r500_g1` (500 km / 100 m, gate 1.0), 0.2296 ± 0.0021 °C; vs the registered init -0.0075 ± 0.0021 (n=3) °C | §4 |
-| Slots 32 → 64 | `syn_r500_g1` → `syn_fix_l64` | 6,080 | 3 | +0.0008 ± 0.0026 (n=3) °C, -0.00022 ± 0.00016 (n=3) PSU | §7 |
+| Local refiner sweep, 3 seeds each | 8 inits, `syn_reg` … `syn_r1500_g1` | 6,080 | 3 | selected on validation: `syn_r500_g1` (500 km / 100 m, gate 1.0), 0.2296 ± 0.0021 °C; vs the registered init -0.0075 ± 0.0021 (n=3) °C; at 15 k steps and 64 slots: `k15_l64_syn_r500_g1` 0.2293 ± 0.0023 °C | §4, §10 |
+| Slots 32 → 64 | `syn_r500_g1` → `syn_fix_l64` | 6,080 | 3 | +0.0008 ± 0.0026 (n=3) °C, -0.00022 ± 0.00016 (n=3) PSU; over the nine refiner arms at 15 k steps: -0.0005 ± 0.0032 °C, better in 14 of 27 runs | §7, §10 |
 | DFS vs uniform vs count | `syn_r500_g1`, `syn_fix_uniform`, `syn_fix_count` | 6,080 | 3 | uniform +0.0013 ± 0.0010 (n=3) °C, count +0.0010 ± 0.0011 (n=3) °C against DFS | §8 |
 
 ## Findings
@@ -28,6 +28,8 @@ The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm be
 8. **DFS / uniform / count, Perceiver-IO / PhCA-style** — all within -0.0010 to +0.0019 °C of their reference: ties. With uniform random positions there is no redundancy for DFS to handle, so this cohort shows only that DFS costs nothing when redundancy is absent.
 
 9. **Fixed baselines** — on the same 6,080 input profiles a month and the same 351,895 test cells, validation-tuned OI scores 0.0860 °C / 0.0226 PSU and the model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU: the model loses to OI on both variables (model − OI +0.1436 °C, +167.0 %; +0.01987 PSU, +87.7 %). Nearest profile: 0.1728 °C / 0.0371 PSU; climatology: 0.6528 °C / 0.1119 PSU.
+
+10. **15 k steps and 64 slots** — re-running the nine refiner arms at 15 k steps changes test TEMP by -0.0006 °C on average over 27 paired runs (better in 19), and 64 slots instead of 32 at 15 k steps by -0.0005 °C (better in 14 of 27): neither moves the model. Validation selects 500 km / 100 m, gate 1.0 at 15 k steps and 64 slots: 0.2293 ± 0.0023 °C / 0.0417 ± 0.0004 PSU, 2.67 × OI's temperature error.
 
 ## 1. The task: fixed Argo-only interpolation, controlled split
 
@@ -217,3 +219,58 @@ Selected OI settings:
 | SALT | 100-300m | 250 | 0.01 | 40 | 0.3621 | — |
 | SALT | 300-700m | 250 | 0.03 | 40 | 0.4851 | — |
 | SALT | 700-1400m | 250 | 0.01 | 10 | 0.5105 | — |
+
+## 10. Longer training and more slots: the refiner sweep at 15 k steps
+
+The `syn_refiner` queue of §4-§5 re-run at 15,000 steps, once with the registered 32 latent slots (`syn_refiner_k15`, tags `k15_*`) and once with 64 (`syn_refiner_k15_l64`, tags `k15_l64_*`; `--n-latent 64`, each slot still 64 channels wide, 407,111 parameters against 405,063): nine arms × three seeds each. Everything else is as in §4: the same 6,080 input profiles a month, the same splits and the same scored cells, which this report checks. §4 found every seed of the selected arm still improving at its last step, which is what these runs follow up.
+
+Pooled over the nine arms and three seeds (27 paired runs), test RMSE, mean ± sd of the paired differences:
+
+| change | Δ test TEMP °C | runs better | Δ test SALT PSU | runs better |
+|---|---|---|---|---|
+| 12 k → 15 k steps, at 32 slots | -0.0006 ± 0.0024 | 19 of 27 | -0.00043 ± 0.00057 | 22 of 27 |
+| 32 → 64 slots, at 15 k steps | -0.0005 ± 0.0032 | 14 of 27 | -0.00003 ± 0.00061 | 16 of 27 |
+
+Test TEMP (°C) per arm, mean ± sd over seeds; Δ are paired on the same seed:
+
+| refiner init | 12 k steps, 32 slots | 15 k steps, 32 slots | 15 k steps, 64 slots | Δ 15 k − 12 k (32 slots) | Δ 64 − 32 slots (15 k) |
+|---|---|---|---|---|---|
+| registered init, cell-centre target | 0.3110 ± 0.0011 | 0.3109 ± 0.0029 | 0.3112 ± 0.0016 | -0.0001 ± 0.0021 (n=3) | +0.0003 ± 0.0036 (n=3) |
+| registered (≈3 500 km, 300 m, gate 0.05) | 0.2370 ± 0.0016 | 0.2362 ± 0.0020 | 0.2309 ± 0.0053 | -0.0009 ± 0.0021 (n=3) | -0.0052 ± 0.0035 (n=3) |
+| registered scales, gate 1.0 | 0.2383 ± 0.0010 | 0.2369 ± 0.0007 | 0.2352 ± 0.0042 | -0.0015 ± 0.0003 (n=3) | -0.0017 ± 0.0035 (n=3) |
+| 150 km / 100 m, gate 0.05 | 0.2385 ± 0.0023 | 0.2382 ± 0.0017 | 0.2384 ± 0.0005 | -0.0003 ± 0.0010 (n=3) | +0.0003 ± 0.0017 (n=3) |
+| 150 km / 100 m, gate 1.0 | 0.2323 ± 0.0055 | 0.2347 ± 0.0020 | 0.2332 ± 0.0020 | +0.0023 ± 0.0059 (n=3) | -0.0015 ± 0.0038 (n=3) |
+| 500 km / 100 m, gate 0.05 | 0.2349 ± 0.0015 | 0.2346 ± 0.0009 | 0.2344 ± 0.0007 | -0.0004 ± 0.0007 (n=3) | -0.0001 ± 0.0009 (n=3) |
+| 500 km / 100 m, gate 1.0 | 0.2296 ± 0.0021 | 0.2302 ± 0.0033 | 0.2293 ± 0.0023 | +0.0006 ± 0.0012 (n=3) | -0.0009 ± 0.0013 (n=3) |
+| 1500 km / 100 m, gate 0.05 | 0.2319 ± 0.0026 | 0.2296 ± 0.0017 | 0.2317 ± 0.0015 | -0.0023 ± 0.0016 (n=3) | +0.0021 ± 0.0028 (n=3) |
+| 1500 km / 100 m, gate 1.0 | 0.2344 ± 0.0024 | 0.2317 ± 0.0023 | 0.2339 ± 0.0015 | -0.0026 ± 0.0002 (n=3) | +0.0022 ± 0.0033 (n=3) |
+
+Test SALT (PSU) per arm, mean ± sd over seeds; Δ are paired on the same seed:
+
+| refiner init | 12 k steps, 32 slots | 15 k steps, 32 slots | 15 k steps, 64 slots | Δ 15 k − 12 k (32 slots) | Δ 64 − 32 slots (15 k) |
+|---|---|---|---|---|---|
+| registered init, cell-centre target | 0.0600 ± 0.0002 | 0.0598 ± 0.0003 | 0.0598 ± 0.0003 | -0.00015 ± 0.00033 (n=3) | +0.00002 ± 0.00060 (n=3) |
+| registered (≈3 500 km, 300 m, gate 0.05) | 0.0450 ± 0.0001 | 0.0449 ± 0.0013 | 0.0447 ± 0.0004 | -0.00001 ± 0.00141 (n=3) | -0.00029 ± 0.00109 (n=3) |
+| registered scales, gate 1.0 | 0.0462 ± 0.0001 | 0.0455 ± 0.0011 | 0.0459 ± 0.0003 | -0.00070 ± 0.00098 (n=3) | +0.00036 ± 0.00088 (n=3) |
+| 150 km / 100 m, gate 0.05 | 0.0443 ± 0.0001 | 0.0438 ± 0.0002 | 0.0440 ± 0.0004 | -0.00045 ± 0.00019 (n=3) | +0.00013 ± 0.00048 (n=3) |
+| 150 km / 100 m, gate 1.0 | 0.0430 ± 0.0008 | 0.0427 ± 0.0007 | 0.0423 ± 0.0002 | -0.00024 ± 0.00040 (n=3) | -0.00044 ± 0.00077 (n=3) |
+| 500 km / 100 m, gate 0.05 | 0.0440 ± 0.0001 | 0.0436 ± 0.0001 | 0.0434 ± 0.0002 | -0.00045 ± 0.00006 (n=3) | -0.00018 ± 0.00018 (n=3) |
+| 500 km / 100 m, gate 1.0 | 0.0425 ± 0.0002 | 0.0420 ± 0.0001 | 0.0417 ± 0.0004 | -0.00046 ± 0.00015 (n=3) | -0.00033 ± 0.00035 (n=3) |
+| 1500 km / 100 m, gate 0.05 | 0.0434 ± 0.0002 | 0.0427 ± 0.0002 | 0.0430 ± 0.0004 | -0.00072 ± 0.00006 (n=3) | +0.00035 ± 0.00059 (n=3) |
+| 1500 km / 100 m, gate 1.0 | 0.0441 ± 0.0003 | 0.0434 ± 0.0002 | 0.0434 ± 0.0003 | -0.00072 ± 0.00032 (n=3) | +0.00008 ± 0.00047 (n=3) |
+
+Validation macro J, the selection criterion (the selected at-position arm of each column in bold):
+
+| refiner init | 12 k steps, 32 slots | 15 k steps, 32 slots | 15 k steps, 64 slots |
+|---|---|---|---|
+| registered init, cell-centre target | 0.5435 ± 0.0024 | 0.5406 ± 0.0027 | 0.5410 ± 0.0023 |
+| registered (≈3 500 km, 300 m, gate 0.05) | 0.4102 ± 0.0026 | 0.4033 ± 0.0065 | 0.4057 ± 0.0064 |
+| registered scales, gate 1.0 | 0.4156 ± 0.0042 | 0.4072 ± 0.0015 | 0.4081 ± 0.0007 |
+| 150 km / 100 m, gate 0.05 | 0.4138 ± 0.0012 | 0.4106 ± 0.0016 | 0.4081 ± 0.0030 |
+| 150 km / 100 m, gate 1.0 | 0.4032 ± 0.0078 | 0.4024 ± 0.0068 | 0.3972 ± 0.0037 |
+| 500 km / 100 m, gate 0.05 | 0.4077 ± 0.0022 | 0.4052 ± 0.0015 | 0.4022 ± 0.0028 |
+| 500 km / 100 m, gate 1.0 | **0.3961 ± 0.0031** | 0.3926 ± 0.0038 | **0.3897 ± 0.0014** |
+| 1500 km / 100 m, gate 0.05 | 0.3977 ± 0.0012 | **0.3923 ± 0.0014** | 0.3929 ± 0.0015 |
+| 1500 km / 100 m, gate 1.0 | 0.4049 ± 0.0024 | 0.3974 ± 0.0033 | 0.3966 ± 0.0021 |
+
+Validation selects 500 km / 100 m, gate 1.0 at 12 k steps, 1500 km / 100 m, gate 0.05 at 15 k steps with 32 slots, and 500 km / 100 m, gate 1.0 at 15 k steps with 64 slots (`k15_l64_syn_r500_g1`: 0.2293 ± 0.0023 °C, 0.0417 ± 0.0004 PSU on test). 45 of the 54 runs at 15 k steps still had their best validation score at the last step. Against OI (§9), `k15_l64_syn_r500_g1` has 2.67 × its temperature error and 1.84 × its salinity error.

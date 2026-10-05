@@ -393,19 +393,21 @@ N_IN = T["per_month"] - T["queries_per_month"]
 BK = ("0-100m", "100-300m", "300-700m", "700-1400m")   # band keys in the summaries
 
 
-def parity(tags):
-    """No cited arm may have seen fewer Argo profiles, a different schedule or
-    split, or be scored on other cells, than the validated configuration."""
+def parity(tags, steps=None):
+    """No cited arm may have seen fewer Argo profiles, a different batch or
+    split, or be scored on other cells, than the validated configuration; its
+    step count must be ``steps`` (default: the validated configuration's)."""
     def key(s):
-        return (s["n_profiles"], s["steps"], s["batch"],
+        return (s["n_profiles"], s["batch"],
                 json.dumps(s["splits"], sort_keys=True),
                 *[s["scores"][sp][ch]["n"] for sp in ("validation", "development")
                   for ch in CH])
     ref = summary(FIX, SEEDS[0])
     if ref["n_profiles"] != 0:
         raise SystemExit(f"{FIX} was not run on every input profile")
+    steps = ref["steps"] if steps is None else steps
     bad = [f"{t}/s{x}" for t in tags for x in seeds_done(t)
-           if key(summary(t, x)) != key(ref)]
+           if key(summary(t, x)) != key(ref) or summary(t, x)["steps"] != steps]
     if bad:
         raise SystemExit(f"input parity violated against {FIX}: {bad}")
 
@@ -512,6 +514,101 @@ else:
            md_table(["", "band", "L (km)", "gamma", "k", "validation RMSE z",
                      "on a grid edge"], rows)]
 
+# ================= 10. the refiner sweep at 15 k steps, with 32 and 64 slots
+#: run_audit_queue.py, queues syn_refiner_k15 and syn_refiner_k15_l64: the nine
+#: syn_refiner arms re-run at 15 000 steps, tags prefixed so the 12 k runs stand
+ARMS9 = ["syn_reg_cell"] + [t for t, _ in SWEEP]
+LAB9 = {"syn_reg_cell": "registered init, cell-centre target", **dict(SWEEP)}
+#: (column label, tag prefix, steps, latent slots)
+K15 = (("12 k steps, 32 slots", "", 12000, 32),
+       ("15 k steps, 32 slots", "k15_", 15000, 32),
+       ("15 k steps, 64 slots", "k15_l64_", 15000, 64))
+P32, P64 = K15[1][1], K15[2][1]
+K15_DONE = all(len(seeds_done(p + t)) == len(SEEDS) for _, p, _, _ in K15 for t in ARMS9)
+
+
+def pooled(new, old, ch):
+    """Paired difference new - old over every arm and seed, test RMSE:
+    (mean, sd, runs where new is better, runs)."""
+    d = [val(new + t, x, "development", ch) - val(old + t, x, "development", ch)
+         for t in ARMS9 for x in SEEDS]
+    return float(np.mean(d)), float(np.std(d, ddof=1)), sum(v < 0 for v in d), len(d)
+
+
+def selected(p):
+    """The at-position arm with the lowest validation macro J over the seeds."""
+    return min((t for t, _ in SWEEP),
+               key=lambda t: np.mean([macro_j(p + t, x, "validation") for x in SEEDS]))
+
+
+md += ["## 10. Longer training and more slots: the refiner sweep at 15 k steps\n"]
+if not K15_DONE:
+    md += ["Pending: run the `syn_refiner_k15` and `syn_refiner_k15_l64` queues of "
+           "`experiments/real_data/run_audit_queue.py`.\n"]
+else:
+    for _, p, steps, slots in K15:
+        parity([p + t for t in ARMS9], steps=steps)
+        if {summary(p + t, x)["n_latent"] for t in ARMS9 for x in SEEDS} != {slots}:
+            raise SystemExit(f"`{p}*` is not a {slots}-slot sweep")
+    SEL = {p: selected(p) for _, p, _, _ in K15}
+    heads = [lab for lab, _, _, _ in K15]
+    rows = []
+    for lab, new, old in (("12 k → 15 k steps, at 32 slots", P32, ""),
+                          ("32 → 64 slots, at 15 k steps", P64, P32)):
+        mt, st, kt, n = pooled(new, old, "TEMP")
+        msl, ssl, ksl, _ = pooled(new, old, "SALT")
+        rows.append([lab, f"{mt:+.4f} ± {st:.4f}", f"{kt} of {n}",
+                     f"{msl:+.5f} ± {ssl:.5f}", f"{ksl} of {n}"])
+    md += ["The `syn_refiner` queue of §4-§5 re-run at 15,000 steps, once with the "
+           "registered 32 latent slots (`syn_refiner_k15`, tags `k15_*`) and once "
+           "with 64 (`syn_refiner_k15_l64`, tags `k15_l64_*`; `--n-latent 64`, each "
+           f"slot still 64 channels wide, {summary(P64 + FIX, SEEDS[0])['params']:,} "
+           f"parameters against {summary(FIX, SEEDS[0])['params']:,}): nine arms × "
+           f"three seeds each. Everything else is as in §4: the same {N_IN:,} input "
+           "profiles a month, the same splits and the same scored cells, which this "
+           "report checks. §4 found every seed of the selected arm still improving "
+           "at its last step, which is what these runs follow up.\n",
+           f"Pooled over the nine arms and three seeds ({len(ARMS9) * len(SEEDS)} "
+           "paired runs), test RMSE, mean ± sd of the paired differences:\n",
+           md_table(["change", "Δ test TEMP °C", "runs better", "Δ test SALT PSU",
+                     "runs better"], rows)]
+    for ch, nd in (("TEMP", 4), ("SALT", 5)):
+        rows = [[LAB9[t]]
+                + [mean_sd([val(p + t, x, "development", ch) for x in SEEDS])
+                   for _, p, _, _ in K15]
+                + [fmt_pair(paired(P32 + t, t, "development", ch), nd),
+                   fmt_pair(paired(P64 + t, P32 + t, "development", ch), nd)]
+                for t in ARMS9]
+        md += [f"Test {ch} ({UNIT[ch]}) per arm, mean ± sd over seeds; Δ are paired "
+               "on the same seed:\n",
+               md_table(["refiner init", *heads, "Δ 15 k − 12 k (32 slots)",
+                         "Δ 64 − 32 slots (15 k)"], rows)]
+    rows = []
+    for t in ARMS9:
+        cells = [mean_sd([macro_j(p + t, x, "validation") for x in SEEDS])
+                 for _, p, _, _ in K15]
+        rows.append([LAB9[t]] + [f"**{c}**" if t == SEL[p] else c
+                                 for c, (_, p, _, _) in zip(cells, K15)])
+    last = [summary(p + t, x)["best_step"] == steps
+            for _, p, steps, _ in K15[1:] for t in ARMS9 for x in SEEDS]
+    s64 = P64 + SEL[P64]
+    md += ["Validation macro J, the selection criterion (the selected at-position "
+           "arm of each column in bold):\n",
+           md_table(["refiner init", *heads], rows),
+           f"Validation selects {LAB9[SEL['']]} at 12 k steps, {LAB9[SEL[P32]]} at "
+           f"15 k steps with 32 slots, and {LAB9[SEL[P64]]} at 15 k steps with 64 "
+           f"slots (`{s64}`: "
+           f"{mean_sd([val(s64, x, 'development', 'TEMP') for x in SEEDS])} °C, "
+           f"{mean_sd([val(s64, x, 'development', 'SALT') for x in SEEDS])} PSU on "
+           f"test). {sum(last)} of the {len(last)} runs at 15 k steps still had "
+           "their best validation score at the last step."
+           + ("" if FB is None else
+              f" Against OI (§9), `{s64}` has "
+              f"{np.mean([val(s64, x, 'development', 'TEMP') for x in SEEDS]) / fbv('oi', 'TEMP'):.2f}"
+              f" × its temperature error and "
+              f"{np.mean([val(s64, x, 'development', 'SALT') for x in SEEDS]) / fbv('oi', 'SALT'):.2f}"
+              f" × its salinity error.") + "\n"]
+
 
 # ============================================ findings, one line per plan item
 def pmean(tag, ref, ch="TEMP"):
@@ -584,6 +681,20 @@ if FB is not None:
         f"{gS[1]:+.1f} %). Nearest profile: {fbv('nearest_profile', 'TEMP'):.4f} °C / "
         f"{fbv('nearest_profile', 'SALT'):.4f} PSU; climatology: "
         f"{fbv('climatology', 'TEMP'):.4f} °C / {fbv('climatology', 'SALT'):.4f} PSU.\n")
+if K15_DONE:
+    p15, p64 = pooled(P32, "", "TEMP"), pooled(P64, P32, "TEMP")
+    s64 = P64 + SEL[P64]
+    find.append(
+        f"10. **15 k steps and 64 slots** — re-running the nine refiner arms at "
+        f"15 k steps changes test TEMP by {p15[0]:+.4f} °C on average over "
+        f"{p15[3]} paired runs (better in {p15[2]}), and 64 slots instead of 32 at "
+        f"15 k steps by {p64[0]:+.4f} °C (better in {p64[2]} of {p64[3]}): neither "
+        f"moves the model. Validation selects {LAB9[SEL[P64]]} at 15 k steps and "
+        f"64 slots: {mean_sd([val(s64, x, 'development', 'TEMP') for x in SEEDS])} °C "
+        f"/ {mean_sd([val(s64, x, 'development', 'SALT') for x in SEEDS])} PSU"
+        + ("" if FB is None else
+           f", {np.mean([val(s64, x, 'development', 'TEMP') for x in SEEDS]) / fbv('oi', 'TEMP'):.2f}"
+           f" × OI's temperature error") + ".\n")
 
 
 def tm(tag, ch):
@@ -619,10 +730,20 @@ todo_rows = [
      f"uniform {fmt_pair(paired('syn_fix_uniform', FIX, 'development', 'TEMP'))} °C, "
      f"count {fmt_pair(paired('syn_fix_count', FIX, 'development', 'TEMP'))} °C "
      f"against DFS", "§8"]]
+if K15_DONE:
+    # the 15 k re-runs of §10 extend the refiner-sweep and slot-count rows
+    s64, (m64, sd64, k64, n64) = P64 + SEL[P64], pooled(P64, P32, "TEMP")
+    todo_rows[2][4] += (f"; at 15 k steps and 64 slots: `{s64}` "
+                        f"{mean_sd([val(s64, x, 'development', 'TEMP') for x in SEEDS])} °C")
+    todo_rows[2][5] = "§4, §10"
+    todo_rows[3][4] += (f"; over the nine refiner arms at 15 k steps: {m64:+.4f} ± "
+                        f"{sd64:.4f} °C, better in {k64} of {n64} runs")
+    todo_rows[3][5] = "§7, §10"
 todo = ["## Todo status (2026-10-04)\n",
         f"The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every "
         f"arm below was given the same {N_IN:,} input profiles a month, 12 k steps "
-        f"where it is trained, the same splits, and is scored on the same "
+        f"where it is trained (15 k for the re-runs of §10), the same splits, and "
+        f"is scored on the same "
         f"{N_TEST:,} test cells per variable; the report checks this when it is "
         f"generated. Test year 2005; Δ are paired over seeds.\n",
         md_table(["todo item", "arms", "inputs / month", "seeds", "test result",
