@@ -14,7 +14,7 @@ The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm be
 | Compare with a fixed baseline (OI) | `fixed_baselines` vs `syn_r500_g1` | 6,080 | 3 (model) | OI 0.0860 °C / 0.0226 PSU; model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU; the model loses to OI on both variables | §9 |
 | Local refiner sweep, 3 seeds each | 8 inits, `syn_reg` … `syn_r1500_g1` | 6,080 | 3 | selected on validation: `syn_r500_g1` (500 km / 100 m, gate 1.0), 0.2296 ± 0.0021 °C; vs the registered init -0.0075 ± 0.0021 (n=3) °C; at 15 k steps and 64 slots: `k15_l64_syn_r500_g1` 0.2293 ± 0.0023 °C | §4, §10 |
 | Slots 32 → 64 | `syn_r500_g1` → `syn_fix_l64` | 6,080 | 3 | +0.0008 ± 0.0026 (n=3) °C, -0.00022 ± 0.00016 (n=3) PSU; over the nine refiner arms at 15 k steps: -0.0005 ± 0.0032 °C, better in 14 of 27 runs | §7, §10 |
-| DFS vs uniform vs count | `syn_r500_g1`, `syn_fix_uniform`, `syn_fix_count` | 6,080 | 3 | uniform +0.0013 ± 0.0010 (n=3) °C, count +0.0010 ± 0.0011 (n=3) °C against DFS | §8 |
+| DFS vs uniform vs count | `syn_r500_g1`, `syn_fix_uniform`, `syn_fix_count` | 6,080 | 3 | uniform +0.0013 ± 0.0010 (n=3) °C, count +0.0010 ± 0.0011 (n=3) °C against DFS; at 15 k steps and 64 slots: uniform +0.0012 ± 0.0011 (n=3) °C, count +0.0005 ± 0.0018 (n=3) °C | §8, §11 |
 
 ## Findings
 
@@ -30,6 +30,8 @@ The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm be
 9. **Fixed baselines** — on the same 6,080 input profiles a month and the same 351,895 test cells, validation-tuned OI scores 0.0860 °C / 0.0226 PSU and the model 0.2296 ± 0.0021 °C / 0.0425 ± 0.0002 PSU: the model loses to OI on both variables (model − OI +0.1436 °C, +167.0 %; +0.01987 PSU, +87.7 %). Nearest profile: 0.1728 °C / 0.0371 PSU; climatology: 0.6528 °C / 0.1119 PSU.
 
 10. **15 k steps and 64 slots** — re-running the nine refiner arms at 15 k steps changes test TEMP by -0.0006 °C on average over 27 paired runs (better in 19), and 64 slots instead of 32 at 15 k steps by -0.0005 °C (better in 14 of 27): neither moves the model. Validation selects 500 km / 100 m, gate 1.0 at 15 k steps and 64 slots: 0.2293 ± 0.0023 °C / 0.0417 ± 0.0004 PSU, 2.67 × OI's temperature error.
+
+11. **Mass rule at 64 slots and 15 k steps** — uniform is +0.0012 °C and count +0.0005 °C from DFS on test (3 seeds, seed sd ≈ 0.002): still ties, as in finding 8.
 
 ## 1. The task: fixed Argo-only interpolation, controlled split
 
@@ -274,3 +276,13 @@ Validation macro J, the selection criterion (the selected at-position arm of eac
 | 1500 km / 100 m, gate 1.0 | 0.4049 ± 0.0024 | 0.3974 ± 0.0033 | 0.3966 ± 0.0021 |
 
 Validation selects 500 km / 100 m, gate 1.0 at 12 k steps, 1500 km / 100 m, gate 0.05 at 15 k steps with 32 slots, and 500 km / 100 m, gate 1.0 at 15 k steps with 64 slots (`k15_l64_syn_r500_g1`: 0.2293 ± 0.0023 °C, 0.0417 ± 0.0004 PSU on test). 45 of the 54 runs at 15 k steps still had their best validation score at the last step. Against OI (§9), `k15_l64_syn_r500_g1` has 2.67 × its temperature error and 1.84 × its salinity error.
+
+## 11. DFS vs uniform / count mass at 15 k steps and 64 slots
+
+§8 on the current model: the validated refiner init (500 km / 100 m, gate 1.0), the at-position target, the Perceiver-IO fuse, 64 latent slots and 15,000 steps; only the mass rule changes. The DFS row is the §10 run and is not repeated. Paired Δ = arm − DFS on the same seed, test RMSE.
+
+| run | mass | params | seeds | val macro J | test TEMP °C | test SALT PSU | paired Δ TEMP °C | paired Δ SALT PSU |
+|---|---|---|---|---|---|---|---|---|
+| `k15_l64_syn_r500_g1` | DFS | 407,111 | 3 | 0.3897 ± 0.0014 | 0.2293 ± 0.0023 | 0.0417 ± 0.0004 | ref | ref |
+| `k15_l64_syn_fix_uniform` | uniform | 407,111 | 3 | 0.3911 ± 0.0015 | 0.2305 ± 0.0023 | 0.0420 ± 0.0002 | +0.0012 ± 0.0011 (n=3) | +0.00028 ± 0.00022 (n=3) |
+| `k15_l64_syn_fix_count` | count | 407,111 | 3 | 0.3882 ± 0.0029 | 0.2298 ± 0.0027 | 0.0418 ± 0.0001 | +0.0005 ± 0.0018 (n=3) | +0.00009 ± 0.00027 (n=3) |

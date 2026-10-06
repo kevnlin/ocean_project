@@ -609,6 +609,38 @@ else:
               f"{np.mean([val(s64, x, 'development', 'SALT') for x in SEEDS]) / fbv('oi', 'SALT'):.2f}"
               f" × its salinity error.") + "\n"]
 
+# ============ 11. mass rule on the current model: 64 slots, 15 k steps
+#: run_audit_queue.py, queue syn_mass_k15_l64: the uniform and count rules of
+#: §8 at 15 k steps and 64 slots; their DFS reference is the §10 run of FIX
+MASS64 = [(P64 + FIX, "DFS"), (P64 + "syn_fix_uniform", "uniform"),
+          (P64 + "syn_fix_count", "count")]
+MASS64_DONE = all(len(seeds_done(t)) == len(SEEDS) for t, _ in MASS64)
+md += ["## 11. DFS vs uniform / count mass at 15 k steps and 64 slots\n"]
+if not MASS64_DONE:
+    md += ["Pending: run the `syn_refiner_k15_l64` and `syn_mass_k15_l64` queues of "
+           "`experiments/real_data/run_audit_queue.py`.\n"]
+else:
+    parity([t for t, _ in MASS64], steps=15000)
+    for t, mass in MASS64:
+        got = {(summary(t, x)["n_latent"], summary(t, x)["mass_mode"]) for x in SEEDS}
+        if got != {(64, mass.lower())}:
+            raise SystemExit(f"`{t}` is not a 64-slot {mass} run: {got}")
+    ref11 = MASS64[0][0]
+    rows = [[f"`{t}`", mass, f"{summary(t, SEEDS[0])['params']:,}", len(seeds_done(t)),
+             mean_sd([macro_j(t, x, "validation") for x in SEEDS]),
+             mean_sd([val(t, x, "development", "TEMP") for x in SEEDS]),
+             mean_sd([val(t, x, "development", "SALT") for x in SEEDS]),
+             "ref" if t == ref11 else fmt_pair(paired(t, ref11, "development", "TEMP")),
+             "ref" if t == ref11 else fmt_pair(paired(t, ref11, "development", "SALT"), 5)]
+            for t, mass in MASS64]
+    md += ["§8 on the current model: the validated refiner init (500 km / 100 m, "
+           "gate 1.0), the at-position target, the Perceiver-IO fuse, 64 latent "
+           "slots and 15,000 steps; only the mass rule changes. The DFS row is the "
+           "§10 run and is not repeated. Paired Δ = arm − DFS on the same seed, test "
+           "RMSE.\n",
+           md_table(["run", "mass", "params", "seeds", "val macro J", "test TEMP °C",
+                     "test SALT PSU", "paired Δ TEMP °C", "paired Δ SALT PSU"], rows)]
+
 
 # ============================================ findings, one line per plan item
 def pmean(tag, ref, ch="TEMP"):
@@ -695,6 +727,12 @@ if K15_DONE:
         + ("" if FB is None else
            f", {np.mean([val(s64, x, 'development', 'TEMP') for x in SEEDS]) / fbv('oi', 'TEMP'):.2f}"
            f" × OI's temperature error") + ".\n")
+if MASS64_DONE:
+    find.append(
+        f"11. **Mass rule at 64 slots and 15 k steps** — uniform is "
+        f"{pmean(MASS64[1][0], MASS64[0][0]):+.4f} °C and count "
+        f"{pmean(MASS64[2][0], MASS64[0][0]):+.4f} °C from DFS on test (3 seeds, "
+        f"seed sd ≈ 0.002): still ties, as in finding 8.\n")
 
 
 def tm(tag, ch):
@@ -739,6 +777,13 @@ if K15_DONE:
     todo_rows[3][4] += (f"; over the nine refiner arms at 15 k steps: {m64:+.4f} ± "
                         f"{sd64:.4f} °C, better in {k64} of {n64} runs")
     todo_rows[3][5] = "§7, §10"
+if MASS64_DONE:
+    # the 64-slot, 15 k re-run of §11 extends the mass-rule row
+    todo_rows[4][4] += (
+        "; at 15 k steps and 64 slots: uniform "
+        f"{fmt_pair(paired(MASS64[1][0], MASS64[0][0], 'development', 'TEMP'))} °C, "
+        f"count {fmt_pair(paired(MASS64[2][0], MASS64[0][0], 'development', 'TEMP'))} °C")
+    todo_rows[4][5] = "§8, §11"
 todo = ["## Todo status (2026-10-04)\n",
         f"The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every "
         f"arm below was given the same {N_IN:,} input profiles a month, 12 k steps "
