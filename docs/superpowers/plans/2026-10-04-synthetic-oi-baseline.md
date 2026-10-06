@@ -12,7 +12,7 @@
 
 **Conventions used below**
 
-- All commands run from the repository root `/DATA2/linke/ocean_project` on branch `synthetic-oi-baseline`.
+- All commands run from the repository root on branch `synthetic-oi-baseline`.
 - Python is always `./.venv/bin/python`.
 - Every commit message ends with the trailer `Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>`.
 - "Test year" is the split the summaries call `development` (2005). Validation is 2004.
