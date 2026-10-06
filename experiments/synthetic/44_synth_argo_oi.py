@@ -45,20 +45,14 @@ import warnings; warnings.filterwarnings("ignore")
 
 import numpy as np
 
-from ocean_tokenizer.argo_obs import ArgoNorm
-from ocean_tokenizer.audit_tools import cohort_path, load_cohort
+from ocean_tokenizer import synth_argo_eval
+from ocean_tokenizer.audit_tools import cohort_path
 from ocean_tokenizer.point_baselines import (BANDS, CH, Scores, band_of_levels,
                                              nearest_profile, oi_points, point_sweep)
+from ocean_tokenizer.synth_argo_eval import (EVAL_CELLS, N_INPUT, N_QUERY, REFERENCE,
+                                             SPLITS, identity_check)
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SPLITS = {"train": (2000, 2003), "validation": (2004, 2004), "development": (2005, 2005)}
-N_INPUT, N_QUERY = 6080, 1520
-EVAL_CELLS = 8000       # 62_sanity_train.py --eval-cells default (validation cap)
-EVAL_SEED = 20260918    # 62's build_eval seeds the cap with [EVAL_SEED, month]
-#: the trained model whose stored cell counts and climatology error the
-#: identity check must reproduce
-REFERENCE = os.path.join("outputs", "audit", "synthetic", "syn_r500_g1",
-                         "summary_seed1234.json")
 AXES = ("L_km", "gamma", "k")
 GRID = {"L_km": [150.0, 250.0, 400.0, 600.0, 900.0, 1500.0],
         "gamma": [0.01, 0.03, 0.1, 0.3],
@@ -82,34 +76,15 @@ OUT = args.out or os.path.join(ROOT, "outputs", "audit", "synthetic", "fixed_bas
 t0 = time.time()
 
 # ------------------------------------------------------------------ data
-c, _ = load_cohort(ROOT, "synthetic", SPLITS, anomaly="exact")
-norm = ArgoNorm.fit(c, "train")
+# the cohort, its normalisation and the fixed evaluation sets are the audit's own
+# (ocean_tokenizer.synth_argo_eval), shared with the other baseline drivers
+c, norm, OBS = synth_argo_eval.load(ROOT)              # OBS: (P, L) z-scored anomaly
 LEV = c.levels
 BAND_OF = band_of_levels(LEV)                          # (L,) band name per level
-OBS = {ch: norm.z(ch, getattr(c, ch)) for ch in CH}    # (P, L) z-scored anomaly
-
-
-def eval_month(m, max_cells):
-    """One month's inputs and scored cells, as build_eval / make_sample in 62."""
-    src = c.month(m, float_split="cohort_float")
-    tgt = c.month(m, float_split="heldout_float")
-    if (src.size, tgt.size) != (N_INPUT, N_QUERY):
-        raise SystemExit(f"input parity violated in month {m}: {src.size} inputs, "
-                         f"{tgt.size} queries (expected {N_INPUT} and {N_QUERY})")
-    R, L = tgt.size, LEV.size
-    prof = np.repeat(np.arange(R), L)        # query profile of each cell
-    lev = np.tile(np.arange(L), R)           # level of each cell
-    if max_cells and R * L > max_cells:
-        pick = np.random.default_rng([EVAL_SEED, int(m)]).choice(
-            R * L, max_cells, replace=False)
-        prof, lev = prof[pick], lev[pick]
-    return dict(month=int(m), src=src, tgt=tgt, prof=prof, lev=lev,
-                target={ch: OBS[ch][tgt][prof, lev] for ch in CH})
 
 
 def eval_set(split, max_cells=0, n_months=None):
-    months = [int(m) for m in c.months_in(split)]
-    return [eval_month(m, max_cells) for m in (months[:n_months] if n_months else months)]
+    return synth_argo_eval.eval_set(c, OBS, split, max_cells, n_months)
 
 
 # ------------------------------------------------------------------ methods
@@ -251,26 +226,11 @@ print(f"synthetic cohort: {len(val)} validation months, {len(test)} test months,
       f"({time.time() - t0:.0f}s)", flush=True)
 
 
-def identity(evs, split):
-    """A zero prediction must reproduce the trained model's stored fingerprint."""
-    z = score(evs, "climatology")
-    ref = json.load(open(os.path.join(ROOT, REFERENCE)))["scores"][split]
-    rep = {}
-    for ch in CH:
-        rep[ch] = {"n": z[ch]["n"], "climatology_z": z[ch]["climatology_z"],
-                   "reference_n": ref[ch]["n"],
-                   "reference_climatology_z": ref[ch]["climatology_z"]}
-        # the model's sums were accumulated in float32, hence 1e-5 and not exact
-        if (z[ch]["n"] != ref[ch]["n"]
-                or abs(z[ch]["climatology_z"] / ref[ch]["climatology_z"] - 1.0) > 1e-5):
-            raise SystemExit(f"identity check failed on {split} {ch}: {rep[ch]}")
-    return rep
-
-
 ident = {}
 if not args.smoke:
-    ident = {"validation": identity(val, "validation"),
-             "development": identity(test, "development")}
+    # a zero prediction must reproduce the trained model's stored fingerprint
+    ident = {split: identity_check(ROOT, split, score(evs, "climatology"))
+             for split, evs in (("validation", val), ("development", test))}
     print("identity check passed: zero prediction matches "
           f"{REFERENCE} on both splits", flush=True)
 
