@@ -7,8 +7,9 @@ import numpy as np
 import pytest
 
 from ocean_tokenizer.oi import oi_level
-from ocean_tokenizer.point_baselines import (Scores, band_of_levels, nearest_profile,
-                                             oi_points, point_sweep)
+from ocean_tokenizer.point_baselines import (MLP_FEATURES, MLP_LAT_STD, Scores,
+                                             band_of_levels, mlp_point_features,
+                                             nearest_profile, oi_points, point_sweep)
 
 
 def _obs(n=60, seed=0):
@@ -148,3 +149,56 @@ def test_zero_prediction_scores_j_one():
     r = s.result()["TEMP"]
     assert r["J"] == pytest.approx(1.0)
     assert r["rmse_z"] == pytest.approx(r["climatology_z"])
+
+
+# --------------------------------------------------------------------------
+# pointwise-MLP inputs (baselines._point_features, profiles only)
+# --------------------------------------------------------------------------
+def _mlp_case():
+    levels = np.array([5.0, 50.0, 200.0])
+    obs_z = {"TEMP": np.array([[1.0, 2.0, 3.0], [4.0, 5.0, np.nan]]),
+             "SALT": np.array([[-1.0, -2.0, -3.0], [-4.0, -5.0, -6.0]])}
+    # query 0 sits by observation 1; query 1 sits by observation 0 across 0 E
+    return dict(obs_lat=np.array([0.0, 10.0]), obs_lon=np.array([0.0, 90.0]), obs_z=obs_z,
+                q_lat=np.array([9.0, 1.0]), q_lon=np.array([91.0, 359.0]), levels=levels)
+
+
+def test_mlp_point_features_are_profile_major_with_nine_columns():
+    k = _mlp_case()
+    X = mlp_point_features(month=3, **k)
+    assert X.shape == (2 * 3, 9) == (6, len(MLP_FEATURES)) and X.dtype == np.float32
+    lat, lon = np.repeat(k["q_lat"], 3), np.deg2rad(np.repeat(k["q_lon"], 3))
+    assert np.allclose(X[:, 0], lat / MLP_LAT_STD)
+    assert np.allclose(X[:, 1], np.sin(lon), atol=1e-6)
+    assert np.allclose(X[:, 2], np.cos(lon), atol=1e-6)
+    lev = k["levels"]
+    assert np.allclose(X[:, 3], np.tile((lev - lev.mean()) / lev.std(), 2), atol=1e-5)
+    # March: sin(2 pi 3 / 12) = 1, cos = 0, for every cell
+    assert np.allclose(X[:, 4], 1.0) and np.allclose(X[:, 5], 0.0, atol=1e-6)
+
+
+def test_mlp_latitude_scale_is_the_one_degree_grids():
+    assert MLP_LAT_STD == pytest.approx(np.std(np.arange(-89.5, 90.0)))
+
+
+def test_mlp_point_features_carry_the_nearest_profile_and_its_distance():
+    k = _mlp_case()
+    X = mlp_point_features(month=7, **k)
+    # query 0 <- observation 1 (its missing level becomes 0); query 1 <- observation 0
+    assert np.allclose(X[:, 6], [4.0, 5.0, 0.0, 1.0, 2.0, 3.0])
+    assert np.allclose(X[:, 7], [-4.0, -5.0, -6.0, -1.0, -2.0, -3.0])
+    xyz = lambda la, lo: np.array([np.cos(np.radians(la)) * np.cos(np.radians(lo)),
+                                   np.cos(np.radians(la)) * np.sin(np.radians(lo)),
+                                   np.sin(np.radians(la))])
+    d0 = np.linalg.norm(xyz(9.0, 91.0) - xyz(10.0, 90.0))
+    d1 = np.linalg.norm(xyz(1.0, 359.0) - xyz(0.0, 0.0))
+    assert np.allclose(X[:, 8], [d0, d0, d0, d1, d1, d1], atol=1e-6)
+
+
+def test_mlp_point_features_use_one_neighbour_for_every_level():
+    """The neighbour is chosen by position alone, as in the gridded original:
+    a nearer profile with a gap is not skipped in favour of a farther one."""
+    k = _mlp_case()
+    k["q_lat"], k["q_lon"] = np.array([10.0]), np.array([90.0])     # on observation 1
+    X = mlp_point_features(month=1, **k)
+    assert np.allclose(X[:, 6], [4.0, 5.0, 0.0]) and np.allclose(X[:, 8], 0.0, atol=1e-7)
