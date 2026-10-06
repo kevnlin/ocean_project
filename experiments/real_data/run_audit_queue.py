@@ -131,9 +131,16 @@ SYN_REFINER_K15 = [(f"k15_{_tag}", _extra + ["--steps", "15000"])
 #: (--n-latent, the switch of `syn_fix_l64`; each slot stays 64 channels wide).
 SYN_REFINER_K15_L64 = [(f"k15_l64_{_tag}", _extra + ["--n-latent", "64", "--steps", "15000"])
                        for _tag, _extra in SYN_REFINER]
+#: syn_mass_k15_l64: the uniform and count mass rules of syn_final on the
+#: current model (64 slots, 15 k steps, validated refiner init). Their DFS
+#: reference is `k15_l64_syn_r500_g1` of the queue above, which is not re-run.
+SYN_MASS_K15_L64 = [(f"k15_l64_{_tag}", _extra + ["--n-latent", "64", "--steps", "15000"])
+                    for _tag, _extra in SYN_FINAL
+                    if _tag in ("syn_fix_uniform", "syn_fix_count")]
 SYN_QUEUES = {"syn_overfit": SYN_OVERFIT, "syn_refiner": SYN_REFINER,
               "syn_final": SYN_FINAL, "syn_refiner_k15": SYN_REFINER_K15,
-              "syn_refiner_k15_l64": SYN_REFINER_K15_L64}
+              "syn_refiner_k15_l64": SYN_REFINER_K15_L64,
+              "syn_mass_k15_l64": SYN_MASS_K15_L64}
 
 #: pre-shutdown validation on REAL Argo (2026-09-29 plan, experiments A-C).
 #: `baseline` / `anomaly_exact` seeds 1234-1235 already exist and are reused;
