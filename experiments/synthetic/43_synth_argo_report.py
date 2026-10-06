@@ -462,11 +462,70 @@ def verdict():
         for ch, (d, _, sd) in zip(CH, g))
 
 
-md += ["## 9. Fixed baselines: climatology, nearest profile, optimal interpolation\n"]
+#: 45_synth_argo_mlp.py. The pointwise MLP is reported as a fixed baseline: one
+#: run at one seed, a single number like the others, not a mean over seeds
+MLPT, MLP_SEED = "pointwise_mlp", 1234
+MLP_DONE = summary(MLPT, MLP_SEED) is not None
+
+
+def mlp_parity():
+    """The pointwise MLP was scored with the models' inputs, on their cells."""
+    want = (N_IN, T["queries_per_month"])
+    ref = summary(FIX, SEEDS[0])["scores"]
+    for x in seeds_done(MLPT):
+        s = summary(MLPT, x)
+        got = {(v["inputs"], v["queries"]) for sp in s["per_month"].values()
+               for v in sp.values()}
+        said = (s["inputs_per_month"], s["queries_per_month"])
+        if got != {want} or said != want:
+            raise SystemExit(f"pointwise MLP s{x} records {said} inputs and queries "
+                             f"a month ({got} month by month), the models {want}")
+        for sp in ("validation", "development"):
+            for ch in CH:
+                if s["scores"][sp][ch]["n"] != ref[sp][ch]["n"]:
+                    raise SystemExit(f"pointwise MLP s{x} is scored on other cells "
+                                     f"than {FIX} ({sp} {ch})")
+
+
+def mlpv(ch, key="rmse_physical"):
+    return val(MLPT, MLP_SEED, "development", ch, key)
+
+
+md += ["## 9. Fixed baselines: climatology, nearest profile, pointwise MLP, optimal "
+       "interpolation\n"]
 if FB is None:
     md += ["Pending: run `experiments/synthetic/44_synth_argo_oi.py`.\n"]
 else:
     fb_parity()
+    MLP_NOTE = []
+    if MLP_DONE:
+        mlp_parity()
+        s0 = summary(MLPT, MLP_SEED)
+        others = [x for x in seeds_done(MLPT) if x != MLP_SEED]
+        spread = ("" if not others else
+                  f" Its {len(others)} other seeds on disk differ from that run by at "
+                  "most "
+                  + f"{max(abs(val(MLPT, x, 'development', 'TEMP') - mlpv('TEMP')) for x in others):.4f}"
+                  + " °C and "
+                  + f"{max(abs(val(MLPT, x, 'development', 'SALT') - mlpv('SALT')) for x in others):.4f}"
+                  + " PSU on test.")
+        MLP_NOTE = [
+            "The pointwise MLP has weights, so it is trained once, at a fixed seed "
+            f"({MLP_SEED}), and that one run is used as a fixed baseline: a single "
+            "number, like the others, not a mean over seeds." + spread + " It is "
+            "written by "
+            "`experiments/synthetic/45_synth_argo_mlp.py`: the gridded line's "
+            "`baselines.MLP` with its original settings ("
+            + "-".join(str(h) for h in s0["hidden"])
+            + f", {s0['params']:,} parameters, Adam, {s0['epochs']} epochs, "
+            f"{s0['points_per_month']:,} training cells a month, last-epoch "
+            "weights with no selection), given Argo profiles only. Each cell is "
+            "predicted on its own from its position, the calendar month, the "
+            "nearest input profile's TEMP and SALT at that level and the distance "
+            "to it. It is trained on the input profiles of 2000-2003, with "
+            f"{100 * s0['target_fraction']:.0f} % of them drawn as targets in each "
+            "month as the model's own training does, and is given all "
+            f"{N_IN:,} input profiles of the month when it is scored.\n"]
     rows = [[lab, f"{N_IN:,}", tuned, f(fbv(n, "TEMP"), 4), f(fbv(n, "SALT"), 4),
              f(fbv(n, "TEMP", "J"), 3), f(fbv(n, "SALT", "J"), 3)]
             for n, lab, tuned in (
@@ -474,6 +533,10 @@ else:
                 ("nearest_profile", "nearest profile", "—"),
                 ("oi_single", "OI, one setting per variable", "validation 2004"),
                 ("oi", "**OI, tuned per variable and depth band**", "validation 2004"))]
+    if MLP_DONE:
+        rows.insert(2, [f"pointwise MLP (one run, seed {MLP_SEED})", f"{N_IN:,}", "—",
+                        f(mlpv("TEMP"), 4), f(mlpv("SALT"), 4),
+                        f(mlpv("TEMP", "J"), 3), f(mlpv("SALT", "J"), 3)])
     rows.append([f"model `{FIX}` (mean ± sd, {len(seeds_done(FIX))} seeds)", f"{N_IN:,}",
                  "validation 2004", mean_sd(model("TEMP")), mean_sd(model("SALT")),
                  mean_sd(model("TEMP", "J")), mean_sd(model("SALT", "J"))])
@@ -491,6 +554,7 @@ else:
            "Gaussian covariance in great-circle distance, the k nearest profiles. "
            "Length scale, noise ratio and k are selected on the validation year, "
            "one setting per variable and depth band; the test year is scored once.\n",
+           *MLP_NOTE,
            md_table(["method", "inputs / month", "selected on", "test TEMP °C",
                      "test SALT PSU", "J TEMP", "J SALT"], rows),
            f"Model − OI on test: TEMP {gT[0]:+.4f} °C ({gT[1]:+.1f} %, model seed sd "
@@ -503,6 +567,10 @@ else:
         mo = [float(np.mean([summary(FIX, x)["scores"]["development"][ch]["by_band_z"][b]
                              for x in SEEDS])) for b in BK]
         rows.append([ch, "OI"] + [f(v, 4) for v in oi])
+        if MLP_DONE:
+            rows.append([ch, "pointwise MLP"] + [f(float(
+                summary(MLPT, MLP_SEED)["scores"]["development"][ch]["by_band_z"][b]), 4)
+                for b in BK])
         rows.append([ch, "model (mean of seeds)"] + [f(v, 4) for v in mo])
         rows.append([ch, "model − OI"] + [f"{m - o:+.4f}" for m, o in zip(mo, oi)])
     md += ["By depth band, test RMSE in z units:\n",
@@ -711,7 +779,10 @@ if FB is not None:
         f"{mean_sd(model('TEMP'))} °C / {mean_sd(model('SALT'))} PSU: {verdict()} "
         f"(model − OI {gT[0]:+.4f} °C, {gT[1]:+.1f} %; {gS[0]:+.5f} PSU, "
         f"{gS[1]:+.1f} %). Nearest profile: {fbv('nearest_profile', 'TEMP'):.4f} °C / "
-        f"{fbv('nearest_profile', 'SALT'):.4f} PSU; climatology: "
+        f"{fbv('nearest_profile', 'SALT'):.4f} PSU; "
+        + (f"pointwise MLP: {mlpv('TEMP'):.4f} °C / "
+           f"{mlpv('SALT'):.4f} PSU; " if MLP_DONE else "")
+        + f"climatology: "
         f"{fbv('climatology', 'TEMP'):.4f} °C / {fbv('climatology', 'SALT'):.4f} PSU.\n")
 if K15_DONE:
     p15, p64 = pooled(P32, "", "TEMP"), pooled(P64, P32, "TEMP")
@@ -768,6 +839,9 @@ todo_rows = [
      f"uniform {fmt_pair(paired('syn_fix_uniform', FIX, 'development', 'TEMP'))} °C, "
      f"count {fmt_pair(paired('syn_fix_count', FIX, 'development', 'TEMP'))} °C "
      f"against DFS", "§8"]]
+if FB is not None and MLP_DONE:
+    todo_rows[1][4] += (f"; pointwise MLP {mlpv('TEMP'):.4f} °C / "
+                        f"{mlpv('SALT'):.4f} PSU")
 if K15_DONE:
     # the 15 k re-runs of §10 extend the refiner-sweep and slot-count rows
     s64, (m64, sd64, k64, n64) = P64 + SEL[P64], pooled(P64, P32, "TEMP")

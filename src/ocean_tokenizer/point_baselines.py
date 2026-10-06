@@ -142,3 +142,40 @@ class Scores:
                               for b, v in by.items()}}
         out["macro_z"] = float(np.mean([out[ch]["rmse_z"] for ch in CH if ch in out]))
         return out
+
+
+#: latitude scale of baselines._point_features: the std of the 1-degree grid's
+#: cell-centre latitudes (whose mean is 0)
+MLP_LAT_STD = float(np.std(np.arange(180) - 89.5))
+MLP_FEATURES = ("lat", "sin_lon", "cos_lon", "depth", "sin_month", "cos_month",
+                "nearest_TEMP", "nearest_SALT", "nearest_distance")
+
+
+def mlp_point_features(obs_lat, obs_lon, obs_z, q_lat, q_lon, levels, month):
+    """Inputs of the gridded line's pointwise MLP, profiles only, at scattered queries.
+
+    The features of ``baselines._point_features`` with the ``profiles`` input
+    alone: position and calendar month, the horizontally nearest input
+    profile's z-anomaly at the cell's level for each channel (0 where that
+    profile has none) and the chord distance to it on the unit sphere. The
+    neighbour is chosen by position, the same one for every level.
+
+    ``obs_z`` is ``{channel: (n, L)}``. Returns ``(Q * L, 9)`` float32 in the
+    order of ``MLP_FEATURES``, profile-major: row ``q * L + l`` is query ``q``
+    at level ``l``.
+    """
+    levels = np.asarray(levels, dtype=np.float64)
+    q_lat = np.asarray(q_lat, dtype=np.float64).ravel()
+    q_lon = np.asarray(q_lon, dtype=np.float64).ravel()
+    Q, L = q_lat.size, levels.size
+    dist, idx = cKDTree(_lonlat_to_xyz(obs_lat, obs_lon)).query(
+        _lonlat_to_xyz(q_lat, q_lon), k=1)
+    lon = np.deg2rad(np.repeat(q_lon, L))
+    cols = [np.repeat(q_lat, L) / MLP_LAT_STD, np.sin(lon), np.cos(lon),
+            np.tile((levels - levels.mean()) / (levels.std() + 1e-6), Q),
+            np.full(Q * L, np.sin(2 * np.pi * month / 12)),
+            np.full(Q * L, np.cos(2 * np.pi * month / 12))]
+    cols += [np.nan_to_num(np.asarray(obs_z[ch], dtype=np.float64)[idx], nan=0.0).ravel()
+             for ch in CH]
+    cols.append(np.repeat(dist, L))
+    return np.stack(cols, axis=1).astype("float32")

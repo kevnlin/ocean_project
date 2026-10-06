@@ -80,6 +80,7 @@ R=experiments/real_data/run_audit_queue.py
 .venv/bin/python $R --queue syn_refiner_k15_l64 --gpus 0,1 --seeds 1234,1235,1236  # the same with 64 latent slots
 .venv/bin/python $R --queue syn_mass_k15_l64 --gpus 0,1 --seeds 1234,1235,1236     # uniform / count mass at 64 slots, 15 k steps
 .venv/bin/python experiments/synthetic/44_synth_argo_oi.py     # fixed baselines: climatology, nearest profile, OI
+.venv/bin/python experiments/synthetic/45_synth_argo_mlp.py --seed 1234  # pointwise MLP baseline, one fixed run
 .venv/bin/python experiments/synthetic/43_synth_argo_report.py # -> reports/synthetic/synth_argo_audit.md
 ```
 
