@@ -462,15 +462,17 @@ def verdict():
         for ch, (d, _, sd) in zip(CH, g))
 
 
-MLPT = "pointwise_mlp"     # 45_synth_argo_mlp.py: the one trained baseline
-MLP_DONE = len(seeds_done(MLPT)) == len(SEEDS)
+#: 45_synth_argo_mlp.py. The pointwise MLP is reported as a fixed baseline: one
+#: run at one seed, a single number like the others, not a mean over seeds
+MLPT, MLP_SEED = "pointwise_mlp", 1234
+MLP_DONE = summary(MLPT, MLP_SEED) is not None
 
 
 def mlp_parity():
     """The pointwise MLP was scored with the models' inputs, on their cells."""
     want = (N_IN, T["queries_per_month"])
     ref = summary(FIX, SEEDS[0])["scores"]
-    for x in SEEDS:
+    for x in seeds_done(MLPT):
         s = summary(MLPT, x)
         got = {(v["inputs"], v["queries"]) for sp in s["per_month"].values()
                for v in sp.values()}
@@ -486,10 +488,10 @@ def mlp_parity():
 
 
 def mlpv(ch, key="rmse_physical"):
-    return [val(MLPT, x, "development", ch, key) for x in SEEDS]
+    return val(MLPT, MLP_SEED, "development", ch, key)
 
 
-md += ["## 9. Baselines: climatology, nearest profile, pointwise MLP, optimal "
+md += ["## 9. Fixed baselines: climatology, nearest profile, pointwise MLP, optimal "
        "interpolation\n"]
 if FB is None:
     md += ["Pending: run `experiments/synthetic/44_synth_argo_oi.py`.\n"]
@@ -498,9 +500,20 @@ else:
     MLP_NOTE = []
     if MLP_DONE:
         mlp_parity()
-        s0 = summary(MLPT, SEEDS[0])
+        s0 = summary(MLPT, MLP_SEED)
+        others = [x for x in seeds_done(MLPT) if x != MLP_SEED]
+        spread = ("" if not others else
+                  f" Its {len(others)} other seeds on disk differ from that run by at "
+                  "most "
+                  + f"{max(abs(val(MLPT, x, 'development', 'TEMP') - mlpv('TEMP')) for x in others):.4f}"
+                  + " °C and "
+                  + f"{max(abs(val(MLPT, x, 'development', 'SALT') - mlpv('SALT')) for x in others):.4f}"
+                  + " PSU on test.")
         MLP_NOTE = [
-            "The pointwise MLP is the one trained baseline here, written by "
+            "The pointwise MLP has weights, so it is trained once, at a fixed seed "
+            f"({MLP_SEED}), and that one run is used as a fixed baseline: a single "
+            "number, like the others, not a mean over seeds." + spread + " It is "
+            "written by "
             "`experiments/synthetic/45_synth_argo_mlp.py`: the gridded line's "
             "`baselines.MLP` with its original settings ("
             + "-".join(str(h) for h in s0["hidden"])
@@ -521,10 +534,9 @@ else:
                 ("oi_single", "OI, one setting per variable", "validation 2004"),
                 ("oi", "**OI, tuned per variable and depth band**", "validation 2004"))]
     if MLP_DONE:
-        rows.insert(2, [f"pointwise MLP, trained (mean ± sd, {len(SEEDS)} seeds)",
-                        f"{N_IN:,}", "nothing (last epoch)", mean_sd(mlpv("TEMP")),
-                        mean_sd(mlpv("SALT")), mean_sd(mlpv("TEMP", "J")),
-                        mean_sd(mlpv("SALT", "J"))])
+        rows.insert(2, [f"pointwise MLP (one run, seed {MLP_SEED})", f"{N_IN:,}", "—",
+                        f(mlpv("TEMP"), 4), f(mlpv("SALT"), 4),
+                        f(mlpv("TEMP", "J"), 3), f(mlpv("SALT", "J"), 3)])
     rows.append([f"model `{FIX}` (mean ± sd, {len(seeds_done(FIX))} seeds)", f"{N_IN:,}",
                  "validation 2004", mean_sd(model("TEMP")), mean_sd(model("SALT")),
                  mean_sd(model("TEMP", "J")), mean_sd(model("SALT", "J"))])
@@ -556,9 +568,9 @@ else:
                              for x in SEEDS])) for b in BK]
         rows.append([ch, "OI"] + [f(v, 4) for v in oi])
         if MLP_DONE:
-            rows.append([ch, "pointwise MLP (mean of seeds)"] + [f(float(np.mean(
-                [summary(MLPT, x)["scores"]["development"][ch]["by_band_z"][b]
-                 for x in SEEDS])), 4) for b in BK])
+            rows.append([ch, "pointwise MLP"] + [f(float(
+                summary(MLPT, MLP_SEED)["scores"]["development"][ch]["by_band_z"][b]), 4)
+                for b in BK])
         rows.append([ch, "model (mean of seeds)"] + [f(v, 4) for v in mo])
         rows.append([ch, "model − OI"] + [f"{m - o:+.4f}" for m, o in zip(mo, oi)])
     md += ["By depth band, test RMSE in z units:\n",
@@ -768,8 +780,8 @@ if FB is not None:
         f"(model − OI {gT[0]:+.4f} °C, {gT[1]:+.1f} %; {gS[0]:+.5f} PSU, "
         f"{gS[1]:+.1f} %). Nearest profile: {fbv('nearest_profile', 'TEMP'):.4f} °C / "
         f"{fbv('nearest_profile', 'SALT'):.4f} PSU; "
-        + (f"pointwise MLP (trained): {mean_sd(mlpv('TEMP'))} °C / "
-           f"{mean_sd(mlpv('SALT'))} PSU; " if MLP_DONE else "")
+        + (f"pointwise MLP: {mlpv('TEMP'):.4f} °C / "
+           f"{mlpv('SALT'):.4f} PSU; " if MLP_DONE else "")
         + f"climatology: "
         f"{fbv('climatology', 'TEMP'):.4f} °C / {fbv('climatology', 'SALT'):.4f} PSU.\n")
 if K15_DONE:
@@ -828,8 +840,8 @@ todo_rows = [
      f"count {fmt_pair(paired('syn_fix_count', FIX, 'development', 'TEMP'))} °C "
      f"against DFS", "§8"]]
 if FB is not None and MLP_DONE:
-    todo_rows[1][4] += (f"; pointwise MLP {mean_sd(mlpv('TEMP'))} °C / "
-                        f"{mean_sd(mlpv('SALT'))} PSU")
+    todo_rows[1][4] += (f"; pointwise MLP {mlpv('TEMP'):.4f} °C / "
+                        f"{mlpv('SALT'):.4f} PSU")
 if K15_DONE:
     # the 15 k re-runs of §10 extend the refiner-sweep and slot-count rows
     s64, (m64, sd64, k64, n64) = P64 + SEL[P64], pooled(P64, P32, "TEMP")

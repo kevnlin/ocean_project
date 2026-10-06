@@ -61,8 +61,11 @@ training years), the target of every other synthetic result.
   8,000 cells a month, test 2005 on all cells (351,895 per variable).
 - The input-parity assertion and the zero-prediction identity check of
   `44_synth_argo_oi.py` run before any number is written.
-- Seeds 1234, 1235, 1236; a seed fixes the target draws, the point subsample,
-  the initial weights and the batch order.
+- A seed fixes the target draws, the point subsample, the initial weights and
+  the batch order. The MLP is reported as a fixed baseline (decision of
+  2026-10-06): one run at seed 1234, a single number like the other baselines,
+  not a mean over seeds. Seeds 1235 and 1236 were also run; their summaries are
+  kept only to show how little the seed matters.
 
 The evaluation sets move from `44_synth_argo_oi.py` into a shared module so
 both drivers build them from one definition; `44` must reproduce its committed
