@@ -108,7 +108,14 @@ exists here: a method on this cohort sees Argo profiles only.
 
 ### 4.4 Scoring
 
-At evaluation the observations are all 6,080 input profiles of the month. The
+At evaluation the observations are all 6,080 input profiles of the month.
+The output is the solver's state after its steps. The starter's
+`GradSolver.forward` additionally passes that state through the prior's
+auto-encoder when not training; on this cohort that projection, which the
+training loss never sees, returns a field no better than climatology
+(validation J 1.00 against 0.41 without it, same weights, found on the first
+run), so it is not applied. The score along the starter's own evaluation path
+is recorded beside the one used. The
 40-channel output is sampled bilinearly (periodic in longitude) at the 1,520
 query positions and scored with `point_baselines.Scores` on the evaluation sets
 of `synth_argo_eval`: the same 351,895 test values, after the input-parity
