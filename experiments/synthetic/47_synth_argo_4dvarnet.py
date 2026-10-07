@@ -23,6 +23,13 @@ commit into the git-ignored `external/` folder, with the settings of its
                  its prior cost
   selection      after each epoch the validation year is scored as the test
                  year will be; the weights with the lowest macro z are kept
+  solver output  the state after the solver's steps, in training and in scoring.
+                 Out of training the starter's `GradSolver.forward` also passes
+                 that state through the prior's auto-encoder; on this cohort the
+                 projection, which the training loss never sees, returns a field
+                 no better than climatology (validation J 1.00 against 0.41
+                 without it, same weights). The score along the starter's own
+                 evaluation path is recorded next to the one used
   scoring        all 6,080 input profiles of the month in, the gridded answer
                  sampled bilinearly at the 1,520 query profiles, pooled on the
                  evaluation sets of ocean_tokenizer.synth_argo_eval after the
@@ -197,7 +204,26 @@ print(f"  {n_par:,} parameters; starter {STARTER_COMMIT[:7]}; {epochs} epochs", 
 
 
 # ------------------------------------------------------------------ scoring
-def score(evs, model=None):
+def solve(model, batch, upstream_eval=False):
+    """The model's answer for a batch, out of training.
+
+    ``upstream_eval=True`` is the starter's `GradSolver.forward` in eval mode:
+    the solver steps, then the prior's auto-encoder applied to the final state.
+    The default stops before that projection and returns the state itself, the
+    quantity the training loss is computed on.
+    """
+    model.eval()
+    if upstream_eval:
+        return model(batch)
+    with torch.set_grad_enabled(True):
+        state = model.init_state(batch)
+        model.grad_mod.reset_state(batch.input)
+        for step in range(model.n_step):
+            state = model.solver_step(state, batch, step=step).detach().requires_grad_(True)
+    return state
+
+
+def score(evs, model=None, upstream_eval=False):
     """Pooled scores on the months' cells; ``model=None`` scores a zero prediction.
     The observations of a scored month are ALL of its input profiles."""
     s = Scores(LEV, norm.std)
@@ -205,8 +231,8 @@ def score(evs, model=None):
         if model is None:
             pred = {ch: np.zeros(ev["lev"].size) for ch in CH}
         else:
-            model.eval()
-            out = crop_lon(model(batch_of([grid_profiles(ev["src"])], [ev["month"]])))[0]
+            out = crop_lon(solve(model, batch_of([grid_profiles(ev["src"])], [ev["month"]]),
+                                 upstream_eval))[0]
             q = sample_bilinear(out.detach().cpu().numpy().astype(np.float64),
                                 c.lat[ev["tgt"]], c.lon[ev["tgt"]])          # (R, 2L)
             pred = {ch: q[:, k * L:(k + 1) * L][ev["prof"], ev["lev"]] for k, ch in enumerate(CH)}
@@ -274,12 +300,17 @@ for ep in range(epochs):
 
 solver.load_state_dict(best["state"])
 scores = {"validation": score(val, solver)}
+scores_upstream = {"validation": score(val, solver, upstream_eval=True)}
 if test:
     scores["development"] = score(test, solver)
+    scores_upstream["development"] = score(test, solver, upstream_eval=True)
 for split, sc in scores.items():
     print(f"{split}: TEMP {sc['TEMP']['rmse_physical']:.4f} degC (J {sc['TEMP']['J']:.3f})  "
           f"SALT {sc['SALT']['rmse_physical']:.4f} PSU (J {sc['SALT']['J']:.3f})  "
           f"[best epoch {best['epoch']}]", flush=True)
+for split, sc in scores_upstream.items():
+    print(f"  with the starter's final prior projection, {split}: TEMP J "
+          f"{sc['TEMP']['J']:.3f}  SALT J {sc['SALT']['J']:.3f}", flush=True)
 if args.smoke:
     print(f"smoke ok ({time.time() - t0:.0f}s), nothing written")
     raise SystemExit(0)
@@ -327,7 +358,10 @@ summary = {
     "best_epoch": best["epoch"], "history": history,
     "identity_check": {"reference": REFERENCE, **ident},
     "cohort": {"path": os.path.relpath(cpath, ROOT), "sha256": sha256(cpath)},
-    "git_commit": git_commit(), "scores": scores, "runtime_s": time.time() - t0}
+    "solver_output": "state after the solver steps, without the starter's eval-mode "
+                     "prior projection",
+    "git_commit": git_commit(), "scores": scores,
+    "scores_upstream_eval_path": scores_upstream, "runtime_s": time.time() - t0}
 os.makedirs(OUT, exist_ok=True)
 torch.save(best["state"], os.path.join(OUT, f"model_seed{args.seed}.pt"))
 with open(os.path.join(OUT, f"summary_seed{args.seed}.json"), "w") as f:
