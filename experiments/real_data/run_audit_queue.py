@@ -137,10 +137,16 @@ SYN_REFINER_K15_L64 = [(f"k15_l64_{_tag}", _extra + ["--n-latent", "64", "--step
 SYN_MASS_K15_L64 = [(f"k15_l64_{_tag}", _extra + ["--n-latent", "64", "--steps", "15000"])
                     for _tag, _extra in SYN_FINAL
                     if _tag in ("syn_fix_uniform", "syn_fix_count")]
+#: syn_surface_k15_l64: the current model (64 slots, 15 k steps, validated
+#: refiner init) given the synthetic surface fields of 46_synth_surface_fields.py
+#: (SST, SLA, SSS). Its Argo-only counterpart is `k15_l64_syn_r500_g1`.
+SYN_SURFACE_K15_L64 = [("k15_l64_syn_r500_g1_surf",
+                        FIX + ["--n-latent", "64", "--steps", "15000", "--surface"])]
 SYN_QUEUES = {"syn_overfit": SYN_OVERFIT, "syn_refiner": SYN_REFINER,
               "syn_final": SYN_FINAL, "syn_refiner_k15": SYN_REFINER_K15,
               "syn_refiner_k15_l64": SYN_REFINER_K15_L64,
-              "syn_mass_k15_l64": SYN_MASS_K15_L64}
+              "syn_mass_k15_l64": SYN_MASS_K15_L64,
+              "syn_surface_k15_l64": SYN_SURFACE_K15_L64}
 
 #: pre-shutdown validation on REAL Argo (2026-09-29 plan, experiments A-C).
 #: `baseline` / `anomaly_exact` seeds 1234-1235 already exist and are reused;

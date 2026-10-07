@@ -168,9 +168,6 @@ if args.split_table is None:
         '{"train":[2000,2003],"validation":[2004,2004],"development":[2005,2005]}'
         if args.region == "synthetic" else
         '{"train":[2016,2020],"validation":[2021,2021],"development":[2022,2023]}')
-if args.region == "synthetic" and args.surface:
-    raise SystemExit("--surface reads the real satellite store; the synthetic "
-                     "task is Argo-only")
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 ABL = {a for a in args.ablation.split(",") if a and a != "none"}
@@ -251,7 +248,11 @@ if args.surface:
     _ny, _nx = (int(v) for v in args.setconv_grid.split("x"))
     _glat = LA0 + (np.arange(_ny) + 0.5) * (LA1 - LA0) / _ny
     _glon = LO0 + (np.arange(_nx) + 0.5) * (LO1 - LO0) / _nx
-    _o = _xr.open_zarr(os.path.join(ROOT, "data", "real_obs_1deg.zarr"))
+    # the synthetic cohort has its own store (46_synth_surface_fields.py): CESM2
+    # SST / SSS and a steric-height stand-in for altimetry, under the same names
+    _o = _xr.open_zarr(os.path.join(
+        ROOT, "data", *(("synthetic_argo", "cesm2_surface_1deg.zarr")
+                        if args.region == "synthetic" else ("real_obs_1deg.zarr",))))
     _o = _o.assign_coords(lon=(_o.lon % 360.0)).sortby("lon")
     _t = _o.time.values.astype("datetime64[M]")
     _mi = ((_t - np.datetime64("2000-01", "M")) / np.timedelta64(1, "M")).astype(int)
