@@ -56,9 +56,14 @@ Written by a new script to `data/synthetic_argo/cesm2_surface_1deg.zarr` with
 dimensions `(time, lat, lon)` and the variable names of the real satellite
 store, so `62_sanity_train.py` reads it through its existing `--surface` path.
 
-**Limitation, to be stated wherever these numbers appear:** steric height is a
-vertical integral of the T and S being reconstructed. It is an optimistic
-stand-in for altimetry for every method that uses it.
+**Limitations, to be stated wherever these numbers appear:**
+
+- Steric height is a vertical integral of the T and S being reconstructed. It
+  is an optimistic stand-in for altimetry for every method that uses it.
+- The store's `SST` and `SSS` are CESM2's 5 m level (its `SST_note`
+  attribute), noise-free. They are the truth at the cohort's shallowest level,
+  so a method given them is handed that level's answer. (Found when writing the
+  plan, after the design was approved.)
 
 ## 4. 4DVarNet
 
