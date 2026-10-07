@@ -81,6 +81,13 @@ R=experiments/real_data/run_audit_queue.py
 .venv/bin/python $R --queue syn_mass_k15_l64 --gpus 0,1 --seeds 1234,1235,1236     # uniform / count mass at 64 slots, 15 k steps
 .venv/bin/python experiments/synthetic/44_synth_argo_oi.py     # fixed baselines: climatology, nearest profile, OI
 .venv/bin/python experiments/synthetic/45_synth_argo_mlp.py --seed 1234  # pointwise MLP baseline, one fixed run
+# multi-modal comparison: surface fields, 4DVarNet (upstream clone, CeCILL-C, kept out of the tree), our model
+.venv/bin/python experiments/synthetic/46_synth_surface_fields.py
+git clone https://github.com/CIA-Oceanix/4dvarnet-starter.git external/4dvarnet-starter
+git -C external/4dvarnet-starter checkout 20f1b5f34b201342cde6dd21a30419d07541db54 && .venv/bin/pip install kornia
+.venv/bin/python experiments/synthetic/47_synth_argo_4dvarnet.py            # Argo only
+.venv/bin/python experiments/synthetic/47_synth_argo_4dvarnet.py --surface  # with SST, SSS, SLA
+.venv/bin/python $R --queue syn_surface_k15_l64 --gpus 0,1 --seeds 1234,1235,1236   # our model with the fields
 .venv/bin/python experiments/synthetic/43_synth_argo_report.py # -> reports/synthetic/synth_argo_audit.md
 ```
 
