@@ -468,23 +468,27 @@ MLPT, MLP_SEED = "pointwise_mlp", 1234
 MLP_DONE = summary(MLPT, MLP_SEED) is not None
 
 
-def mlp_parity():
-    """The pointwise MLP was scored with the models' inputs, on their cells."""
+def baseline_parity(tag, name):
+    """A baseline driver's runs were scored with the models' inputs, on their cells."""
     want = (N_IN, T["queries_per_month"])
     ref = summary(FIX, SEEDS[0])["scores"]
-    for x in seeds_done(MLPT):
-        s = summary(MLPT, x)
+    for x in seeds_done(tag):
+        s = summary(tag, x)
         got = {(v["inputs"], v["queries"]) for sp in s["per_month"].values()
                for v in sp.values()}
         said = (s["inputs_per_month"], s["queries_per_month"])
         if got != {want} or said != want:
-            raise SystemExit(f"pointwise MLP s{x} records {said} inputs and queries "
+            raise SystemExit(f"{name} s{x} records {said} inputs and queries "
                              f"a month ({got} month by month), the models {want}")
         for sp in ("validation", "development"):
             for ch in CH:
                 if s["scores"][sp][ch]["n"] != ref[sp][ch]["n"]:
-                    raise SystemExit(f"pointwise MLP s{x} is scored on other cells "
+                    raise SystemExit(f"{name} s{x} is scored on other cells "
                                      f"than {FIX} ({sp} {ch})")
+
+
+def mlp_parity():
+    baseline_parity(MLPT, "pointwise MLP")
 
 
 def mlpv(ch, key="rmse_physical"):
@@ -710,6 +714,108 @@ else:
                      "test SALT PSU", "paired Δ TEMP °C", "paired Δ SALT PSU"], rows)]
 
 
+# ============ 12. multi-modal comparison: Argo profiles and satellite-type fields
+#: 47_synth_argo_4dvarnet.py (one fixed run each) and the current model given the
+#: surface store of 46_synth_surface_fields.py (queue syn_surface_k15_l64)
+FDV, FDV_SURF, FDV_SEED = "fourdvarnet", "fourdvarnet_surface", 1234
+OURS, OURS_SURF = P64 + FIX, P64 + FIX + "_surf"
+MM_DONE = (FB is not None and MLP_DONE and K15_DONE
+           and all(summary(t, FDV_SEED) is not None for t in (FDV, FDV_SURF))
+           and len(seeds_done(OURS_SURF)) == len(SEEDS))
+md += ["## 12. Multi-modal comparison: Argo profiles and satellite-type fields\n"]
+if not MM_DONE:
+    md += ["Pending: `46_synth_surface_fields.py`, `47_synth_argo_4dvarnet.py` (with "
+           "and without `--surface`) and the `syn_surface_k15_l64` queue.\n"]
+else:
+    for t in (FDV, FDV_SURF):
+        baseline_parity(t, "4DVarNet")
+    parity([OURS_SURF], steps=15000)
+    want_surf = ",".join(sorted(summary(FDV_SURF, FDV_SEED)["surface"]))
+    for x in SEEDS:
+        s = summary(OURS_SURF, x)
+        if s["n_latent"] != 64 or ",".join(sorted(s["surface"].split(","))) != want_surf:
+            raise SystemExit(f"`{OURS_SURF}` s{x} is not the 64-slot run on {want_surf}")
+    f0 = summary(FDV, FDV_SEED)
+
+    def one(tag, ch, key="rmse_physical"):
+        return val(tag, FDV_SEED, "development", ch, key)
+
+    def three(tag, ch, key="rmse_physical"):
+        return [val(tag, x, "development", ch, key) for x in SEEDS]
+
+    ARGO, BOTH = "Argo", "Argo + SST, SSS, SLA"
+    rows = [[lab, ARGO, how, f(fbv(n, "TEMP"), 4), f(fbv(n, "SALT"), 4),
+             f(fbv(n, "TEMP", "J"), 3), f(fbv(n, "SALT", "J"), 3)]
+            for n, lab, how in (("climatology", "climatology", "—"),
+                                ("nearest_profile", "nearest profile", "—"),
+                                ("oi", "OI", "tuned on validation"))]
+    rows.insert(2, ["pointwise MLP", ARGO, "Argo profiles, one run", f(mlpv("TEMP"), 4),
+                    f(mlpv("SALT"), 4), f(mlpv("TEMP", "J"), 3), f(mlpv("SALT", "J"), 3)])
+    for tag, inp in ((FDV, ARGO), (FDV_SURF, BOTH)):
+        rows.append(["4DVarNet", inp, "Argo profiles, one run", f(one(tag, "TEMP"), 4),
+                     f(one(tag, "SALT"), 4), f(one(tag, "TEMP", "J"), 3),
+                     f(one(tag, "SALT", "J"), 3)])
+    for tag, inp in ((OURS, ARGO), (OURS_SURF, BOTH)):
+        rows.append(["**our model**", inp, f"Argo profiles, {len(SEEDS)} seeds",
+                     mean_sd(three(tag, "TEMP")), mean_sd(three(tag, "SALT")),
+                     mean_sd(three(tag, "TEMP", "J")), mean_sd(three(tag, "SALT", "J"))])
+    md += ["Every method on one table, test year 2005. A multi-modal method is given, "
+           f"besides the month's {N_IN:,} input profiles, three 1° fields of the "
+           "same month from CESM2 (`experiments/synthetic/46_synth_surface_fields.py`): "
+           "SST, SSS and a sea-level field, each as an anomaly against its train-year "
+           "monthly climatology. Every row is scored on the same "
+           f"{N_TEST:,} values per variable, which this report checks.\n",
+           "Two limits on what the multi-modal rows mean. **SST and SSS are the truth "
+           "at the shallowest level**: CESM2's surface fields are its 5 m level, "
+           "noise-free, so a method given them is handed the 0-100 m band's top level. "
+           "**The sea-level field is derived from the truth**: CESM2's stored output "
+           "has no sea level, so it is steric height computed from the very TEMP and "
+           "SALT being reconstructed. Both make the satellite inputs more informative "
+           "than real ones.\n",
+           "4DVarNet (Fablet et al. 2021) is run from the authors' "
+           f"[`4dvarnet-starter`]({f0['upstream']['repo']}) at commit "
+           f"`{f0['upstream']['commit'][:7]}`: its solver, prior and gradient model "
+           "unmodified, with the settings of its base configuration "
+           f"({f0['n_step']} solver steps, {f0['epochs']} epochs, {f0['params']:,} "
+           "parameters Argo-only), written by "
+           "`experiments/synthetic/47_synth_argo_4dvarnet.py`. The state is TEMP and "
+           f"SALT on the 20 levels ({f0['state_channels']} channels) on the 1° grid; "
+           "profiles are binned to their cell; the answer is sampled at the query "
+           "profiles. It is trained on Argo profiles only, "
+           f"{100 * f0['target_fraction']:.0f} % of a month's input profiles held out "
+           "as the target, where its authors train on a complete field with an added "
+           "gradient loss; that loss is dropped here. It is one fixed run at seed "
+           f"{FDV_SEED}, best epoch on validation "
+           f"({f0['best_epoch']} Argo-only, {summary(FDV_SURF, FDV_SEED)['best_epoch']} "
+           "with the fields). Its answer is the solver's state after its steps. Out "
+           "of training the starter also passes that state through the prior's "
+           "auto-encoder; on this cohort that projection, which the training loss "
+           "never sees, undoes the solve (test J "
+           f"{f0['scores_upstream_eval_path']['development']['TEMP']['J']:.2f} TEMP / "
+           f"{f0['scores_upstream_eval_path']['development']['SALT']['J']:.2f} SALT "
+           "Argo-only with it), so it is not applied.\n",
+           md_table(["method", "inputs", "trained on", "test TEMP °C", "test SALT PSU",
+                     "J TEMP", "J SALT"], rows)]
+    rows = []
+    for ch in CH:
+        for lab, get in (
+                ("OI, Argo", lambda b: float(FB["baselines"]["oi"]["scores"]["development"][ch]["by_band_z"][b])),
+                ("4DVarNet, Argo", lambda b: float(summary(FDV, FDV_SEED)["scores"]["development"][ch]["by_band_z"][b])),
+                ("4DVarNet, Argo + fields", lambda b: float(summary(FDV_SURF, FDV_SEED)["scores"]["development"][ch]["by_band_z"][b])),
+                ("our model, Argo", lambda b: float(np.mean([summary(OURS, x)["scores"]["development"][ch]["by_band_z"][b] for x in SEEDS]))),
+                ("our model, Argo + fields", lambda b: float(np.mean([summary(OURS_SURF, x)["scores"]["development"][ch]["by_band_z"][b] for x in SEEDS])))):
+            rows.append([ch, lab] + [f(get(b), 4) for b in BK])
+    d_ours = {ch: paired(OURS_SURF, OURS, "development", ch) for ch in CH}
+    d_fdv = {ch: one(FDV_SURF, ch) - one(FDV, ch) for ch in CH}
+    md += ["By depth band, test RMSE in z units (the fields act mostly where they "
+           "are the answer, near the surface):\n",
+           md_table(["", "", *BK], rows),
+           f"Effect of the fields on test: our model "
+           f"{fmt_pair(d_ours['TEMP'])} °C and {fmt_pair(d_ours['SALT'], 5)} PSU "
+           f"(paired over seeds); 4DVarNet {d_fdv['TEMP']:+.4f} °C and "
+           f"{d_fdv['SALT']:+.5f} PSU (one run each).\n"]
+
+
 # ============================================ findings, one line per plan item
 def pmean(tag, ref, ch="TEMP"):
     p = paired(tag, ref, "development", ch)
@@ -804,6 +910,23 @@ if MASS64_DONE:
         f"{pmean(MASS64[1][0], MASS64[0][0]):+.4f} °C and count "
         f"{pmean(MASS64[2][0], MASS64[0][0]):+.4f} °C from DFS on test (3 seeds, "
         f"seed sd ≈ 0.002): still ties, as in finding 8.\n")
+
+
+if MM_DONE:
+    cand = {"OI (Argo)": (fbv("oi", "TEMP"), fbv("oi", "SALT")),
+            "4DVarNet (Argo)": (one(FDV, "TEMP"), one(FDV, "SALT")),
+            "4DVarNet (Argo + fields)": (one(FDV_SURF, "TEMP"), one(FDV_SURF, "SALT")),
+            "our model (Argo)": (float(np.mean(three(OURS, "TEMP"))),
+                                 float(np.mean(three(OURS, "SALT")))),
+            "our model (Argo + fields)": (float(np.mean(three(OURS_SURF, "TEMP"))),
+                                          float(np.mean(three(OURS_SURF, "SALT"))))}
+    order = sorted(cand, key=lambda k: cand[k][0])
+    find.append(
+        "12. **Multi-modal comparison** — with SST, SSS and a sea-level field added "
+        "(noise-free, and derived from the truth), test TEMP / SALT are "
+        + "; ".join(f"{k} {cand[k][0]:.4f} °C / {cand[k][1]:.4f} PSU" for k in order)
+        + f", lowest temperature error first. The fields change our model by "
+        f"{d_ours['TEMP'][0]:+.4f} °C and 4DVarNet by {d_fdv['TEMP']:+.4f} °C.\n")
 
 
 def tm(tag, ch):

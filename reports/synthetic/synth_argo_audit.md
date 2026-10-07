@@ -33,6 +33,8 @@ The five items of the 2026-10-04 todo, all on CESM2 synthetic data. Every arm be
 
 11. **Mass rule at 64 slots and 15 k steps** — uniform is +0.0012 °C and count +0.0005 °C from DFS on test (3 seeds, seed sd ≈ 0.002): still ties, as in finding 8.
 
+12. **Multi-modal comparison** — with SST, SSS and a sea-level field added (noise-free, and derived from the truth), test TEMP / SALT are OI (Argo) 0.0860 °C / 0.0226 PSU; our model (Argo + fields) 0.2124 °C / 0.0371 PSU; 4DVarNet (Argo) 0.2219 °C / 0.0457 PSU; 4DVarNet (Argo + fields) 0.2269 °C / 0.0371 PSU; our model (Argo) 0.2293 °C / 0.0417 PSU, lowest temperature error first. The fields change our model by -0.0168 °C and 4DVarNet by +0.0050 °C.
+
 ## 1. The task: fixed Argo-only interpolation, controlled split
 
 Built by `experiments/synthetic/41_synth_argo_cohort.py` into `data/synthetic_argo/cesm2_uniform.nc` (seed 20260926, fixed once).
@@ -291,3 +293,39 @@ Validation selects 500 km / 100 m, gate 1.0 at 12 k steps, 1500 km / 100 m, gate
 | `k15_l64_syn_r500_g1` | DFS | 407,111 | 3 | 0.3897 ± 0.0014 | 0.2293 ± 0.0023 | 0.0417 ± 0.0004 | ref | ref |
 | `k15_l64_syn_fix_uniform` | uniform | 407,111 | 3 | 0.3911 ± 0.0015 | 0.2305 ± 0.0023 | 0.0420 ± 0.0002 | +0.0012 ± 0.0011 (n=3) | +0.00028 ± 0.00022 (n=3) |
 | `k15_l64_syn_fix_count` | count | 407,111 | 3 | 0.3882 ± 0.0029 | 0.2298 ± 0.0027 | 0.0418 ± 0.0001 | +0.0005 ± 0.0018 (n=3) | +0.00009 ± 0.00027 (n=3) |
+
+## 12. Multi-modal comparison: Argo profiles and satellite-type fields
+
+Every method on one table, test year 2005. A multi-modal method is given, besides the month's 6,080 input profiles, three 1° fields of the same month from CESM2 (`experiments/synthetic/46_synth_surface_fields.py`): SST, SSS and a sea-level field, each as an anomaly against its train-year monthly climatology. Every row is scored on the same 351,895 values per variable, which this report checks.
+
+Two limits on what the multi-modal rows mean. **SST and SSS are the truth at the shallowest level**: CESM2's surface fields are its 5 m level, noise-free, so a method given them is handed the 0-100 m band's top level. **The sea-level field is derived from the truth**: CESM2's stored output has no sea level, so it is steric height computed from the very TEMP and SALT being reconstructed. Both make the satellite inputs more informative than real ones.
+
+4DVarNet (Fablet et al. 2021) is run from the authors' [`4dvarnet-starter`](https://github.com/CIA-Oceanix/4dvarnet-starter) at commit `20f1b5f`: its solver, prior and gradient model unmodified, with the settings of its base configuration (10 solver steps, 150 epochs, 241,200 parameters Argo-only), written by `experiments/synthetic/47_synth_argo_4dvarnet.py`. The state is TEMP and SALT on the 20 levels (40 channels) on the 1° grid; profiles are binned to their cell; the answer is sampled at the query profiles. It is trained on Argo profiles only, 30 % of a month's input profiles held out as the target, where its authors train on a complete field with an added gradient loss; that loss is dropped here. It is one fixed run at seed 1234, best epoch on validation (83 Argo-only, 119 with the fields). Its answer is the solver's state after its steps. Out of training the starter also passes that state through the prior's auto-encoder; on this cohort that projection, which the training loss never sees, undoes the solve (test J 0.95 TEMP / 0.99 SALT Argo-only with it), so it is not applied.
+
+| method | inputs | trained on | test TEMP °C | test SALT PSU | J TEMP | J SALT |
+|---|---|---|---|---|---|---|
+| climatology | Argo | — | 0.6528 | 0.1119 | 1.000 | 1.000 |
+| nearest profile | Argo | — | 0.1728 | 0.0371 | 0.299 | 0.364 |
+| pointwise MLP | Argo | Argo profiles, one run | 0.1745 | 0.0372 | 0.308 | 0.379 |
+| OI | Argo | tuned on validation | 0.0860 | 0.0226 | 0.164 | 0.225 |
+| 4DVarNet | Argo | Argo profiles, one run | 0.2219 | 0.0457 | 0.367 | 0.437 |
+| 4DVarNet | Argo + SST, SSS, SLA | Argo profiles, one run | 0.2269 | 0.0371 | 0.366 | 0.409 |
+| **our model** | Argo | Argo profiles, 3 seeds | 0.2293 ± 0.0023 | 0.0417 ± 0.0004 | 0.3756 ± 0.0027 | 0.4423 ± 0.0013 |
+| **our model** | Argo + SST, SSS, SLA | Argo profiles, 3 seeds | 0.2124 ± 0.0085 | 0.0371 ± 0.0003 | 0.3599 ± 0.0083 | 0.4313 ± 0.0006 |
+
+By depth band, test RMSE in z units (the fields act mostly where they are the answer, near the surface):
+
+|  |  | 0-100m | 100-300m | 300-700m | 700-1400m |
+|---|---|---|---|---|---|
+| TEMP | OI, Argo | 0.2057 | 0.2490 | 0.3608 | 0.4047 |
+| TEMP | 4DVarNet, Argo | 0.5438 | 0.6102 | 0.6630 | 0.7560 |
+| TEMP | 4DVarNet, Argo + fields | 0.5416 | 0.6259 | 0.6218 | 0.7490 |
+| TEMP | our model, Argo | 0.4963 | 0.6907 | 0.6688 | 0.7552 |
+| TEMP | our model, Argo + fields | 0.4436 | 0.6633 | 0.6743 | 0.7583 |
+| SALT | OI, Argo | 0.2924 | 0.3483 | 0.4824 | 0.5056 |
+| SALT | 4DVarNet, Argo | 0.5971 | 0.7054 | 0.8459 | 0.9561 |
+| SALT | 4DVarNet, Argo + fields | 0.4931 | 0.6887 | 0.8241 | 0.9453 |
+| SALT | our model, Argo | 0.5451 | 0.7762 | 0.8705 | 0.9249 |
+| SALT | our model, Argo + fields | 0.4861 | 0.7769 | 0.8660 | 0.9247 |
+
+Effect of the fields on test: our model -0.0168 ± 0.0082 (n=3) °C and -0.00462 ± 0.00042 (n=3) PSU (paired over seeds); 4DVarNet +0.0050 °C and -0.00860 PSU (one run each).
