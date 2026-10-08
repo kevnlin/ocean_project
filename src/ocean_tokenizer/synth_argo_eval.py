@@ -30,10 +30,14 @@ REFERENCE = os.path.join("outputs", "audit", "synthetic", "syn_r500_g1",
                          "summary_seed1234.json")
 
 
-def load(root):
+def load(root, *, cohort=None):
     """``(cohort, norm, obs)``: the at-position anomaly cohort under the audit's
-    splits, its train-year normalisation, and ``{channel: (P, L)}`` z-scores."""
-    c, _ = load_cohort(root, "synthetic", SPLITS, anomaly="exact")
+    splits, its train-year normalisation, and ``{channel: (P, L)}`` z-scores.
+
+    ``cohort`` is the synthetic file name without ``.nc``; the audit's
+    ``cesm2_uniform`` remains the default.
+    """
+    c, _ = load_cohort(root, "synthetic", SPLITS, anomaly="exact", cohort=cohort)
     norm = ArgoNorm.fit(c, "train")
     return c, norm, {ch: norm.z(ch, getattr(c, ch)) for ch in CH}
 

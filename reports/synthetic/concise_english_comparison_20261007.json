@@ -1,0 +1,1768 @@
+{
+  "schema_version": 1,
+  "as_of_utc": "2026-10-07T15:43:26Z",
+  "title": "CESM2 matched reconstruction: concise English comparison snapshot",
+  "campaign": {
+    "registered_runs": 39,
+    "completed_training_runs": 20,
+    "pending_training_runs": 19,
+    "registered_family_input_groups": 13,
+    "steps_per_registered_run": 15000,
+    "seeds": [
+      1234,
+      1235,
+      1236
+    ],
+    "full_comparison_complete": false,
+    "manifest": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/campaign.json",
+      "sha256": "9211e8483e70af54ef0d521b804c8c94628405ba1ea82d35b9f4eb55c57bd25a"
+    }
+  },
+  "validation_protocol": {
+    "year": 2004,
+    "train_years": [
+      2000,
+      2001,
+      2002,
+      2003
+    ],
+    "inputs_per_month": 6080,
+    "held_out_profiles_per_month": 1520,
+    "n_valid_per_variable": {
+      "TEMP": 92517,
+      "SALT": 92517
+    },
+    "validation_cell_cap_per_month": 8000,
+    "raw_scored_cells": 96000,
+    "levels_m": [
+      5.0,
+      15.0,
+      25.0,
+      35.0,
+      45.0,
+      55.0,
+      65.0,
+      85.0,
+      105.0,
+      125.0,
+      145.0,
+      165.1,
+      186.3,
+      222.6,
+      267.7,
+      326.9,
+      408.8,
+      527.7,
+      707.6,
+      984.7
+    ],
+    "units": {
+      "TEMP": "degC",
+      "SALT": "PSU"
+    },
+    "target": "CESM2 climatological anomaly at each Argo profile location; RMSE equals absolute-state RMSE after adding the common climatology.",
+    "normalization": "Train-only depth-variable scale and offset, inherited old synthetic protocol.",
+    "metric_computation": "Physical RMSE recomputed against the common canonical float64 validation truth. All prediction identifiers, missing masks, float32 target identity, and exact normalization are verified.",
+    "canonical_truth": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/oi_validation.npz",
+      "sha256": "c40a85a9eabcdbade240fcd83768d5734ef5b8653d08874440439f0db6b06ef8"
+    },
+    "scoring_fingerprint": "eea02a59f13e72a8151c87c9d228d7fa4a882c46bf108ff98b1effc3e3ef1abe",
+    "aggregation": "Arithmetic mean and sample standard deviation (ddof=1) of three independently trained seeds at each validation-selected checkpoint; not the metric of ensemble predictions.",
+    "pending_rule": "No partial seed average is published in main table. A family remains pending until all three runs complete 15000 steps.",
+    "parameter_count_note": "Allocated model parameters, including bypassed ablation modules; not active FLOPs.",
+    "parameter_count_reference": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/reports/synthetic/matched_architecture_protocol_20261007.md",
+      "sha256": "48dcf29cfe274515e8f65b62f78028345e2c0a5e06b3a1b2255fb9b44e26b149"
+    }
+  },
+  "comparison_rows": [
+    {
+      "family": "previous_token64",
+      "method": "Previous 64-slot model",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 407111,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "previous_token64_argo_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_argo_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "previous_token64_argo_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_argo_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "previous_token64_argo_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_argo_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "dense64",
+      "method": "Dense Transformer 64",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 268180,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.08676231860215994,
+            "sd": 7.575679566579902e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.03944136659643311,
+            "sd": 8.382390913384435e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": -0.00022576233747652428,
+            "sd": 0.0004063124202915613,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.021394549785696843,
+            "sd": 3.588406631980114e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.00802622256662729,
+            "sd": 3.107155770696558e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00014352580375335424,
+            "sd": 0.00018553748347287843,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "dense64_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 7000,
+          "parameters": 268180,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08669523009775056,
+              "mae": 0.039445328041443545,
+              "mean_bias": -0.0003352405670136983
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021356386848716234,
+              "mae": 0.008039838391543057,
+              "mean_bias": 0.00021628881940614355
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1234/summary_seed1234.json",
+            "sha256": "fddfa14623da10854f5509eb03322b176d0d6a55a406192a711ca20c88de1ef4"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1234/validation_seed1234.npz",
+            "sha256": "3c36af5ba625de7d54d572793784f135276ef4d09ca88343e6e44ff52e08940a"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1234/best_seed1234.pt",
+            "sha256": "ade12b9bee9b4d8c75c54a818611bf63aa19b9087a536c5e83cd40d17ec015dd"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "dense64_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 10000,
+          "parameters": 268180,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08684447809396739,
+              "mae": 0.03935563219963506,
+              "mean_bias": -0.0005661189969529179
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02142760833887618,
+              "mae": 0.007990667503315197,
+              "mean_bias": -6.736448734277325e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1235/summary_seed1235.json",
+            "sha256": "b52cbba3968dac26a8328ba9f08ffce10937b9c5d3605a6655376523816551e7"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1235/validation_seed1235.npz",
+            "sha256": "a9328cef5f70371341fe09af0227ccb9659f834146ac040933e8b7249fed68e5"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1235/best_seed1235.pt",
+            "sha256": "7dda3be2db2db58c60a652c98d6d05c3705a05bed03ed39d94c69fb8c13f9f8b"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "dense64_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 10000,
+          "parameters": 268180,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08674724761476188,
+              "mae": 0.03952313954822074,
+              "mean_bias": 0.0002240725515370434
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021399654169498118,
+              "mae": 0.008048161805023615,
+              "mean_bias": 0.0002816530791966924
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1236/summary_seed1236.json",
+            "sha256": "4192492e2624075f5517897577375e7ea1bd5c8bb240d8317c8258f1912d66e4"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1236/validation_seed1236.npz",
+            "sha256": "6107d9dbced05cb51ba2de196849878cc6a858f298dc1cba949a4a68bffc4bba"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense64_argo_s1236/best_seed1236.pt",
+            "sha256": "b3ef690eb676d01e441bf06f0d1baf8e2efa2e935bac610369bc67b1fd309370"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "soft_moe192",
+      "method": "Soft MoE 192",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 8343198,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.08605391734114505,
+            "sd": 0.00010751340936345662,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.039135618975058566,
+            "sd": 0.00016229908974132228,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00014657150296427617,
+            "sd": 0.0008765281771289789,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.02143360000427179,
+            "sd": 2.664233510448389e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.007998137558201418,
+            "sd": 2.6289075909156523e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 4.184120863933913e-05,
+            "sd": 7.558989166337943e-05,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "soft_moe192_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 13000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08615431245527977,
+              "mae": 0.03922628398286625,
+              "mean_bias": 0.0011274198788380945
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021464335895739373,
+              "mae": 0.007993957142946963,
+              "mean_bias": -1.770977765398403e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1234/summary_seed1234.json",
+            "sha256": "c55ed3c08bd5c019900a42bb808c08fc8cc17fb3bb929fa974d26f76094ae422"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1234/validation_seed1234.npz",
+            "sha256": "000d706f563500359afd39f17aec0ccc93fba4470ecb59945003cc0cece2b143"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1234/best_seed1234.pt",
+            "sha256": "d1e39a4fabd13a07b9a6cd32382ea1d77ced01e31be94bdb8161988b39ff8a22"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 10000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08594047621534251,
+              "mae": 0.03894824462239075,
+              "mean_bias": -0.0005600794015465115
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02141936905088154,
+              "mae": 0.007974189167395115,
+              "mean_bias": 1.6352864194852857e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1235/summary_seed1235.json",
+            "sha256": "a7aab64a8f60e4ff6d1f937dd7d70b884b3f27672ab143563421934524b8a0c5"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1235/validation_seed1235.npz",
+            "sha256": "565abe838bb5bcca07108663c07aa2655233aa8d985bb87ab2e6b9d91f066b1f"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1235/best_seed1235.pt",
+            "sha256": "675d71fbba36753645f586459c28d51fdc0bc0a13d7babc34c8ef4ed6e8e7ff1"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 15000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08606696335281289,
+              "mae": 0.039232328319918686,
+              "mean_bias": -0.0001276259683987544
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021417095066194453,
+              "mae": 0.008026266364262175,
+              "mean_bias": 0.00012688053937714855
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1236/summary_seed1236.json",
+            "sha256": "11789d6289f2c87329324ee5e559ce712d94a344c15539abbe894d6dec662b8f"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1236/validation_seed1236.npz",
+            "sha256": "627bc9d491e17a46a7623f63cb358be05307421c5dcc680edb782f0a90042f53"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_argo_s1236/best_seed1236.pt",
+            "sha256": "b0bab4eb1a4d7273fb523bb1fa01e40cf7340019dc1f964687ddc6d69dce89a2"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "dense192",
+      "method": "Dense Transformer 192",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 4338840,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.08622565010239087,
+            "sd": 0.0004023545222751708,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.03920218376332757,
+            "sd": 0.0003222852298863713,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 5.1680326549558756e-05,
+            "sd": 0.0005976970375967206,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.021412149984478688,
+            "sd": 2.970194320548019e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.007975973382696856,
+            "sd": 3.354644131742503e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00016985663374695644,
+            "sd": 0.00010924893757719349,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "dense192_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 7000,
+          "parameters": 4338840,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08647417992805527,
+              "mae": 0.039533420453310694,
+              "mean_bias": 0.0007413827014276767
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021381227387736023,
+              "mae": 0.007953504987818055,
+              "mean_bias": 0.00027439908684466534
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1234/summary_seed1234.json",
+            "sha256": "8ab8a5a68861abc019f226b12502fffc49a49a51c39058a37cc1f27844b16ef2"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1234/validation_seed1234.npz",
+            "sha256": "dd4e5c918a08f27ea56bbbaae2d30dde8db036e940baa035aefa322e3e56bbac"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1234/best_seed1234.pt",
+            "sha256": "cdcbb4143749f7f6d5d257a13f45bcb9139da4690aa256b3b2ae5e70aa1806a1"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "dense192_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 10000,
+          "parameters": 4338840,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08576143834678515,
+              "mae": 0.0388896659261324,
+              "mean_bias": -0.00031495903009915496
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021440458468853167,
+              "mae": 0.007959880996948061,
+              "mean_bias": 5.644223924794976e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1235/summary_seed1235.json",
+            "sha256": "a8286295bc19d8b0be08c20f38263134658ef541484e2e232c821824d2c7eb08"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1235/validation_seed1235.npz",
+            "sha256": "d066346fbbf03d49b787ec65d91fd5872b88620b4504135ad6bcd93de7c95553"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1235/best_seed1235.pt",
+            "sha256": "dfb98bc7232135e60f4306c797af949a0be2ca8c50178c05b2cf0f62399ca3cf"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "dense192_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 15000,
+          "parameters": 4338840,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08644133203233226,
+              "mae": 0.03918346491053961,
+              "mean_bias": -0.00027138269167984553
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02141476409684688,
+              "mae": 0.008014534163324446,
+              "mean_bias": 0.00017872857514825423
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1236/summary_seed1236.json",
+            "sha256": "cf5b2dc1f58fd73eb1abb54c195600386eb0e5616ade0de8d2f6b16d8e46357a"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1236/validation_seed1236.npz",
+            "sha256": "08dec25cfd32e2c13c61b0c62f963c1a76fbd25e86527377a0dd622157686ea9"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_argo_s1236/best_seed1236.pt",
+            "sha256": "42614d8347a05a07b6c886435d504bc630d6b7daf987f1e3c60aea7f80475924"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "local_transformer192",
+      "method": "Local Transformer 192",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 4858776,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.07836904265903162,
+            "sd": 0.00014239720637337764,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.03473275302296274,
+            "sd": 8.93382225767045e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 7.23192950524479e-05,
+            "sd": 0.0008555575511358541,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.02001944947445967,
+            "sd": 9.651827644165383e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.006872354297188944,
+            "sd": 1.094523611410548e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00013420931182994404,
+            "sd": 4.541484334023324e-05,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "local_transformer192_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 13000,
+          "parameters": 4858776,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.07849222370009082,
+              "mae": 0.03483386665216777,
+              "mean_bias": 0.0009993719217348859
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.020127907114503425,
+              "mae": 0.006881564158436803,
+              "mean_bias": 0.00014687948827300085
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1234/summary_seed1234.json",
+            "sha256": "4c9b703cdb05058a5e7d3593d61af46c82bf7101fddee9b74c36bd3d4e735728"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1234/validation_seed1234.npz",
+            "sha256": "f39e748b268cfde34b2bd03912169949c52079531fc62c3a57d8ab576a59d2ee"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1234/best_seed1234.pt",
+            "sha256": "090f6e43e6f135b4414333d58689d09afb002c3243f9051a1e7f4a5deb0ba670"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "local_transformer192_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 15000,
+          "parameters": 4858776,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.0782131293537381,
+              "mae": 0.03466449469698673,
+              "mean_bias": -0.0006868568006774511
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.019943006178878554,
+              "mae": 0.006875244834224868,
+              "mean_bias": 8.380486954809061e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1235/summary_seed1235.json",
+            "sha256": "2ece05c7611262988405b55ca99d4279d36ef61115ee11c847bc5c1903917f7b"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1235/validation_seed1235.npz",
+            "sha256": "c9b205b6bb74583faa26bde42791b11d061acf3139fc41f49e3f8dfa4c80e932"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1235/best_seed1235.pt",
+            "sha256": "4748d236b945c2f6e63c5f08fa0f44eee9d535d8ce88b1573c275ef4ac16f825"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "local_transformer192_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 15000,
+          "parameters": 4858776,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.07840177492326596,
+              "mae": 0.03469989771973373,
+              "mean_bias": -9.55572359000911e-05
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.019987435129997032,
+              "mae": 0.006860253898905161,
+              "mean_bias": 0.00017194357766874062
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1236/summary_seed1236.json",
+            "sha256": "c7dc825b127d9fb47063d41e2072d3c076e8f64dc84c91b84cd01df4a3926bf4"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1236/validation_seed1236.npz",
+            "sha256": "1223c679b689d7488a373fe710e45faac8ca85fab539e752c4eabd6c6d76f2b3"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/local_transformer192_argo_s1236/best_seed1236.pt",
+            "sha256": "e7fbc4acdcf007857f5a4962bed1d28cd30b74fab8e0f169d8d8dc208840e1bd"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "soft_moe192_latent_off",
+      "method": "Soft MoE 192, latent disabled",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 8343198,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.08643967462721369,
+            "sd": 0.00011836783325196635,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.03948046786434741,
+            "sd": 0.00020595052501161772,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00011351768922582938,
+            "sd": 0.0004618927490606775,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.021424087957402176,
+            "sd": 8.601929798233328e-05,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.008049547238738866,
+            "sd": 5.593722474689589e-05,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 0.00023398582973598587,
+            "sd": 5.340359393153219e-05,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "soft_moe192_latent_off_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 7000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08648828097470462,
+              "mae": 0.03967782421558676,
+              "mean_bias": 0.00013989181602291177
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021512087384643604,
+              "mae": 0.008075446614962145,
+              "mean_bias": 0.00017350289966294413
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1234/summary_seed1234.json",
+            "sha256": "ef81ef0d6cc3733c48d7b65d6f3d047608b2ca71f364f90da08125f8ef5e48c8"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1234/validation_seed1234.npz",
+            "sha256": "c0d319f75f242992b20b691fba3c39e1e55b8d74edf9e0214eb3dab3cdd340cb"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1234/best_seed1234.pt",
+            "sha256": "a86b7274ea963f58ba95eca37c20f714e52b98aac1f9afa41d57b594f10d1141"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_latent_off_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 6000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08630474138889958,
+              "mae": 0.03926688332806098,
+              "mean_bias": 0.0005616582921465743
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02134019594841934,
+              "mae": 0.007985354113527257,
+              "mean_bias": 0.00025382031528090406
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1235/summary_seed1235.json",
+            "sha256": "35a02236fe2c339dbce3f694933dd61ccc74a363b8870bad5f94d00086255723"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1235/validation_seed1235.npz",
+            "sha256": "7fe7133e108e92aead2099499884f8e4c8b0d864e90703af3990050547aea337"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1235/best_seed1235.pt",
+            "sha256": "d277c2c32ef6566cec8b18fcb5270fd17b755f6d6c5ac97a89d4ed8ccb8ccdb7"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_latent_off_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 14000,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.08652600151803683,
+              "mae": 0.0394966960493945,
+              "mean_bias": -0.00036099704049199794
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.021419980539143582,
+              "mae": 0.008087840987727196,
+              "mean_bias": 0.0002746342742641094
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1236/summary_seed1236.json",
+            "sha256": "4735508ed2ff6dd3cac164e48ba69dccf5228d143f51abd5e15ce5a45c0121fd"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1236/validation_seed1236.npz",
+            "sha256": "e89d832770cad08eb4cbb552f9338dd8ababe7c2f941ba4a88000be6c300a90c"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_argo_s1236/best_seed1236.pt",
+            "sha256": "55551a254f66153f7f07455026200cce20e7f4af10004bad61f3798bea929151"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "soft_moe192_local_off",
+      "method": "Soft MoE 192, local correction disabled",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "complete_three_seeds",
+      "seeds_completed": 3,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 8343198,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": {
+        "TEMP": {
+          "rmse": {
+            "mean": 0.09059928916682557,
+            "sd": 0.0,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.03866742216809484,
+            "sd": 0.0,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": -0.001112325280223961,
+            "sd": 0.0,
+            "n_seeds": 3
+          }
+        },
+        "SALT": {
+          "rmse": {
+            "mean": 0.021847956908044374,
+            "sd": 4.2491873609703695e-18,
+            "n_seeds": 3
+          },
+          "mae": {
+            "mean": 0.007629821465718838,
+            "sd": 1.0622968402425924e-18,
+            "n_seeds": 3
+          },
+          "mean_bias": {
+            "mean": 7.735361845222349e-05,
+            "sd": 0.0,
+            "n_seeds": 3
+          }
+        }
+      },
+      "completed_seed_details": [
+        {
+          "tag": "soft_moe192_local_off_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 0,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.09059928916682557,
+              "mae": 0.03866742216809484,
+              "mean_bias": -0.001112325280223961
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02184795690804437,
+              "mae": 0.007629821465718839,
+              "mean_bias": 7.735361845222349e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1234/summary_seed1234.json",
+            "sha256": "7555fe0b8d5ea6357e122aa6ec35022342f16d4a0a3d8c8bdbf103954035ef5d"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1234/validation_seed1234.npz",
+            "sha256": "0da0b7182952622a944ffb1eb7b8ba9271de7b30cf2e6482b38d343f30a54b3f"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1234/best_seed1234.pt",
+            "sha256": "0fe88dba12328c05b98515b72d7ec7f64940e00d462f4802eb7392a38c8609ca"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_local_off_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 0,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.09059928916682557,
+              "mae": 0.03866742216809484,
+              "mean_bias": -0.001112325280223961
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02184795690804437,
+              "mae": 0.007629821465718839,
+              "mean_bias": 7.735361845222349e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1235/summary_seed1235.json",
+            "sha256": "3ea98f825d185d817aee64c130496ab8727fbb463246c4ceaddc4a1de9e634c9"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1235/validation_seed1235.npz",
+            "sha256": "0da0b7182952622a944ffb1eb7b8ba9271de7b30cf2e6482b38d343f30a54b3f"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1235/best_seed1235.pt",
+            "sha256": "9a6c858a4641e7b6e1e62a22848110ba55fbb44c55934cc4ed978cb18a57d3e2"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "soft_moe192_local_off_argo_s1236",
+          "seed": 1236,
+          "completed_steps": 15000,
+          "best_step": 0,
+          "parameters": 8343198,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.09059928916682557,
+              "mae": 0.03866742216809484,
+              "mean_bias": -0.001112325280223961
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.02184795690804437,
+              "mae": 0.007629821465718839,
+              "mean_bias": 7.735361845222349e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1236/summary_seed1236.json",
+            "sha256": "bf70ee4951d8f67fadec9b8b5994ed7b2cec89c55e831f2a9632a917edff158f"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1236/validation_seed1236.npz",
+            "sha256": "0da0b7182952622a944ffb1eb7b8ba9271de7b30cf2e6482b38d343f30a54b3f"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_local_off_argo_s1236/best_seed1236.pt",
+            "sha256": "6d5f2873edf953c8c5731d1b21690d5ad2f5a2ecb4b1f7cee8eb203ef5a44a01"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+            "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": []
+    },
+    {
+      "family": "official4dvarnet",
+      "method": "4DVarNet, official-code task adaptation",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "pending",
+      "seeds_completed": 2,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 241200,
+      "parameter_source": "completed summary",
+      "seed_mean_sd": null,
+      "completed_seed_details": [
+        {
+          "tag": "official4dvarnet_argo_s1234",
+          "seed": 1234,
+          "completed_steps": 15000,
+          "best_step": 14000,
+          "parameters": 241200,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.2173189238020622,
+              "mae": 0.13107625275085982,
+              "mean_bias": 0.006167139703800907
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.043870969500871194,
+              "mae": 0.023653803515227775,
+              "mean_bias": -0.0005390974678551178
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1234/summary_seed1234.json",
+            "sha256": "90e73d3f2a1d44428170958a415005a90f7e17f3e6bf8cc723b588b42b1f5e5b"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1234/validation_seed1234.npz",
+            "sha256": "2544f11e5e816c6d08cb22ff3b0dda7a1cf9b95413ff0646ac314ac682b78dba"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1234/best_seed1234.pt",
+            "sha256": "6847c7c9bc04ea2400b08720dc636cefebbb4c5b8f496deff0e3b955f4e2b1a0"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/48_official_4dvarnet.py": "6ec253a2a6b5142993b115b4cad1adb41c397d2f0ba785d5c7f512579c07aeb8",
+            "src/ocean_tokenizer/fourdvar_synthetic.py": "a60b6a11de3caa1318420e5f3e1a92e9a6a336d62f92cbb248676ca92b3fb4b4",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        },
+        {
+          "tag": "official4dvarnet_argo_s1235",
+          "seed": 1235,
+          "completed_steps": 15000,
+          "best_step": 15000,
+          "parameters": 241200,
+          "physical_metrics": {
+            "TEMP": {
+              "n": 92517,
+              "rmse": 0.2415361554507935,
+              "mae": 0.14183673817796055,
+              "mean_bias": -0.007285237029106632
+            },
+            "SALT": {
+              "n": 92517,
+              "rmse": 0.04546953819554302,
+              "mae": 0.02444080317196835,
+              "mean_bias": 3.2620899031540344e-05
+            }
+          },
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1235/summary_seed1235.json",
+            "sha256": "d096a02e184236482eeead1bafb93c83b65a58e006f5c67698e0232cf10a9922"
+          },
+          "validation_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1235/validation_seed1235.npz",
+            "sha256": "871ec498f1ca738e3028697d63d1fb3ab82a00b24d3a9d4083998f5587ff6910"
+          },
+          "checkpoint": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1235/best_seed1235.pt",
+            "sha256": "e82890e72912e1d4aead3ddf954d8ac539728119a22e0d1acc9ab09fb0773a11"
+          },
+          "training_source_sha256": {
+            "experiments/synthetic/48_official_4dvarnet.py": "6ec253a2a6b5142993b115b4cad1adb41c397d2f0ba785d5c7f512579c07aeb8",
+            "src/ocean_tokenizer/fourdvar_synthetic.py": "a60b6a11de3caa1318420e5f3e1a92e9a6a336d62f92cbb248676ca92b3fb4b4",
+            "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+            "src/ocean_tokenizer/latent_experiment.py": "439bb538425c8524b26b7d87cd90368f4f2c62133757436860a9f5f41679c7a5",
+            "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+          }
+        }
+      ],
+      "pending_seeds": [
+        {
+          "tag": "official4dvarnet_argo_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_argo_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "dense192",
+      "method": "Dense Transformer 192",
+      "input_setting": "surface",
+      "inputs": "Argo + synthetic SST/SSS/SSH",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 4386840,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "dense192_surface_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_surface_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "dense192_surface_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_surface_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "dense192_surface_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/dense192_surface_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "soft_moe192",
+      "method": "Soft MoE 192",
+      "input_setting": "surface",
+      "inputs": "Argo + synthetic SST/SSS/SSH",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 8391198,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "soft_moe192_surface_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_surface_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "soft_moe192_surface_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_surface_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "soft_moe192_surface_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_surface_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "soft_moe192_latent_off",
+      "method": "Soft MoE 192, latent disabled",
+      "input_setting": "surface",
+      "inputs": "Argo + synthetic SST/SSS/SSH",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 8391198,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "soft_moe192_latent_off_surface_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_surface_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "soft_moe192_latent_off_surface_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_surface_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "soft_moe192_latent_off_surface_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/soft_moe192_latent_off_surface_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "official4dvarnet",
+      "method": "4DVarNet, official-code task adaptation",
+      "input_setting": "surface",
+      "inputs": "Argo + synthetic SST/SSS/SSH",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 250278,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "official4dvarnet_surface_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_surface_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "official4dvarnet_surface_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_surface_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "official4dvarnet_surface_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/official4dvarnet_surface_s1236/summary_seed1236.json"
+        }
+      ]
+    },
+    {
+      "family": "previous_token64",
+      "method": "Previous 64-slot model",
+      "input_setting": "surface",
+      "inputs": "Argo + synthetic SST/SSS/SSH",
+      "status": "pending",
+      "seeds_completed": 0,
+      "seeds_expected": 3,
+      "steps_per_run": 15000,
+      "parameters_per_run": 384327,
+      "parameter_source": "architecture protocol source-instantiated count",
+      "seed_mean_sd": null,
+      "completed_seed_details": [],
+      "pending_seeds": [
+        {
+          "tag": "previous_token64_surface_s1234",
+          "seed": 1234,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_surface_s1234/summary_seed1234.json"
+        },
+        {
+          "tag": "previous_token64_surface_s1235",
+          "seed": 1235,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_surface_s1235/summary_seed1235.json"
+        },
+        {
+          "tag": "previous_token64_surface_s1236",
+          "seed": 1236,
+          "status": "pending",
+          "summary_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_token64_surface_s1236/summary_seed1236.json"
+        }
+      ]
+    }
+  ],
+  "fixed_baseline_rows": [
+    {
+      "family": "climatology",
+      "method": "Climatology",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "fixed_deterministic_baseline",
+      "seeds_completed": 0,
+      "seeds_expected": 0,
+      "steps_per_run": 0,
+      "parameters_per_run": 0,
+      "physical_metrics": {
+        "TEMP": {
+          "n": 92517,
+          "rmse": 0.7671488093525671,
+          "mae": 0.4323669842942405,
+          "mean_bias": -0.08210400171205864
+        },
+        "SALT": {
+          "n": 92517,
+          "rmse": 0.12600730248715247,
+          "mae": 0.06871541593246064,
+          "mean_bias": -0.0012073023708986548
+        }
+      },
+      "seed_mean_sd": null,
+      "provenance": {
+        "manifest": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+          "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+        },
+        "validation_prediction": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/climatology_validation.npz",
+          "sha256": "aa45b0a6e96634c4337a4b02dda3c379e5f9f04d830f852b67a6c4590e1f3c9a"
+        },
+        "scoring_fingerprint": "eea02a59f13e72a8151c87c9d228d7fa4a882c46bf108ff98b1effc3e3ef1abe"
+      },
+      "budget_note": "Fixed deterministic method; no learned 15000-step training budget."
+    },
+    {
+      "family": "nearest_profile",
+      "method": "Nearest profile",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "fixed_deterministic_baseline",
+      "seeds_completed": 0,
+      "seeds_expected": 0,
+      "steps_per_run": 0,
+      "parameters_per_run": 0,
+      "physical_metrics": {
+        "TEMP": {
+          "n": 92517,
+          "rmse": 0.18400532966489444,
+          "mae": 0.0876244176673398,
+          "mean_bias": -0.0009854461748704673
+        },
+        "SALT": {
+          "n": 92517,
+          "rmse": 0.03851096870570276,
+          "mae": 0.017289723952804564,
+          "mean_bias": 5.190917533500864e-05
+        }
+      },
+      "seed_mean_sd": null,
+      "provenance": {
+        "manifest": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+          "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+        },
+        "validation_prediction": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/nearest_profile_validation.npz",
+          "sha256": "0a361440658987c8d6259da4d857970bf197407584fe628780c0e58b8849f046"
+        },
+        "scoring_fingerprint": "eea02a59f13e72a8151c87c9d228d7fa4a882c46bf108ff98b1effc3e3ef1abe"
+      },
+      "budget_note": "Fixed deterministic method; no learned 15000-step training budget."
+    },
+    {
+      "family": "oi",
+      "method": "Classical OI, validation tuned",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "fixed_deterministic_baseline",
+      "seeds_completed": 0,
+      "seeds_expected": 0,
+      "steps_per_run": 0,
+      "parameters_per_run": 0,
+      "physical_metrics": {
+        "TEMP": {
+          "n": 92517,
+          "rmse": 0.09059928936997619,
+          "mae": 0.0386674221620206,
+          "mean_bias": -0.001112325283404735
+        },
+        "SALT": {
+          "n": 92517,
+          "rmse": 0.021847956897878655,
+          "mae": 0.007629821470458549,
+          "mean_bias": 7.735361059426347e-05
+        }
+      },
+      "seed_mean_sd": null,
+      "provenance": {
+        "manifest": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+          "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+        },
+        "validation_prediction": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/oi_validation.npz",
+          "sha256": "c40a85a9eabcdbade240fcd83768d5734ef5b8653d08874440439f0db6b06ef8"
+        },
+        "scoring_fingerprint": "eea02a59f13e72a8151c87c9d228d7fa4a882c46bf108ff98b1effc3e3ef1abe"
+      },
+      "budget_note": "Fixed deterministic method; no learned 15000-step training budget."
+    },
+    {
+      "family": "prior_learned_oi",
+      "method": "Prior learned anisotropic OI",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "fixed_single_seed_baseline",
+      "seeds_completed": 1,
+      "seeds_expected": 1,
+      "steps_per_run": 1500,
+      "epochs": null,
+      "parameters_per_run": 120,
+      "seed": 1234,
+      "best_step": 1500,
+      "physical_metrics": {
+        "TEMP": {
+          "n": 92517,
+          "rmse": 0.08388640811334364,
+          "mae": 0.036682181647513946,
+          "mean_bias": -0.0008585310684480914
+        },
+        "SALT": {
+          "n": 92517,
+          "rmse": 0.02069483176466215,
+          "mae": 0.007227762609404352,
+          "mean_bias": 0.00010524483272415992
+        }
+      },
+      "seed_mean_sd": null,
+      "provenance": {
+        "summary": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/prior_learned_oi/summary_seed1234.json",
+          "sha256": "66e30d27494fa7912c1eec55ff56b812fd12c01c5efdaacfaf69ec8bc8c3ebd5"
+        },
+        "validation_prediction": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/prior_learned_oi/validation_seed1234.npz",
+          "sha256": "cdfe27380cc14524ed669f64f9c5902a2767dd7c597af2b68c29a0da4abb7197"
+        },
+        "checkpoint": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/audit/synthetic/anc_kriging/model_seed1234.pt",
+          "sha256": "f75f84706e955902e2be49a40799ea128419926177880e5d8aeb6361435512ec"
+        },
+        "training_source_sha256": {
+          "experiments/synthetic/55_replay_learned_oi.py": "1abff1f635c1a466a1c5410c2c323efb50998a6df026158b8febe07d3ba7ca96",
+          "experiments/real_data/67_anchored_fusion.py": "0571f29cb632f6e8584a5805989e40aa2fb993063d683a9d4e194da53b8592b7",
+          "src/ocean_tokenizer/anchored.py": "28db8ff9bc7601467b09680a9cfe857e5f17ef39f84d09e7a4fe9dab019ec581",
+          "src/ocean_tokenizer/synth_argo_eval.py": "50bfff71b8de2e3ca6340853fc1c88ec7916bd70d32cc31e2ea9ac97a4010ee1",
+          "src/ocean_tokenizer/point_baselines.py": "87b56d01a77f6993456ed927a2e0b4709ecb14e0e622039a4d608917ad5a9132",
+          "src/ocean_tokenizer/argo_obs.py": "b43badd473dc10ef7dde8271147d56f911a0589dadadae47f7f9ce3654cd2ba5",
+          "src/ocean_tokenizer/audit_tools.py": "444c52cfcbedd1b03a828c2d28e11b48a9aecf1720bba256c164b75608d2ede9",
+          "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee"
+        }
+      },
+      "budget_note": "Existing validation-selected seed 1234, 1500 steps; not a new three-seed 15000-step run. Ignores satellite inputs."
+    },
+    {
+      "family": "fixed_pointwise_mlp",
+      "method": "Pointwise MLP, fixed single run",
+      "input_setting": "argo",
+      "inputs": "Argo",
+      "status": "fixed_single_seed_baseline",
+      "seeds_completed": 1,
+      "seeds_expected": 1,
+      "steps_per_run": null,
+      "epochs": 30,
+      "parameters_per_run": 134658,
+      "seed": 1234,
+      "best_step": null,
+      "physical_metrics": {
+        "TEMP": {
+          "n": 92517,
+          "rmse": 0.1883199416814454,
+          "mae": 0.09028909038989308,
+          "mean_bias": 0.0009854805505388473
+        },
+        "SALT": {
+          "n": 92517,
+          "rmse": 0.038578786210212906,
+          "mae": 0.01773151737654428,
+          "mean_bias": -0.0009585615591156239
+        }
+      },
+      "seed_mean_sd": null,
+      "provenance": {
+        "summary": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/fixed_pointwise_mlp/summary_seed1234.json",
+          "sha256": "6d66b4398f5cee961668f060f2a95ab9758ead6ab3a8c1dd85bfc24b4d50c278"
+        },
+        "validation_prediction": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/fixed_pointwise_mlp/validation_seed1234.npz",
+          "sha256": "7e096bcb4e7cad852bbd333de80fa18165a8913f41f5b86ddfa157d0b9021ad8"
+        },
+        "checkpoint": {
+          "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/fixed_pointwise_mlp/model_seed1234.pt",
+          "sha256": "633f4e6cbe97d3f9811141b7a9a16fd1275705539b6163cb23ba79e8fcdf0886"
+        },
+        "training_source_sha256": {
+          "experiments/synthetic/45_synth_argo_mlp.py": "2662da69e0e647ecd282c5d7cadccf3e8025aa895126d0a2188503586b714eba",
+          "experiments/synthetic/54_fixed_pointwise_mlp.py": "997695408cbceb50f37339e621ea8aacf53067a4ef935fabcbbae7c981cecb80",
+          "src/ocean_tokenizer/baselines.py": "c04bc062380824e0a4f778ef6e3e0fca0ec56c2cf13d2c4b98ba738f102d0c31",
+          "src/ocean_tokenizer/point_baselines.py": "87b56d01a77f6993456ed927a2e0b4709ecb14e0e622039a4d608917ad5a9132",
+          "src/ocean_tokenizer/argo_obs.py": "b43badd473dc10ef7dde8271147d56f911a0589dadadae47f7f9ce3654cd2ba5",
+          "src/ocean_tokenizer/synth_argo_eval.py": "50bfff71b8de2e3ca6340853fc1c88ec7916bd70d32cc31e2ea9ac97a4010ee1",
+          "src/ocean_tokenizer/audit_tools.py": "444c52cfcbedd1b03a828c2d28e11b48a9aecf1720bba256c164b75608d2ede9",
+          "src/ocean_tokenizer/config.py": "ac8e84d142ec8e4c05ed102c87b0bf3b5133e233e6a7165338600d6487768999",
+          "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee",
+          "src/ocean_tokenizer/data.py": "1f1902fd4a3a91cd607efabbe000f3f74289cb2bbc0d95ad00ecc7f80084ad39",
+          "src/ocean_tokenizer/argo.py": "bdd1af00c193a6a45f174cd29b3a9bd8f0a783bc7838ed7d38e92a1ed774bf6e",
+          "src/ocean_tokenizer/oi.py": "b010fb3fd1ff9f97cd46f46e2339e911abbdb08555005814a7d105025243298a"
+        }
+      },
+      "budget_note": "Seed 1234, fixed final epoch 30, retrained with the original recipe; not a three-seed 15000-step run."
+    }
+  ],
+  "historical_replay_2005": {
+    "separate_from_validation": true,
+    "status": "Previously used test year; not independent confirmation. These existing baseline summaries are not results of the running 39 new experiments.",
+    "rows": [
+      {
+        "method": "Climatology",
+        "family": "climatology",
+        "split": "previously_used_2005_test",
+        "n_per_variable": 351895,
+        "rmse_physical": {
+          "TEMP": 0.6527753576771707,
+          "SALT": 0.11190735601676603
+        },
+        "data_source": "existing replay_manifest only; development array was not read",
+        "provenance": {
+          "manifest": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+            "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+          },
+          "previously_exported_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/climatology_development.npz",
+            "sha256": "be5a91a7040d1a54f76b22f24b1d2d0bedb648c9bbf9fb82723157e75dd2c4ec",
+            "scoring_fingerprint": "0ebdfec1ca327fbbd5948fd47a5c4410a5ba14b9cdb96a4c141a1ae5a2f3099a",
+            "historical_rmse_replay_verified": true,
+            "n": {
+              "TEMP": 351895,
+              "SALT": 351895
+            },
+            "rmse_physical": {
+              "TEMP": 0.6527753576771707,
+              "SALT": 0.11190735601676603
+            }
+          }
+        }
+      },
+      {
+        "method": "Nearest profile",
+        "family": "nearest_profile",
+        "split": "previously_used_2005_test",
+        "n_per_variable": 351895,
+        "rmse_physical": {
+          "TEMP": 0.1727695520847669,
+          "SALT": 0.037144833842959774
+        },
+        "data_source": "existing replay_manifest only; development array was not read",
+        "provenance": {
+          "manifest": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+            "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+          },
+          "previously_exported_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/nearest_profile_development.npz",
+            "sha256": "5dc42cd672ad831f36facdec1cb285a9f7b6b61163afc82991fcaada899354ee",
+            "scoring_fingerprint": "0ebdfec1ca327fbbd5948fd47a5c4410a5ba14b9cdb96a4c141a1ae5a2f3099a",
+            "historical_rmse_replay_verified": true,
+            "n": {
+              "TEMP": 351895,
+              "SALT": 351895
+            },
+            "rmse_physical": {
+              "TEMP": 0.1727695520847669,
+              "SALT": 0.037144833842959774
+            }
+          }
+        }
+      },
+      {
+        "method": "Classical OI, validation tuned",
+        "family": "oi",
+        "split": "previously_used_2005_test",
+        "n_per_variable": 351895,
+        "rmse_physical": {
+          "TEMP": 0.08598029330395511,
+          "SALT": 0.02263920600359755
+        },
+        "data_source": "existing replay_manifest only; development array was not read",
+        "provenance": {
+          "manifest": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/replay_manifest.json",
+            "sha256": "649fc1f1d441330db61f3965d3ebe53550ae2fac7661b91d370851eb030e60b3"
+          },
+          "previously_exported_prediction": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/previous_baselines/oi_development.npz",
+            "sha256": "030f4dfda552ff1fed710a6b0ef5fcafffaa53a37d5658102bd71da301257ede",
+            "scoring_fingerprint": "0ebdfec1ca327fbbd5948fd47a5c4410a5ba14b9cdb96a4c141a1ae5a2f3099a",
+            "historical_rmse_replay_verified": true,
+            "n": {
+              "TEMP": 351895,
+              "SALT": 351895
+            },
+            "rmse_physical": {
+              "TEMP": 0.08598029330395511,
+              "SALT": 0.02263920600359755
+            }
+          }
+        }
+      },
+      {
+        "method": "Prior learned anisotropic OI",
+        "family": "prior_learned_oi",
+        "split": "previously_used_2005_test",
+        "n_per_variable": 351895,
+        "rmse_physical": {
+          "TEMP": 0.07680920192779316,
+          "SALT": 0.021750221474990405
+        },
+        "data_source": "existing historical replay summary only; development array was not read",
+        "provenance": {
+          "summary": {
+            "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/prior_learned_oi/summary_seed1234.json",
+            "sha256": "66e30d27494fa7912c1eec55ff56b812fd12c01c5efdaacfaf69ec8bc8c3ebd5"
+          }
+        }
+      }
+    ]
+  },
+  "limitations": [
+    "Current table contains validation results only; no new 2005 model prediction arrays were opened.",
+    "The complete campaign has not finished. Final validation selection and final architecture decision remain pending.",
+    "The original 64-slot retrain and multimodal groups remain pending until their three full runs finish.",
+    "Overall old-to-new comparisons change architecture, numerical OI anchoring, training loss and optimizer settings; they cannot isolate shared-latent causality.",
+    "The local-off ablation can select step 0, the unchanged OI initialization, when no trained checkpoint improves the validation selection criterion.",
+    "Validation metric means here cannot substitute for the frozen ensemble selection criterion used by the full campaign.",
+    "Synthetic surface fields are exact/noiseless model products, including T/S-derived steric SSH; real satellite/Argo and forecasting claims require separate evidence."
+  ]
+}

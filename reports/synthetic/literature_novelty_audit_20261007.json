@@ -1,0 +1,353 @@
+{
+  "checked_at_utc": "2026-10-07T11:43:19Z",
+  "scope": {
+    "cutoff_date": "2026-10-07",
+    "language": "zh-CN",
+    "purpose": "当前已实现架构的研究新颖性与机制相似性审查，不是专利或法律风险判断。",
+    "implementation_checked": [
+      "reports/synthetic/matched_architecture_protocol_20261007.md",
+      "src/ocean_tokenizer/latent_ocean.py"
+    ],
+    "setting": "CESM2 monthly retrospective reconstruction; 20 registered levels; 6080 source profiles/month; 39 registered 15000-step runs pending completion.",
+    "literature_selection": "先广搜再保留12项机制或任务直接相关primary sources；不是穷尽检索，不据论文跨数据RMSE建立排名。",
+    "interpretation": "high/medium表示若以重叠部分声称原创的评审风险；不等于抄袭判断，也不否定任务应用价值。",
+    "source_access": "大部分为论文全文；Convformer/SwinOcean3D的出版社直接访问受限，以可索引出版社摘要及方法段核对，限制已逐项标注。",
+    "old_notes": "reports/notes/gap_novelty_venues.md仅作检索指针；其DFS/MBCA、floor、时间表与旧数字未作为本次结论证据。",
+    "prior_results": "旧learned OI很强；本审查不重复未完成训练的数字，不预选final backbone。"
+  },
+  "closest_paper_ids": [
+    "cloinet_2024",
+    "adaf_ocean_2025",
+    "ts_cast_2026"
+  ],
+  "papers": [
+    {
+      "id": "armor3d_2012",
+      "title": "High resolution 3-D temperature and salinity fields derived from in situ and satellite observations",
+      "year": 2012,
+      "url": "https://os.copernicus.org/articles/8/845/2012/",
+      "source_type": "peer_reviewed_publisher_full_text",
+      "method_summary": "先用测高/SST回归生成三维温盐背景，再用原位剖面进行OI校正。",
+      "overlap_with_ours": "卫星背景、稀疏Argo及数值温盐校正的总体路线。",
+      "important_difference": "本轮synthetic锚点是Argo-only冻结OI；新增共享Transformer和逐深度数值局部修正，并非首次采用背景加剖面校正。",
+      "evidence_needed": "相同输入与评分下超过固定和learned OI；分开验证卫星和新通路收益。",
+      "risk_level": "high",
+      "verified_sections": "Abstract; method step 1 and step 2",
+      "publication_status": "published"
+    },
+    {
+      "id": "adaf_ocean_2025",
+      "title": "Advancing Ocean State Estimation with efficient and scalable AI",
+      "year": 2025,
+      "url": "https://arxiv.org/abs/2511.06041",
+      "source_type": "author_arxiv_full_text",
+      "method_summary": "NP启发的分模态MLP编码与坐标解码，直接融合非规则观测和背景。",
+      "overlap_with_ours": "异构观测进入共享表示、按坐标输出海洋状态。",
+      "important_difference": "该版本只验证表面变量，垂直剖面同化列为后续工作；我们读取20层Argo并另保留冻结OI及原数值新息通路。",
+      "evidence_needed": "证明逐层数值通路和共享状态分别带来收益；不能仅以三维应用替代机制证据。",
+      "risk_level": "high",
+      "verified_sections": "4.1-4.3; Discussion paragraph on vertical profiles",
+      "publication_status": "preprint_v1_2025-11-08",
+      "additional_primary_urls": [
+        "https://arxiv.org/html/2511.06041v1"
+      ]
+    },
+    {
+      "id": "cloinet_2024",
+      "title": "CLOINet: ocean state reconstructions through remote-sensing, in-situ sparse observations and deep learning",
+      "year": 2024,
+      "url": "https://www.frontiersin.org/journals/marine-science/articles/10.3389/fmars.2024.1151868/full",
+      "source_type": "peer_reviewed_publisher_full_text",
+      "method_summary": "OI先验与卫星/原位信息经模糊聚类融合，在latent距离中构造协方差。",
+      "overlap_with_ours": "保留数值OI，并用学习表示改善稀疏海洋观测重建。",
+      "important_difference": "CLOINet学习cluster covariance；我们冻结球面OI，独立query读取共享latent，再直接混合query深度数值新息。",
+      "evidence_needed": "与learned OI和局部通路对照；若要声称优于最接近方法，需要另做CLOINet同协议适配。",
+      "risk_level": "high",
+      "verified_sections": "3.1 OINet; 3.2 CLOINet; 2.1 OSSE",
+      "publication_status": "published_2024-02-21"
+    },
+    {
+      "id": "ts_cast_2026",
+      "title": "TS-Cast: deep learning for subsurface ocean reconstruction from satellite observations in the northwestern Pacific",
+      "year": 2026,
+      "url": "https://os.copernicus.org/articles/22/2161/2026/os-22-2161-2026.html",
+      "source_type": "peer_reviewed_publisher_full_text",
+      "method_summary": "SST/SSS/ADT编码为共享latent，通过FiLM调制垂直U-Net，输出温盐及深度误差尺度。",
+      "overlap_with_ours": "卫星多模态latent、联合温盐输出和学习不确定性。",
+      "important_difference": "该模型以卫星和气候态预测整条剖面；我们还用当前source Argo作条件，并有数值OI/新息通路和独立query。",
+      "evidence_needed": "同协议测RMSE及CRPS/NLL/coverage；学习尺度head不能自身充当新颖性证据。",
+      "risk_level": "high",
+      "verified_sections": "2.3.1 satellite encoder; 2.3.2-2.3.4 U-Net/FiLM/output heads",
+      "publication_status": "published_2026-07-16"
+    },
+    {
+      "id": "fourdvarnet_2024",
+      "title": "Inversion of Sea Surface Currents From Satellite-Derived SST-SSH Synergies With 4DVarNets",
+      "year": 2024,
+      "url": "https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2023MS003609",
+      "source_type": "peer_reviewed_publisher_full_text_and_author_repository",
+      "method_summary": "可训练观测/先验项与展开梯度求解器融合SST和SSH，重建表面流。",
+      "overlap_with_ours": "利用多模态观测约束共同状态的学习反演。",
+      "important_difference": "本轮48使用作者模块适配20层T/S，并不是原论文表面流benchmark；主新模型则一次latent编码后解码。",
+      "evidence_needed": "完整15000步三seed及共同预测数组；报告接口、监督和solver适配。",
+      "risk_level": "medium",
+      "verified_sections": "2.2 variational formulation; 4.1 4DVarNet scheme; official repository",
+      "publication_status": "published_2024-06-15",
+      "additional_primary_urls": [
+        "https://github.com/CIA-Oceanix/4dvarnet-starter/tree/20f1b5f34b201342cde6dd21a30419d07541db54"
+      ]
+    },
+    {
+      "id": "perceiver_io_2022",
+      "title": "Perceiver IO: A General Architecture for Structured Inputs & Outputs",
+      "year": 2022,
+      "url": "https://arxiv.org/abs/2107.14795",
+      "source_type": "author_arxiv_conference_paper",
+      "method_summary": "输入cross-attention进入固定latent，latent处理后用输出query解码不同结构。",
+      "overlap_with_ours": "观测编码、共享latent Transformer、独立query decoder的基本backbone。",
+      "important_difference": "海洋坐标及OI/原数值局部路径是任务设计；旧64-slot已经有Perceiver风格latent。",
+      "evidence_needed": "引用架构来源；full/latent_off消融只能证明任务收益，不能证明这个backbone首创。",
+      "risk_level": "high",
+      "verified_sections": "Abstract and flexible querying architecture",
+      "publication_status": "ICLR_2022_first_preprint_2021"
+    },
+    {
+      "id": "soft_moe_2024",
+      "title": "From Sparse to Soft Mixtures of Experts",
+      "year": 2024,
+      "url": "https://arxiv.org/abs/2308.00951",
+      "source_type": "author_arxiv_conference_full_text",
+      "method_summary": "用token到expert slots的软dispatch与反向combine实现可微专家层。",
+      "overlap_with_ours": "当前latent FFN使用相同dispatch/combine构造。",
+      "important_difference": "本轮是海洋任务应用，4个experts均执行；未提出新router，也未完成参数/FLOPs匹配对照。",
+      "evidence_needed": "Dense/MoE同协议结果及成本；专业化需额外诊断，不能仅凭expert个数声称新方法。",
+      "risk_level": "high",
+      "verified_sections": "Section 2 formulas and algorithm; dispatch/combine pseudocode",
+      "publication_status": "ICLR_2024_first_preprint_2023",
+      "additional_primary_urls": [
+        "https://arxiv.org/html/2308.00951v1"
+      ]
+    },
+    {
+      "id": "anp_2019",
+      "title": "Attentive Neural Processes",
+      "year": 2019,
+      "url": "https://arxiv.org/abs/1901.05761",
+      "source_type": "author_arxiv_conference_full_text",
+      "method_summary": "用context/query attention缓解平均聚合的欠拟合，并预测条件分布。",
+      "overlap_with_ours": "稀疏观测集合、query相关读取和预测尺度。",
+      "important_difference": "我们的额外local候选直接组合原温盐数值；latent是确定性slots，不是ANP的随机全局latent posterior。",
+      "evidence_needed": "证明数值局部通路收益；不能把attention或Gaussian head称为首次保留观测信息。",
+      "risk_level": "medium",
+      "verified_sections": "Introduction; 2.1; 3 Attentive Neural Processes",
+      "publication_status": "ICLR_2019",
+      "additional_primary_urls": [
+        "https://arxiv.org/html/1901.05761v2"
+      ]
+    },
+    {
+      "id": "gp_convcnp_2021",
+      "title": "GP-ConvCNP: Better generalization for conditional convolutional Neural Processes on time series data",
+      "year": 2021,
+      "url": "https://proceedings.mlr.press/v161/petersen21a.html",
+      "source_type": "conference_proceedings_full_paper",
+      "method_summary": "以GP posterior替代ConvCNP确定性set embedding，再经CNN条件预测。",
+      "overlap_with_ours": "数值核方法与学习条件表示结合的混合路线。",
+      "important_difference": "我们固定OI均值加residual/local correction；该文把GP后验作为函数表示并可采样，不是同一更新公式。",
+      "evidence_needed": "将差异限定为具体公式和任务证据，不能笼统声称首次结合插值与神经表示。",
+      "risk_level": "medium",
+      "verified_sections": "2.2 GP-ConvCNP; posterior equations",
+      "publication_status": "UAI_2021",
+      "additional_primary_urls": [
+        "https://proceedings.mlr.press/v161/petersen21a/petersen21a.pdf"
+      ]
+    },
+    {
+      "id": "convformer_2024",
+      "title": "Convformer: A Model for Reconstructing Ocean Subsurface Temperature and Salinity Fields Based on Multi-Source Remote Sensing Observations",
+      "year": 2024,
+      "url": "https://www.mdpi.com/2072-4292/16/13/2422",
+      "source_type": "peer_reviewed_publisher_indexed_full_text",
+      "method_summary": "ConvLSTM与时空/global/local attention从SST/SSS/SSH/风重建温盐。",
+      "overlap_with_ours": "Transformer与多源表层数据学习海洋垂直关系。",
+      "important_difference": "该文输入为卫星栅格序列；我们融合当前稀疏剖面并按坐标查询，不只进行表层到深层回归。",
+      "evidence_needed": "同输入与held-out points重跑才可比；不能横比其文中区域/全深平均RMSE。",
+      "risk_level": "medium",
+      "verified_sections": "Publisher indexed Abstract; 3.4 architecture; 4.3 ablations",
+      "publication_status": "published_2024",
+      "access_note": "直接open失败；web search返回出版社可索引的摘要、完整方法及消融段。"
+    },
+    {
+      "id": "swin_ocean3d_2026",
+      "title": "Cross-scale 3-D thermohaline modeling via dual-residual swin transformer with multisource ocean observations",
+      "year": 2026,
+      "url": "https://www.tandfonline.com/doi/abs/10.1080/17538947.2025.2607902",
+      "source_type": "peer_reviewed_publisher_indexed_paper",
+      "method_summary": "Swin Transformer、U-Net和dual residual共同建模全球/海盆三维温盐。",
+      "overlap_with_ours": "局部与全局Transformer表示以及跨深度温盐建模。",
+      "important_difference": "该文是栅格多尺度one-shot重建；我们的原位逐层条件及OI数值通路是主要设计差别。",
+      "evidence_needed": "不要把joint T/S或vertical attention称首创；跨尺度优势需新的同协议测试。",
+      "risk_level": "medium",
+      "verified_sections": "Publisher abstract and indexed PDF Introduction/Discussion",
+      "publication_status": "published_2026_volume19_accepted_2025-12-15",
+      "access_note": "出版社正文直接open为403；可索引出版社摘要与PDF方法/讨论段。"
+    },
+    {
+      "id": "reconmost_2025",
+      "title": "ReconMOST: Multi-Layer Sea Temperature Reconstruction with Observations-Guided Diffusion",
+      "year": 2025,
+      "url": "https://arxiv.org/abs/2506.10391",
+      "source_type": "author_arxiv_full_text",
+      "method_summary": "CMIP6预训练无条件diffusion，生成阶段用稀疏观测引导多层全球温度。",
+      "overlap_with_ours": "模拟海洋学习先验，并由稀疏观测约束三维/月尺度重建。",
+      "important_difference": "该版本只重建温度且逐步扩散生成；我们联合T/S，当前没有diffusion或transfer pretraining。",
+      "evidence_needed": "不能把CMIP6模拟加稀疏观测自身称创新；若扩展生成/transfer路线需独立实验。",
+      "risk_level": "medium",
+      "verified_sections": "3 Methods; 4.1-4.2 CMIP6/EN4 and guidance experiments",
+      "publication_status": "preprint_first_2025-06-12",
+      "additional_primary_urls": [
+        "https://arxiv.org/html/2506.10391v1",
+        "https://github.com/norsheep/ReconMOST"
+      ]
+    }
+  ],
+  "claim_audit": [
+    {
+      "claim": "首次融合卫星与Argo重建三维温盐",
+      "status": "known_prior_art",
+      "reason": "总体任务和背景后校正流程已有直接工作。",
+      "required_evidence": "写成任务背景，精确陈述新的机制与同设置结果。",
+      "related_paper_ids": [
+        "armor3d_2012",
+        "cloinet_2024"
+      ]
+    },
+    {
+      "claim": "观测编码器→共享latent→坐标query decoder是新backbone",
+      "status": "known_prior_art",
+      "reason": "结构已有通用来源和海洋应用；旧64-slot也已有latent。",
+      "required_evidence": "引用来源，用同系统latent_off对照证明当前任务价值。",
+      "related_paper_ids": [
+        "perceiver_io_2022",
+        "adaf_ocean_2025",
+        "anp_2019"
+      ]
+    },
+    {
+      "claim": "Soft MoE或Transformer本身是核心方法创新",
+      "status": "known_prior_art",
+      "reason": "当前expert routing沿用已有设计；时空温盐Transformer已有多篇。",
+      "required_evidence": "三seed收益、成本和容量控制；若无稳定收益不列核心贡献。",
+      "related_paper_ids": [
+        "soft_moe_2024",
+        "convformer_2024",
+        "swin_ocean3d_2026"
+      ]
+    },
+    {
+      "claim": "OI锚点+逐深度原数值新息旁路+共享上下文的具体设计",
+      "status": "implemented_candidate_contribution_not_yet_demonstrated",
+      "reason": "公式与旧band embedding refiner有明确差别，但混合核/学习方法已存在，不能只凭组合声称首创。",
+      "required_evidence": "full vs local_off、full vs latent_off、fixed OI和既有learned OI的同设置结果；误差及校准改善和失败区域。",
+      "related_paper_ids": [
+        "cloinet_2024",
+        "gp_convcnp_2021",
+        "armor3d_2012"
+      ]
+    },
+    {
+      "claim": "共享latent提供独立信息与不可替代收益",
+      "status": "pending_matched_ablation",
+      "reason": "old-vs-new同时改观测粒度、OI、局部数值和loss；不能单独归因于latent。",
+      "required_evidence": "固定OI/输入/训练配置下full相对latent_off三seed和月block统计。",
+      "related_paper_ids": [
+        "perceiver_io_2022",
+        "adaf_ocean_2025"
+      ]
+    },
+    {
+      "claim": "保留原数值旁路意味着latent compression无信息损失或严格插值",
+      "status": "not_established",
+      "reason": "OI与local都读取有限邻居；learned attention和signed gate没有无损或测点严格重现保证。",
+      "required_evidence": "专门扰动/测点回放及可证明性质；当前只可描述为逐深度数值可直接参与校正。",
+      "related_paper_ids": [
+        "anp_2019",
+        "cloinet_2024"
+      ]
+    },
+    {
+      "claim": "新模型DFS估计独立信息量、去重并保留证据质量",
+      "status": "not_implemented_in_current_model",
+      "reason": "新46仅有模态总prior平衡；不是DFS或相关观测information accounting，复制/partition不变性未保证。",
+      "required_evidence": "若研究此方向，需新的模型规则与复制观测、独立噪声及相关产品专项实验。",
+      "related_paper_ids": []
+    },
+    {
+      "claim": "精确Kalman后验更新和完整不确定性",
+      "status": "not_implemented",
+      "reason": "当前latent是learned cross-attention，scale是独立边际Gaussian head，没有分析协方差更新。",
+      "required_evidence": "数学更新规则、相关误差模型及完整posterior检验；现稿使用learned conditional reconstruction。",
+      "related_paper_ids": [
+        "gp_convcnp_2021",
+        "fourdvarnet_2024"
+      ]
+    },
+    {
+      "claim": "学习温盐不确定性head本身有新颖性",
+      "status": "known_prior_art",
+      "reason": "相关海洋重建已有latent及深度方差输出。",
+      "required_evidence": "报告CRPS/NLL/coverage/区间宽度相对validation-calibrated OI的实际增益。",
+      "related_paper_ids": [
+        "ts_cast_2026",
+        "anp_2019"
+      ]
+    },
+    {
+      "claim": "连续任意深度、未来预测、迁移或物理一致性已验证",
+      "status": "outside_current_validated_scope",
+      "reason": "本轮只评分20层、月尺度回顾重建；没有独立cutoff forecast、transfer、守恒或稳定性约束实验。",
+      "required_evidence": "新增深度留出/跨年份海盆/严格forecast cutoff/物理诊断，分别验证后才提出相应主张。",
+      "related_paper_ids": [
+        "reconmost_2025",
+        "fourdvarnet_2024",
+        "swin_ocean3d_2026"
+      ]
+    },
+    {
+      "claim": "本轮达到全领域SOTA或已超过所有类似论文",
+      "status": "not_established_by_registered_comparisons",
+      "reason": "39任务有官方4DVarNet任务适配及强OI，但没有对CLOINet/TS-Cast等逐项同setting重跑；2005为已使用development。",
+      "required_evidence": "限定为本协议注册方法中的最好结果；更广的SOTA需要共同benchmark、相近方法及独立未使用测试。",
+      "related_paper_ids": [
+        "cloinet_2024",
+        "ts_cast_2026",
+        "fourdvarnet_2024",
+        "convformer_2024"
+      ]
+    },
+    {
+      "claim": "共同数据/评分/三seed组件消融与可重算预测产物是科学贡献",
+      "status": "implemented_evaluation_contribution_results_pending",
+      "reason": "可支持可审计的比较和机制判断，但不自动成为首个benchmark或方法突破。",
+      "required_evidence": "全部完成、协议校验、验证先选型、公开物理指标与完整失败/负结果。",
+      "related_paper_ids": []
+    }
+  ],
+  "decision_branches": [
+    {
+      "condition": "最终full相对latent_off、local_off及强learned OI均有稳定额外收益",
+      "allowed_positioning": "具体的数值锚定条件重建方法；贡献落在原逐层新息如何与共享上下文协作，并以相同setting证据支持。",
+      "not_allowed": "把Perceiver/MoE、卫星+Argo、Gaussian head或任意3D能力本身包装为首创。"
+    },
+    {
+      "condition": "latent_off胜出或full与其差异不稳健",
+      "allowed_positioning": "采用验证选中的局部条件修正系统，报告共享latent未提供独立收益。",
+      "not_allowed": "最终不保留latent却把其作为性能核心来源。"
+    },
+    {
+      "condition": "既有learned OI验证胜出",
+      "allowed_positioning": "按既有OI最终选型，并报告该setting下小型数值模型优势及已检验的新架构边界。",
+      "not_allowed": "因为超过旧slot模型便宣称Transformer/MoE突破或SOTA。"
+    }
+  ]
+}

@@ -1,0 +1,547 @@
+{
+  "format_version": 1,
+  "artifact_role": "independent evidence contract",
+  "is_final_results": false,
+  "audited_at_utc": "2026-10-07T11:45:10.555502+00:00",
+  "scope": "read-only implementation, registered protocol, schema and current process audit; no new model development predictions opened",
+  "final_metrics_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/metrics.json",
+  "final_completion_path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/synthetic_matched_20261007/completion.json",
+  "protocol": {
+    "task": "same-month retrospective CESM2 reconstruction",
+    "train_years": [
+      2000,
+      2001,
+      2002,
+      2003
+    ],
+    "validation_year": 2004,
+    "development_year": 2005,
+    "development_status": "previously inspected; not new independent confirmation",
+    "input_profiles_per_evaluation_month": 6080,
+    "training_source_profiles_after_target_holdout": 4256,
+    "training_query_values_per_step": 1024,
+    "training_steps_per_registered_run": 15000,
+    "seeds": [
+      1234,
+      1235,
+      1236
+    ],
+    "registered_runs": 39,
+    "registered_families_by_mode": {
+      "argo": 8,
+      "surface": 5
+    },
+    "n_scored_per_variable": {
+      "validation": 92517,
+      "development": 351895
+    },
+    "fixed_depth_count": 20,
+    "old_model_already_has_shared_latent": true,
+    "old_profile_band_count": 4,
+    "raw_cohort_sha256": "773c5b3f3f16749e0c89570c34e57cf29e59c85902dd61a407c27af7645f0b83",
+    "canonical_identity_precision": "standardized target cast to float32",
+    "metric_target_precision": "original float64 truth from 47 classical replay",
+    "selection_criterion": "mean of TEMP and SALT pooled standardized RMSE using depth-wise training scales; three-seed ensemble predictions for registered learned families",
+    "selection_candidates": "all complete registered three-seed families, all replayed classical references, fixed existing learned OI; fixed single-seed MLP is comparison-only",
+    "selection_modes": [
+      "argo",
+      "surface"
+    ],
+    "classical_or_prior_learned_oi_can_win": true,
+    "satellite_condition": "noise-free CESM2 5 m SST/SSS plus steric sea level derived from same 3-D T/S truth; new common-cache recipe, not historical missing-artifact replay",
+    "preprocessing_scope": "training-year normalization fits all profiles in those years, including heldout cohort; it excludes 2004/2005 but is not an unseen-float preprocessing guarantee"
+  },
+  "schema_paths": {
+    "selected_family": "selection.selected[mode].family",
+    "selected_kind": "selection.selected[mode].kind",
+    "validation_selection_value": "selection.selected[mode].validation_mean_standardized_rmse",
+    "frozen_run_contract": "selection.runs[tag].training_contract",
+    "neural_row_lookup": "rows where row.mode == mode and row.family == family and row.kind != classical",
+    "fixed_row_lookup": "rows where row.mode == argo and row.family == family and row.kind == classical",
+    "classical_kind_warning": "53 encodes fixed MLP and existing learned OI as kind=classical for reporting; they remain learned single-seed methods",
+    "selected_row_mapping": "selected.kind in {classical, existing_learned_oi} => use fixed argo row even when selection mode is surface",
+    "physical_metrics_fixed": "row.physical_metrics[TEMP|SALT][rmse|mae|mean_bias|r2|pearson_r|absolute_r2|absolute_pearson_r|nll|crps|coverage_68|coverage_95|mean_std]",
+    "physical_metrics_ensemble": "row.ensemble.physical_metrics[TEMP|SALT][metric]",
+    "physical_metrics_seed_statistics": "row.seed_mean_sd[TEMP|SALT][metric].mean and .sd; n is integer directly",
+    "physical_metrics_each_seed": "row.seed_metrics[i].physical_metrics[TEMP|SALT][metric]",
+    "depth_metrics_ensemble": "row.ensemble.by_depth_physical_metrics[str(float(depth))][TEMP|SALT][metric]",
+    "depth_metrics_seed": "row.seed_metrics[i].by_depth_physical_metrics[str(float(depth))][TEMP|SALT][metric]",
+    "depth_metrics_fixed": "row.by_depth_physical_metrics[str(float(depth))][TEMP|SALT][metric]",
+    "against_old": "contrasts[mode:family].against_previous_token64[TEMP|SALT]",
+    "against_classical_oi": "contrasts[mode:family].against_oi[TEMP|SALT]",
+    "against_strong_prior": "contrasts[mode:family].against_prior_learned_oi[TEMP|SALT]",
+    "paired_seed_against_old": "contrasts[mode:family].paired_seeds_against_previous_token64[TEMP|SALT]",
+    "component_latent": "component_contrasts[argo:full_minus_latent_off|surface:full_minus_latent_off]",
+    "component_local": "component_contrasts[argo:full_minus_local_off]",
+    "component_family": "soft_moe192 only; these contrasts do not belong to arbitrary selected family",
+    "multimodal_gain": "multimodal_contrasts[family][TEMP|SALT] and .paired_seed_rmse[TEMP|SALT]",
+    "contrast_rmse_delta": "contrast[TEMP|SALT].delta_rmse; negative = first prediction better",
+    "contrast_interval": "contrast[TEMP|SALT].ci95_delta_rmse = [lower, upper]",
+    "contrast_seed_stats": "contrast.paired_seed_rmse[TEMP|SALT].per_seed_delta_rmse/.mean_delta_rmse/.sd_delta_rmse",
+    "selected_vs_previous_best": "selected_against_previous_best[mode].against_prior_learned_oi[TEMP|SALT]",
+    "prediction_file_provenance": "development_array_sha256[path]",
+    "completion_provenance": "completion.json: metrics_sha256/report_sha256/selection_sha256",
+    "derived_relative_gain": "100 * (reference physical RMSE - candidate physical RMSE) / reference physical RMSE, on same seed-mean or ensemble basis"
+  },
+  "admissible_claims": [
+    {
+      "id": "implementation_depth_preserving",
+      "statement_cn": "新系统保留逐深度 T/S 数值和有效标记，并额外通过局部数值通路读取新息；旧版在四个深度带内对逐层 embedding 做 masked mean。",
+      "status": "implementation_verified",
+      "evidence": [
+        "src/ocean_tokenizer/token_api.py:ProfileEncoder",
+        "src/ocean_tokenizer/latent_ocean.py:encode/_local_evidence",
+        "src/ocean_tokenizer/synthetic_latent_experiment.py"
+      ],
+      "required_conditions": []
+    },
+    {
+      "id": "implementation_oi_anchor",
+      "statement_cn": "新系统均值从冻结的球面 OI 开始，零初始化全局残差和局部 gate；经过训练的网络提供附加修正。",
+      "status": "implementation_verified",
+      "evidence": [
+        "src/ocean_tokenizer/latent_ocean.py:LatentOceanModel.__init__/decode",
+        "src/ocean_tokenizer/synthetic_latent_experiment.py:SphericalOI"
+      ],
+      "required_conditions": []
+    },
+    {
+      "id": "old_vs_new_gain",
+      "statement_cn": "在相同数据、输入池、目标、评分点与 15k-step 预算下，新完整系统相对于重跑旧版的温盐误差降低。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.rows",
+        "metrics.contrasts[mode:family].against_previous_token64"
+      ],
+      "required_conditions": [
+        "all 39 registered runs actually completed 15000 steps",
+        "same mode old/new rows; do not substitute historical untraceable multimodal numbers",
+        "report each variable physical RMSE, same seed-mean or ensemble basis",
+        "point estimate delta_rmse < 0 for each variable claimed; describe confidence interval separately",
+        "identify optimizer/loss/schedule/precision/capacity changes as full-system confounds"
+      ]
+    },
+    {
+      "id": "beats_previous_best",
+      "statement_cn": "验证集选中的方案超过此前 120 参数 learned OI 强基线。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.selected_against_previous_best",
+        "selection.auxiliary_prior_learned_oi"
+      ],
+      "required_conditions": [
+        "existing learned OI parity remains verified",
+        "compare physical RMSE against that fixed seed-1234 1500-step checkpoint",
+        "both-variable improvement requires both deltas < 0",
+        "if selected prior_learned_oi itself, say previous best retained; no new-model improvement",
+        "only development evidence; no independent SOTA claim"
+      ]
+    },
+    {
+      "id": "latent_component_gain",
+      "statement_cn": "共享 latent 给 SoftMoE192 在指定输入模式下带来额外精度收益。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.component_contrasts[argo:full_minus_latent_off]",
+        "metrics.component_contrasts[surface:full_minus_latent_off]"
+      ],
+      "required_conditions": [
+        "use full-minus-latent_off of same mode",
+        "specify SoftMoE192, frozen OI and shared numerical local/query route",
+        "report variable-wise deltas and paired seed statistics",
+        "do not transfer this attribution to Dense192/Local Transformer/old/OI winner",
+        "both variable claims require both corresponding improvements"
+      ]
+    },
+    {
+      "id": "local_component_gain",
+      "statement_cn": "新增局部数值通路给 Argo-only SoftMoE192 带来额外精度收益。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.component_contrasts[argo:full_minus_local_off]"
+      ],
+      "required_conditions": [
+        "use Argo-only full-minus-local_off",
+        "do not claim surface local-path ablation was run",
+        "do not confuse local_off with removal of original fixed OI",
+        "do not transfer this attribution to Dense/Local Transformer"
+      ]
+    },
+    {
+      "id": "satellite_increment",
+      "statement_cn": "增加相同 CESM2 表层产品后，同一 family 的精度改变。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.multimodal_contrasts[family]"
+      ],
+      "required_conditions": [
+        "same family present in both modes",
+        "use paired common scoring points and seed statistics",
+        "do not infer satellite benefit by comparing different selected families",
+        "report synthetic truth-derived product limitation and different encoding forms",
+        "do not generalize to real noisy independent satellite data"
+      ]
+    },
+    {
+      "id": "uncertainty_quality",
+      "statement_cn": "选定模型的边际 Gaussian 不确定性在本开发数据上具有更好的校准或概率预测质量。",
+      "status": "conditional_on_final_metrics",
+      "evidence": [
+        "metrics.rows[].physical_metrics",
+        "metrics.rows[].ensemble.physical_metrics"
+      ],
+      "required_conditions": [
+        "compare coverage to nominal values 0.6827 and 0.95 along with NLL, CRPS and interval scale",
+        "coverage closer to 95% alone is insufficient if intervals simply widen",
+        "OI scales calibrated on 2004 residual RMS only, not analytic posterior",
+        "ensemble scores use moment-matched Gaussian, not exact mixture likelihood",
+        "distinguish learned uncertainty from single-seed vs ensemble performance"
+      ]
+    },
+    {
+      "id": "formal_model_selection",
+      "statement_cn": "最终 backbone 按冻结的验证集规则选择。",
+      "status": "conditional_on_completion",
+      "evidence": [
+        "selection.selected",
+        "completion.json"
+      ],
+      "required_conditions": [
+        "all registered families complete before freeze",
+        "final report must preserve frozen validation winner even if another architecture ranks best in 2005",
+        "surface group may retain Argo-only fixed comparator if surface-enabled families fail to improve"
+      ]
+    }
+  ],
+  "unsupported_claims": [
+    {
+      "id": "first_latent",
+      "statement_cn": "旧模型没有 latent，因此本轮全部提升来自首次加入 latent。",
+      "reason_cn": "旧 D4RTFusion/Perceiver 风格模型本来已有共享 latent。"
+    },
+    {
+      "id": "new_moe",
+      "statement_cn": "Soft MoE、Perceiver IO 通用结构本身是我们的原创。",
+      "reason_cn": "这是已有通用方法；只能讨论本任务的数值通路、更新方案及验证后的具体组合。"
+    },
+    {
+      "id": "attention_only",
+      "statement_cn": "Dense64 到 Dense192 或 Dense192 到 SoftMoE 的结果证明 attention 本身更好。",
+      "reason_cn": "Dense64→192同时改变宽度、latents、blocks、heads与参数量；Soft MoE替换FFN并改变容量，不是attention唯一变化。"
+    },
+    {
+      "id": "lossless_compression",
+      "statement_cn": "latent 压缩没有丢失任何观测信息。",
+      "reason_cn": "保留独立数值通路不等于共享 latent 本身无信息损失；未做这一证据审计。"
+    },
+    {
+      "id": "exact_posterior",
+      "statement_cn": "latent 执行解析精确 Kalman 后验更新或严格观测插值。",
+      "reason_cn": "learned attention/residual/signed gate没有这一数学保证；exact只可描述读取实际数值或固定OI实现。"
+    },
+    {
+      "id": "evidence_invariance",
+      "statement_cn": "复制记录不增加信息，独立噪声观测严格增加信息，相关性得到正确 DFS 估计。",
+      "reason_cn": "新attention仅模态prior平衡，无重复证据去重、独立信息量或precision合并实验。"
+    },
+    {
+      "id": "continuous_depth",
+      "statement_cn": "已证明任意位置、任意深度、任意日的连续3-D状态。",
+      "reason_cn": "本轮评分20个原生固定深度和月尺度时间；query接口通用不等于已验证。"
+    },
+    {
+      "id": "forecast",
+      "statement_cn": "已证明未来预报、严格因果、跨海盆迁移或transfer预训练。",
+      "reason_cn": "本轮没有观测截止实验、独立迁移或pretraining arms。"
+    },
+    {
+      "id": "independent_sota",
+      "statement_cn": "已经达到独立测试SOTA或超过原论文已发表结果。",
+      "reason_cn": "2005已反复使用；4DVarNet为作者代码任务适配，输入接口和训练配方不同。"
+    },
+    {
+      "id": "sparse_efficiency",
+      "statement_cn": "Soft MoE实现稀疏专家计算、token dropping或较低FLOPs。",
+      "reason_cn": "全部experts都计算，未做有效FLOPs/标准设备计时对照；共享GPU墙钟不可用于效率结论。"
+    },
+    {
+      "id": "historical_multimodal_replay",
+      "statement_cn": "当前旧surface/4DVarNet行精确重放用户粘贴的0.2124/0.0371等历史行。",
+      "reason_cn": "这些历史脚本、权重、全量预测不可定位；当前是共同缓存上的新注册recipe。"
+    }
+  ],
+  "decision_rules": {
+    "winner_mapping": "use frozen selection selected family, including classic or existing learned OI; never force a Transformer/MoE",
+    "if_prior_or_classic_wins_cn": "保留验证集选中的既有/经典方案为当前生产基线；新增 latent/MoE 作为未验证优于强基线的研究分支。不能把候选设计写成最终已决定的获胜 backbone。",
+    "if_ablation_wins_cn": "最终结构应明确关闭被选项对应组件；不能仍称保留完整 latent 或局部通路。",
+    "if_dense_or_local_wins_cn": "准确记录获胜 Dense/Local 参数、blocks和输入；SoftMoE消融只能说明SoftMoE候选的组件收益，不构成该赢家的组件证明。",
+    "if_soft_moe_full_wins_cn": "是否能把共享latent/局部通路列为实证贡献仍分别取决于对应full-minus-off；surface没有local-off证据。",
+    "point_estimate_gain": "delta_rmse < 0",
+    "month_interval_supports_gain": "ci95_delta_rmse[1] < 0; if interval includes 0 call it point-estimate decrease, not established gain",
+    "both_variables_gain": "require criterion separately for TEMP and SALT; pooled selection alone is insufficient",
+    "component_scope": "only registered SoftMoE192 contrasts",
+    "novelty_statement_policy": "separate implemented design, measured supported contribution, unresolved novelty hypothesis; reference existing architecture/assimilation precedents",
+    "if_no_neural_gain_cn": "可以报告可靠的强基线复现、完整比较及失败机制，但不得写成新backbone的精度突破。",
+    "final_model_count": "a learned frozen candidate is a three-seed ensemble recommendation; state per-model architecture and three-model inference separately"
+  },
+  "confounds": [
+    {
+      "comparison": "old vs new",
+      "items": [
+        "per-band embedding pooling vs per-depth rows",
+        "frozen exact spherical OI numerical anchor",
+        "new direct numerical local innovations",
+        "AdamW LR 0.001 vs 0.0003",
+        "old pooled MSE vs per-variable balanced MSE + 0.02 Gaussian NLL",
+        "old 20% target-variable dropout vs no dropout",
+        "cosine schedule endpoints differ",
+        "old FP32 vs new bf16 AMP neural arithmetic; both permit hardware math choices",
+        "capacity changes for large variants",
+        "surface products same but old patch/new sampled tokens/4DVarNet full auxiliary field differ"
+      ]
+    },
+    {
+      "comparison": "Dense192 vs SoftMoE192",
+      "items": [
+        "same coordinate/latent/query configuration and nominal training recipe",
+        "FFN replacement changes allocated parameter capacity; not parameter- or FLOP-matched",
+        "Soft MoE experts all execute"
+      ]
+    },
+    {
+      "comparison": "fixed existing learned OI vs new",
+      "items": [
+        "existing 120 parameters,1500 steps,seed1234 vs new15000 steps and3seeds",
+        "prior has learned anisotropic per-depth scales/gamma and32neighbors; new fixed anchor is spherical 44 OI20/40 finite neighbors",
+        "no prior 3seed SD available",
+        "new selection candidates use three-seed ensembles vs existing fixed single checkpoint; inference budget and ensemble averaging differ"
+      ]
+    },
+    {
+      "comparison": "statistical uncertainty",
+      "items": [
+        "seed SD uses ddof=1 over3trainingseeds",
+        "month bootstrap resamples12complete scoring months",
+        "month CI excludes training seed and long-term climate uncertainty",
+        "report comparisons as variable-specific; exploratory multiple comparisons are not an independent confirmation"
+      ]
+    }
+  ],
+  "provenance_requirements": {
+    "completion_guard": "57 verify():39unique tags;13complete families with1234/1235/1236;15000actual steps;351895score values/channel;mandatory prior learned OI and MLP",
+    "hash_consistency": "verify completion metrics/report/selection sha256; verify metrics selection_file_sha256; selection raw cohort,checkpoint,training contract,validation-content fingerprints unchanged",
+    "final_report_source": "only values from verified53 metrics; retain historical pasted values as unavailable-artifact reference rather than measured common-array rows",
+    "uncertainty_missing_policy": "leave missing for deterministic models without calibrated scales; do not fabricate standard deviations from RMSE summaries",
+    "source_frozen_policy": "never modify hashed training runners/modules after campaign launch",
+    "related_work_audit": "primary sources required; explicit overlaps and distinctions; novelty unresolved if nearest precedent implements same combination"
+  },
+  "audit_snapshot": {
+    "phase": "train",
+    "completed_runs": [
+      "dense64_argo_s1234",
+      "dense64_argo_s1235",
+      "dense64_argo_s1236"
+    ],
+    "completed_count": 3,
+    "selection_exists": false,
+    "metrics_exists": false,
+    "completion_exists": false,
+    "native_services": {
+      "ocean-synthetic-matched-20261007": "active/running",
+      "ocean-synthetic-fixed-evaluation-20261007": "active/running",
+      "ocean-synthetic-progress-20261007": "active/running",
+      "ocean-synthetic-finalize-20261007": "active/running"
+    },
+    "native_service_inspection": "read-only systemctl and journalctl; ExecMainStatus=0; main MemoryHigh24G/MemoryMax32G/MemorySwapMax0; snapshot may become stale",
+    "manifest_shape_verified": true,
+    "completed_source_parity": {
+      "dense64_argo_s1234": {
+        "experiments/synthetic/46_latent_reconstruction.py": true,
+        "src/ocean_tokenizer/latent_ocean.py": true,
+        "src/ocean_tokenizer/latent_experiment.py": true,
+        "src/ocean_tokenizer/synthetic_latent_experiment.py": true,
+        "src/ocean_tokenizer/reconstruction_metrics.py": true
+      },
+      "dense64_argo_s1235": {
+        "experiments/synthetic/46_latent_reconstruction.py": true,
+        "src/ocean_tokenizer/latent_ocean.py": true,
+        "src/ocean_tokenizer/latent_experiment.py": true,
+        "src/ocean_tokenizer/synthetic_latent_experiment.py": true,
+        "src/ocean_tokenizer/reconstruction_metrics.py": true
+      },
+      "dense64_argo_s1236": {
+        "experiments/synthetic/46_latent_reconstruction.py": true,
+        "src/ocean_tokenizer/latent_ocean.py": true,
+        "src/ocean_tokenizer/latent_experiment.py": true,
+        "src/ocean_tokenizer/synthetic_latent_experiment.py": true,
+        "src/ocean_tokenizer/reconstruction_metrics.py": true
+      }
+    },
+    "ready_source_parity": {
+      "ready_fourdvar.json": {
+        "experiments/synthetic/48_official_4dvarnet.py": true,
+        "src/ocean_tokenizer/fourdvar_synthetic.py": true,
+        "src/ocean_tokenizer/synthetic_latent_experiment.py": true,
+        "src/ocean_tokenizer/latent_experiment.py": true,
+        "src/ocean_tokenizer/reconstruction_metrics.py": true
+      },
+      "ready_previous_surface.json": {
+        "experiments/synthetic/52_previous_token_surface.py": true
+      }
+    },
+    "prior_parity_registry_verified": true,
+    "prior_checkpoint_summary_hash_match": {
+      "source_checkpoint": true,
+      "historical_summary": true,
+      "summary": true
+    },
+    "prior_source_hash_match": {
+      "experiments/synthetic/55_replay_learned_oi.py": true,
+      "experiments/real_data/67_anchored_fusion.py": true,
+      "src/ocean_tokenizer/anchored.py": true,
+      "src/ocean_tokenizer/synth_argo_eval.py": true,
+      "src/ocean_tokenizer/point_baselines.py": true,
+      "src/ocean_tokenizer/argo_obs.py": true,
+      "src/ocean_tokenizer/audit_tools.py": true,
+      "src/ocean_tokenizer/reconstruction_metrics.py": true
+    },
+    "registered_families": [
+      {
+        "mode": "argo",
+        "family": "dense192",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "dense64",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "local_transformer192",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "official4dvarnet",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "previous_token64",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "soft_moe192",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "soft_moe192_latent_off",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "argo",
+        "family": "soft_moe192_local_off",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "surface",
+        "family": "dense192",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "surface",
+        "family": "official4dvarnet",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "surface",
+        "family": "previous_token64",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "surface",
+        "family": "soft_moe192",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      },
+      {
+        "mode": "surface",
+        "family": "soft_moe192_latent_off",
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ]
+      }
+    ],
+    "no_new_development_predictions_read": true,
+    "log_scan": "no Traceback/OOM/CUDA-error/nonfinite/nan matches in current registered train.log files at audit time"
+  },
+  "audited_source_sha256": {
+    "experiments/synthetic/51_matched_campaign.py": "a86ce4ce3d7a7dd4e4d144d36078adefcdf2b9c26095407db4773c67f9aae5bc",
+    "experiments/synthetic/53_matched_reconstruction_report.py": "d1bd3871a324cf8c014c2d53f9b029f7215d27e7499fd34c2b216ca7f6b8598f",
+    "experiments/synthetic/57_finalize_matched_campaign.py": "c54df83d1a06f282f6e25ad10dd2755bfeb199c6512890bb6308eb50c2a91da9",
+    "experiments/synthetic/46_latent_reconstruction.py": "c47418e41771169dbd9b58a7da24ab1ccb6a3987a3f9657a0533ce2a1e7f6a46",
+    "experiments/synthetic/48_official_4dvarnet.py": "6ec253a2a6b5142993b115b4cad1adb41c397d2f0ba785d5c7f512579c07aeb8",
+    "experiments/synthetic/49_previous_token_matched.py": "d7e801e7f5df0bcb8a391ed243c42eb080a2d57840bed02653d9c641f606b752",
+    "experiments/synthetic/52_previous_token_surface.py": "1f2f62951976793ce949157e486638ee6780a37bb000620cc69522693d38e570",
+    "experiments/synthetic/55_replay_learned_oi.py": "1abff1f635c1a466a1c5410c2c323efb50998a6df026158b8febe07d3ba7ca96",
+    "experiments/real_data/62_sanity_train.py": "0bd9285ea65cf43e3f8cc9ae36fe1b3625e25850ef916d449cdbe505cf31ec76",
+    "src/ocean_tokenizer/token_api.py": "b1913c117bd1af9812ffa2d0a9b3cfb6d8b844b3020fbcf88db6bcb09b80a75d",
+    "src/ocean_tokenizer/fusion.py": "ba1a94a4182d7fc02f3bc4b1718763426fcff758d491a7ae02c0108f59300c3e",
+    "src/ocean_tokenizer/latent_ocean.py": "8abf16ee74cb443f3453aabb3793c355c8229369b3d3a10b9af9b0b34a656623",
+    "src/ocean_tokenizer/synthetic_latent_experiment.py": "407ca836671131c6a039115739d250e4054405128f2115af9d960414c10fc2e3",
+    "src/ocean_tokenizer/reconstruction_metrics.py": "fdf429d7b5348149f492ca5d0d38a8b814fc5915aac89fcdf5dada6ccb6324ee",
+    "src/ocean_tokenizer/fourdvar_synthetic.py": "a60b6a11de3caa1318420e5f3e1a92e9a6a336d62f92cbb248676ca92b3fb4b4"
+  }
+}

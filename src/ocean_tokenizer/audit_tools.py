@@ -141,12 +141,23 @@ def exact_position_anomaly(raw: ArgoCohort, root: str,
     return climatology_anomaly(raw, root, raw.lat, raw.lon, chunk)
 
 
-def cohort_path(root: str, region: str) -> str:
+def cohort_path(root: str, region: str, *, cohort: str | None = None) -> str:
     """The RAW cohort file: ``global_global.nc`` for the global run, the CESM2
     cohort of ``41_synth_argo_cohort.py`` for ``synthetic``, else
-    ``<region>_ext.nc`` (the extended 23-level regional cohorts)."""
+    ``<region>_ext.nc`` (the extended 23-level regional cohorts).
+
+    ``cohort`` selects a synthetic file by its name without ``.nc``; it defaults
+    to ``cesm2_uniform`` and cannot override a real-data cohort.
+    """
+    if cohort is not None:
+        if region != "synthetic":
+            raise ValueError("cohort names are supported only for region='synthetic'")
+        if (not cohort or cohort in (".", "..") or "/" in cohort or "\\" in cohort
+                or cohort.endswith(".nc")):
+            raise ValueError("cohort must be a file name without a path or .nc suffix")
     if region == "synthetic":
-        return os.path.join(root, "data", "synthetic_argo", "cesm2_uniform.nc")
+        return os.path.join(root, "data", "synthetic_argo",
+                            f"{cohort if cohort is not None else 'cesm2_uniform'}.nc")
     base = os.path.join(root, "data", "argo_cohort")
     return os.path.join(base, "global_global.nc" if region == "global"
                         else f"{region}_ext.nc")
@@ -154,7 +165,8 @@ def cohort_path(root: str, region: str) -> str:
 
 def load_cohort(root: str, region: str, split_table: dict | None = None,
                 anomaly: str = "cell", qc: bool = False,
-                k_sigma: float = 8.0) -> tuple[ArgoCohort, QCReport | None]:
+                k_sigma: float = 8.0, *,
+                cohort: str | None = None) -> tuple[ArgoCohort, QCReport | None]:
     """An anomaly cohort under the audit's switches.
 
     ``anomaly="cell"`` subtracts WOA23 at the centre of the profile's grid cell
@@ -163,10 +175,11 @@ def load_cohort(root: str, region: str, split_table: dict | None = None,
     ``<region>_ext_anom.nc``; the global cohort ships raw values, so both
     variants are computed from it and cached. ``qc=True`` applies
     :func:`robust_qc` after the split table is set, so its statistics come from
-    the training years of THAT protocol.
+    the training years of THAT protocol. ``cohort`` selects another synthetic
+    file by name, with the same stored-climatology and split handling.
     """
     base = os.path.join(root, "data", "argo_cohort")
-    raw_path = cohort_path(root, region)
+    raw_path = cohort_path(root, region, cohort=cohort)
     if anomaly not in ("cell", "exact"):
         raise ValueError(anomaly)
     if region == "synthetic":

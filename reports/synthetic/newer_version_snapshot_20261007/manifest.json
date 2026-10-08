@@ -1,0 +1,47 @@
+{
+  "version": "Newer version",
+  "captured_at_utc": "2026-10-08T01:21:04.395034+00:00",
+  "snapshot_only": true,
+  "files": [
+    {
+      "source": "outputs/synthetic_matched_20261007/campaign.json",
+      "snapshot": "synthetic_matched_20261007__campaign.json",
+      "sha256": "9211e8483e70af54ef0d521b804c8c94628405ba1ea82d35b9f4eb55c57bd25a"
+    },
+    {
+      "source": "outputs/synthetic_matched_20261007/status.json",
+      "snapshot": "synthetic_matched_20261007__status.json",
+      "sha256": "d4a969cca8a236435c69b42a0740d7be6a1efe2831f6b749a8c208a3dfb94793"
+    },
+    {
+      "source": "outputs/innovation_20261007/campaign.json",
+      "snapshot": "innovation_20261007__campaign.json",
+      "sha256": "d3c958a7cd6c66c69c0d2d5996ded5cd2d97db83cc1f356a9f2ea0528f458d2a"
+    },
+    {
+      "source": "outputs/innovation_20261007/status.json",
+      "snapshot": "innovation_20261007__status.json",
+      "sha256": "d94633e58d0fd191897d3e6e55cdfe945f935b8c47605a4da4eb8170a416ab0d"
+    },
+    {
+      "source": "outputs/innovation_20261007/verification.json",
+      "snapshot": "innovation_20261007__verification.json",
+      "sha256": "21bc53defba325f5dcbe42e9f14682ae4c4d5dda5608ae3f7a3845fe02d87d6f"
+    },
+    {
+      "source": "outputs/innovation_20261007/engineering_smoke.json",
+      "snapshot": "innovation_20261007__engineering_smoke.json",
+      "sha256": "9d8d71d766f31c6b67a5fe6d46094b1e42b609e3bed52b0d1e4dc844a08c097d"
+    },
+    {
+      "source": "outputs/innovation_20261007/operator_diagnostic.json",
+      "snapshot": "innovation_20261007__operator_diagnostic.json",
+      "sha256": "54be985e7990e02d3458ff88166b026fa77f55f6e00463f9a34d77ee3c967085"
+    },
+    {
+      "source": "outputs/innovation_20261007/service_health.json",
+      "snapshot": "innovation_20261007__service_health.json",
+      "sha256": "719d2b42dddcb9f3a16201c35bee33cadaeb7e6bebc6712b29933ba485993240"
+    }
+  ]
+}

@@ -65,3 +65,10 @@ venv/
 
 # Local debugging output, not part of any result
 /outputs/godas_debug/
+
+# Matched reconstruction and innovation campaign runtime artifacts.
+# Dated, small provenance snapshots are archived under reports/synthetic/.
+/outputs/synthetic_matched_20261007/
+/outputs/innovation_20261007/
+/outputs/latent_ocean/
+/outputs/anchored_fusion/

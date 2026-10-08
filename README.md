@@ -5,6 +5,41 @@ Argo-like profiles. The problem is framed as an **observing-system simulation
 experiment (OSSE)** on CESM2-LE, with WOA23 as an observational prior: the model
 climate is the (fully known) ground truth, so reconstructions can be scored exactly.
 
+## Newer version — 2026-10-07
+
+This update adds OI-anchored ocean reconstruction with a shared latent model,
+local numerical observation updates, and matched contribution experiments for
+joint T/S profile alignment, correlated observation errors, and explicit
+surface observation operators. These mechanisms are candidate contributions;
+the dated results distinguish supported validation contrasts from pending ones.
+
+- [English contribution report and measured comparison tables](reports/synthetic/innovation_contribution_report_20261007.en.md)
+- [Downloadable HTML report](reports/synthetic/innovation_contribution_report_20261007.en.html)
+- [Editable architecture diagram](reports/synthetic/fig_innovation_architecture_20261007.svg)
+- [Architecture and comparison protocol](reports/synthetic/matched_architecture_protocol_20261007.md)
+- [Archived experiment registration and verification](reports/synthetic/newer_version_snapshot_20261007/README.md)
+
+The report is a **2026-10-07 snapshot**, not a final completed study: 36/39
+original runs and 10/60 new runs were audited, with three original controls
+reused. Training continues locally. Raw data, checkpoints, prediction arrays,
+and live queue files are excluded from this update.
+
+Use the environment and data setup below. The 4DVarNet reference adapter needs
+the separately cloned upstream repository at the pinned commit shown in the
+synthetic audit instructions. Install `cairosvg` to regenerate the PNG/PDF
+architecture exports; SVG generation does not require it. The matched campaign
+must be registered before the innovation campaign, and completed matched
+controls, baseline replay artifacts, satellite and observation-operator caches
+are required for the full comparison. Archived manifests retain the original
+machine paths for provenance; register fresh manifests on another machine.
+
+```bash
+PYTHONPATH=src python -m pytest -q
+PYTHONPATH=src python experiments/synthetic/51_matched_campaign.py --phase register
+PYTHONPATH=src python experiments/synthetic/60_innovation_reconstruction.py --help
+PYTHONPATH=src python experiments/synthetic/61_innovation_campaign.py --help
+```
+
 ## Quick start on a new machine (current pipeline)
 
 The current work is the **global real-Argo reconstruction** and its pipeline
@@ -19,7 +54,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # loose pins
 # or the exact environment the results were produced with:
 pip install -r requirements-lock.txt
-.venv/bin/python -m pytest -q             # 498 tests, ~30 s
+.venv/bin/python -m pytest -q
 ```
 
 **2. Data.** Everything the scripts read (processed Argo cohorts, WOA23,

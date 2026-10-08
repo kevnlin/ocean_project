@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="670" viewBox="0 0 1280 670">
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#526879"/></marker></defs>
+<rect width="1280" height="670" fill="white"/>
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#203749} .title{font-size:23px;font-weight:700}.label{font-size:16px;font-weight:700}.small{font-size:14px}.note{font-size:13px;fill:#647988}.arrow{fill:none;stroke:#526879;stroke-width:2;marker-end:url(#arrow)}</style>
+<text x="30" y="35" class="title">OI-anchored ocean reconstruction and candidate mechanisms</text>
+<text x="30" y="58" class="note">Current backbone above; isolated experimental additions below. Every target query is decoded independently.</text>
+<rect x="30" y="90" width="245" height="115" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="45" y="117" class="label">Observed source profiles</text>
+<text x="45" y="142" class="small">Raw depth-resolved T/S</text>
+<text x="45" y="163" class="small">Position, month, validity</text>
+<text x="45" y="184" class="small">Complete source pool</text>
+<rect x="325" y="90" width="255" height="115" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="340" y="117" class="label">Shared observation latent</text>
+<text x="340" y="142" class="small">Depth observation encoder</text>
+<text x="340" y="163" class="small">Dense Transformer / Soft MoE</text>
+<text x="340" y="184" class="small">Established backbone</text>
+<rect x="635" y="90" width="270" height="115" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="650" y="117" class="label">Coordinate-query decoder</text>
+<text x="650" y="142" class="small">Own local neighborhood</text>
+<text x="650" y="163" class="small">Query-local Transformer</text>
+<text x="650" y="184" class="small">Numerical T/S innovations</text>
+<rect x="970" y="135" width="275" height="135" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="985" y="162" class="label">Predicted T/S</text>
+<text x="985" y="187" class="small">Frozen OI + learned correction</text>
+<text x="985" y="208" class="small">At requested native depth</text>
+<text x="985" y="229" class="small">Learned marginal uncertainty</text>
+<rect x="325" y="235" width="255" height="92" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="340" y="262" class="label">Frozen spherical OI</text>
+<text x="340" y="287" class="small">Numerical interpolation anchor</text>
+<text x="340" y="308" class="small">Same input profiles / depths</text>
+<rect x="635" y="235" width="270" height="92" rx="9" fill="#edf4f7" stroke="#7399ad" stroke-width="1.5"/>
+<text x="650" y="262" class="label">Optional surface context</text>
+<text x="650" y="287" class="small">CESM2 SST / SSS / steric SSH</text>
+<text x="650" y="308" class="small">Idealized inputs derived from truth</text>
+<path d="M275 146 H325" class="arrow"/>
+<path d="M580 146 H635" class="arrow"/>
+<path d="M905 146 H935 V177 H970" class="arrow"/>
+<path d="M150 205 V281 H325" class="arrow"/>
+<path d="M580 281 H600 V343 H945 V228 H970" class="arrow"/>
+<path d="M770 235 V205" class="arrow"/>
+<path d="M30 360 H1245" stroke="#d9e1e6" stroke-width="1.5"/>
+<rect x="30" y="417" width="390" height="157" rx="9" fill="#fff6e9" stroke="#bf9150" stroke-width="1.5"/>
+<text x="45" y="444" class="label">1 · Complete-profile alignment</text>
+<text x="45" y="469" class="small">Encode observed absolute T/S</text>
+<text x="45" y="490" class="small">Bounded shared or independent shift</text>
+<text x="45" y="511" class="small">Subtract source climatology at destination</text>
+<text x="45" y="532" class="small">Control: full profiles with no shift</text>
+<rect x="445" y="417" width="390" height="157" rx="9" fill="#fff6e9" stroke="#bf9150" stroke-width="1.5"/>
+<text x="460" y="444" class="label">2 · Correlation-aware numerical update</text>
+<text x="460" y="469" class="small">PSD state B and observation-error R</text>
+<text x="460" y="490" class="small">Depth / T-S / profile / source correlation</text>
+<text x="460" y="511" class="small">Structured precision + Woodbury solve</text>
+<text x="460" y="532" class="small">Control: diagonal observation error</text>
+<rect x="860" y="417" width="385" height="157" rx="9" fill="#fff6e9" stroke="#bf9150" stroke-width="1.5"/>
+<text x="875" y="444" class="label">3 · Observation-operator residual</text>
+<text x="875" y="469" class="small">Exact native-depth SST / SSS mapping</text>
+<text x="875" y="490" class="small">TEOS-10 SSH: train-climate Jacobian</text>
+<text x="875" y="511" class="small">Same gain updates mean and variance</text>
+<text x="875" y="532" class="small">Control: direct surface context</text>
+<path d="M225 417 V350 H610 V222 H685 V205" class="arrow" stroke-dasharray="6 5"/>
+<path d="M640 417 V352 H620 V213 H860 V205" class="arrow" stroke-dasharray="6 5"/>
+<path d="M1060 417 V300 H1110 V270" class="arrow" stroke-dasharray="6 5"/>
+<rect x="25" y="373" width="1230" height="29" fill="white"/>
+<text x="30" y="394" class="label">Experimental additions: contributions remain hypotheses until matched tests complete</text>
+<text x="30" y="614" class="small">OI and learned local states reuse source evidence: this diagram does not claim independent sequential Bayesian assimilation.</text>
+<text x="30" y="639" class="note">Candidate covariance diagnostics and a linearized operator are conditional mechanisms; final uncertainty needs calibration tests.</text>
+</svg>

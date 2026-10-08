@@ -1,0 +1,104 @@
+{
+  "status": "engineering_only; not an efficacy experiment",
+  "queries": 1024,
+  "full_source_pool": true,
+  "surface": true,
+  "results": [
+    {
+      "recipe": "local_control",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 4906776,
+      "seconds": 3.8383219242095947
+    },
+    {
+      "recipe": "local_latent_off",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 4906776,
+      "seconds": 0.70119309425354
+    },
+    {
+      "recipe": "local_off",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 4906776,
+      "seconds": 2.3721113204956055
+    },
+    {
+      "recipe": "profile_none",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5131800,
+      "seconds": 2.673909902572632
+    },
+    {
+      "recipe": "profile_shared",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5219545,
+      "seconds": 1.6744458675384521
+    },
+    {
+      "recipe": "profile_independent",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5219738,
+      "seconds": 0.7121903896331787
+    },
+    {
+      "recipe": "cov_diagonal",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 4909957,
+      "seconds": 0.8333337306976318
+    },
+    {
+      "recipe": "cov_correlated",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 4909957,
+      "seconds": 0.7178120613098145
+    },
+    {
+      "recipe": "aligned_correlated",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5222726,
+      "seconds": 0.7317430973052979
+    },
+    {
+      "recipe": "operator_direct",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5230957,
+      "seconds": 0.7444849014282227
+    },
+    {
+      "recipe": "operator_update",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5230957,
+      "seconds": 0.6840698719024658
+    },
+    {
+      "recipe": "all_modules",
+      "steps": 3,
+      "finite_forward_backward": true,
+      "initial_OI_exact": true,
+      "neural_parameters": 5546907,
+      "seconds": 0.7655782699584961
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "status": "training-only observation-operator numerical verification; not reconstruction efficacy",
+  "n_training_profiles": 1024,
+  "n_wet_columns": 920,
+  "SST_SSS_max_abs_normalized_error": [
+    2.23354929440589e-06,
+    1.4797194821669635e-05
+  ],
+  "steric_linearization_rmse_m": 0.0005265408328693955,
+  "steric_linearization_max_abs_error_m": 0.006595129257842114,
+  "target_year_measurements_used": false,
+  "ssh_scope": "finite-difference climate Jacobian; affine approximation error excludes bilinear-grid vs profile TEOS10 discrepancy"
+}

@@ -1,0 +1,867 @@
+{
+  "schema_version": 1,
+  "curves": [
+    {
+      "tag": "dense_base_s1234",
+      "label": "Dense latent \u00b7 base",
+      "variant": "dense",
+      "large": false,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6755966102580031,
+        0.6739862074994648,
+        0.6734461461393391,
+        0.6725679756507253,
+        0.6719362058927606,
+        0.6717406775123453,
+        0.672607424458973,
+        0.6737358947948338,
+        0.6728055520166558,
+        0.6726663147412558,
+        0.672312910136524,
+        0.6731278601952528
+      ],
+      "best_step": 3000,
+      "best_macro_z": 0.6717406775123453
+    },
+    {
+      "tag": "dense_large_s1234",
+      "label": "Dense latent \u00b7 large",
+      "variant": "dense",
+      "large": true,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6745186533705101,
+        0.6745534173256668,
+        0.675186474136427,
+        0.6729050422893783,
+        0.6739450611230523,
+        0.6712078764683231,
+        0.6719724182018576,
+        0.6712112888486856,
+        0.6693969786452851,
+        0.6691899359761628,
+        0.6706278823624278,
+        0.670220972559203
+      ],
+      "best_step": 5000,
+      "best_macro_z": 0.6691899359761628
+    },
+    {
+      "tag": "soft_moe_base_s1234",
+      "label": "Soft MoE \u00b7 base",
+      "variant": "soft_moe",
+      "large": false,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6755274947517801,
+        0.6739866646331248,
+        0.6737213903840309,
+        0.6728907519482266,
+        0.6726218945362308,
+        0.6724943670915664,
+        0.6726578585168359,
+        0.6729399132184394,
+        0.6724121835949981,
+        0.6723950754119684,
+        0.6725957636557913,
+        0.6720302432723783
+      ],
+      "best_step": 6000,
+      "best_macro_z": 0.6720302432723783
+    },
+    {
+      "tag": "soft_moe_large_s1234",
+      "label": "Soft MoE \u00b7 large",
+      "variant": "soft_moe",
+      "large": true,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6746931566814327,
+        0.6738781921582523,
+        0.6750000415172186,
+        0.6730333688476239,
+        0.6733627586977537,
+        0.6708326417385757,
+        0.6713461746064426,
+        0.6707878345846096,
+        0.6694917342539021,
+        0.6693570608461961,
+        0.6708526312795671,
+        0.6705067043115582
+      ],
+      "best_step": 5000,
+      "best_macro_z": 0.6693570608461961
+    },
+    {
+      "tag": "local_transformer_base_s1234",
+      "label": "Local Transformer \u00b7 base",
+      "variant": "local_transformer",
+      "large": false,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.676633461552856,
+        0.6736679196814608,
+        0.6724563663357579,
+        0.6725955794318053,
+        0.6719305446333672,
+        0.6718405534516522,
+        0.6719823018712263,
+        0.6725363672469187,
+        0.67159356951718,
+        0.6716857921935704,
+        0.6715912432590897,
+        0.6716973936301089
+      ],
+      "best_step": 5500,
+      "best_macro_z": 0.6715912432590897
+    },
+    {
+      "tag": "local_transformer_large_s1234",
+      "label": "Local Transformer \u00b7 large",
+      "variant": "local_transformer",
+      "large": true,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6759763451119063,
+        0.6739189275240898,
+        0.675094725915931,
+        0.6735319705474819,
+        0.6749609241907499,
+        0.6713953432091089,
+        0.672549693636745,
+        0.671914028969455,
+        0.6705750903531229,
+        0.6707284052328705,
+        0.672103198819427,
+        0.6725653571695767
+      ],
+      "best_step": 4500,
+      "best_macro_z": 0.6705750903531229
+    },
+    {
+      "tag": "analysis_only_s1234",
+      "label": "OI-only",
+      "variant": "analysis_only",
+      "large": false,
+      "steps": [
+        0,
+        500,
+        1000,
+        1500,
+        2000,
+        2500,
+        3000,
+        3500,
+        4000,
+        4500,
+        5000,
+        5500,
+        6000
+      ],
+      "macro_z": [
+        0.6764875447430402,
+        0.6764933810020952,
+        0.6764586646549591,
+        0.6764632907785613,
+        0.6765139932923839,
+        0.6765685180140697,
+        0.6765860795320001,
+        0.6765769261507637,
+        0.6765563922189133,
+        0.6765544985954217,
+        0.6765517334079876,
+        0.6765583459734301,
+        0.6765512851370525
+      ],
+      "best_step": 1000,
+      "best_macro_z": 0.6764586646549591
+    }
+  ],
+  "configurations": [
+    {
+      "configuration": "dense_large",
+      "label": "Dense latent \u00b7 large",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6172723242690616,
+              0.61631866643322,
+              0.6169988236971242
+            ],
+            "J_mean": 0.6168632714664686,
+            "J_std": 0.0004910668206999306,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.9903935449570164,
+              0.9888634317029779,
+              0.9899547221063246
+            ],
+            "ratio_mean": 0.9897372329221062,
+            "ratio_std": 0.0007879008830335518
+          },
+          "SALT": {
+            "J_values": [
+              0.7513186104033303,
+              0.7512402365427876,
+              0.7509521582620264
+            ],
+            "J_mean": 0.7511703350693814,
+            "J_std": 0.00019296749714603094,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.9905897836124701,
+              0.990486450160482,
+              0.9901066280745504
+            ],
+            "ratio_mean": 0.9903942872825008,
+            "ratio_std": 0.00025442153115241205
+          }
+        }
+      }
+    },
+    {
+      "configuration": "soft_moe_large",
+      "label": "Soft MoE \u00b7 large",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6175317338292962,
+              0.6162610058414267,
+              0.616907181551707
+            ],
+            "J_mean": 0.61689997374081,
+            "J_std": 0.0006353946562508331,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.9908097592336902,
+              0.9887709171422805,
+              0.9898076852383187
+            ],
+            "ratio_mean": 0.9897961205380965,
+            "ratio_std": 0.001019470242402588
+          },
+          "SALT": {
+            "J_values": [
+              0.7519737084152274,
+              0.7512852666554727,
+              0.7513357663882493
+            ],
+            "J_mean": 0.7515315804863164,
+            "J_std": 0.00038372566358653323,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.9914535095855319,
+              0.9905458209373577,
+              0.9906124032350286
+            ],
+            "ratio_mean": 0.990870577919306,
+            "ratio_std": 0.0005059301297683452
+          }
+        }
+      }
+    },
+    {
+      "configuration": "local_transformer_large",
+      "label": "Local Transformer \u00b7 large",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.617280662426656,
+              0.6166379439406713,
+              0.6170878052375227
+            ],
+            "J_mean": 0.6170021372016167,
+            "J_std": 0.0003298121015648571,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.990406923262075,
+              0.9893757021709665,
+              0.9900974901193493
+            ],
+            "ratio_mean": 0.9899600385174635,
+            "ratio_std": 0.0005291728846345801
+          },
+          "SALT": {
+            "J_values": [
+              0.7521419749951461,
+              0.75297292379359,
+              0.750638206377565
+            ],
+            "J_mean": 0.7519177017221003,
+            "J_std": 0.0011834061977717995,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.9916753637399252,
+              0.9927709434035271,
+              0.9896926924618994
+            ],
+            "ratio_mean": 0.9913796665351171,
+            "ratio_std": 0.0015602835776250457
+          }
+        }
+      }
+    },
+    {
+      "configuration": "analysis_only",
+      "label": "OI-only",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6229949787748371,
+              0.6229464091474385,
+              0.6229744295625712
+            ],
+            "J_mean": 0.6229719391616156,
+            "J_std": 2.438039681999105e-05,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.9995753596273089,
+              0.9994974312259124,
+              0.999542389078684
+            ],
+            "ratio_mean": 0.9995383933106351,
+            "ratio_std": 3.9117560734024526e-05
+          },
+          "SALT": {
+            "J_values": [
+              0.7585637134576937,
+              0.7586765974775695,
+              0.758705269444804
+            ],
+            "J_mean": 0.7586485267933557,
+            "J_std": 7.483646741974217e-05,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              1.0001422224413434,
+              1.0002910564450187,
+              1.0003288595253967
+            ],
+            "ratio_mean": 1.0002540461372529,
+            "ratio_std": 9.866951123151856e-05
+          }
+        }
+      }
+    }
+  ],
+  "controls": [
+    {
+      "configuration": "full",
+      "label": "Full shared state",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6182200673821914,
+              0.6177651748263527,
+              0.618263292060727
+            ],
+            "J_mean": 0.6180828447564237,
+            "J_std": 0.000275957843813338,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.9919141682291397,
+              0.9911843077879072,
+              0.9919835208323935
+            ],
+            "ratio_mean": 0.9916939989498136,
+            "ratio_std": 0.0004427654642003183
+          },
+          "SALT": {
+            "J_values": [
+              0.7528608869160084,
+              0.7523671972743308,
+              0.752041330448239
+            ],
+            "J_mean": 0.7524231382128593,
+            "J_std": 0.0004126320908730599,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.9926232263301266,
+              0.9919723121792596,
+              0.991542667093573
+            ],
+            "ratio_mean": 0.9920460685343198,
+            "ratio_std": 0.0005440423382965084
+          }
+        }
+      }
+    },
+    {
+      "configuration": "latent_off",
+      "label": "No shared latent",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6178692646967402,
+              0.6173304530434323,
+              0.6175197126541181
+            ],
+            "J_mean": 0.6175731434647634,
+            "J_std": 0.00027335076015950295,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.991351316629344,
+              0.9904868107015662,
+              0.9907904716456499
+            ],
+            "ratio_mean": 0.9908761996588534,
+            "ratio_std": 0.00043858248252361397
+          },
+          "SALT": {
+            "J_values": [
+              0.7530634418077654,
+              0.7515810857127677,
+              0.751573786398926
+            ],
+            "J_mean": 0.7520727713064863,
+            "J_std": 0.0008579535835777879,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.9928902885373139,
+              0.9909358489918964,
+              0.990926225077862
+            ],
+            "ratio_mean": 0.9915841208690241,
+            "ratio_std": 0.0011311846172020487
+          }
+        }
+      }
+    },
+    {
+      "configuration": "local_off",
+      "label": "No added local path",
+      "data": {
+        "seeds": [
+          1234,
+          1235,
+          1236
+        ],
+        "channels": {
+          "TEMP": {
+            "J_values": [
+              0.6212440713365248,
+              0.621495244437898,
+              0.621991369082484
+            ],
+            "J_mean": 0.6215768949523023,
+            "J_std": 0.0003802809292559491,
+            "anchor_J": 0.6232596399806418,
+            "n": 976452,
+            "ratio_values": [
+              0.9967660850874611,
+              0.997169084231415,
+              0.997965100229822
+            ],
+            "ratio_mean": 0.9973000898495661,
+            "ratio_std": 0.0006101484916747818
+          },
+          "SALT": {
+            "J_values": [
+              0.7555875625258464,
+              0.7566901033858474,
+              0.7570137012228968
+            ],
+            "J_mean": 0.7564304557115302,
+            "J_std": 0.0007476834770743153,
+            "anchor_J": 0.7584558440159066,
+            "n": 976452,
+            "ratio_values": [
+              0.996218261731793,
+              0.9976719269236428,
+              0.998098580419166
+            ],
+            "ratio_mean": 0.9973295896915338,
+            "ratio_std": 0.0009857969754909232
+          }
+        }
+      }
+    }
+  ],
+  "depth": {
+    "configuration": "dense_large",
+    "label": "Dense latent \u00b7 large",
+    "depth_m": [
+      5.0,
+      15.0,
+      25.0,
+      35.0,
+      45.0,
+      55.0,
+      65.0,
+      85.0,
+      105.0,
+      125.0,
+      145.0,
+      165.1,
+      186.3,
+      222.6,
+      267.7,
+      326.9,
+      408.8,
+      527.7,
+      707.6,
+      984.7
+    ],
+    "n_seeds": 3,
+    "channels": {
+      "TEMP": {
+        "delta_J": [
+          -0.0046508306509805974,
+          -0.005784856436505392,
+          -0.005655091558751102,
+          -0.0057239334552092735,
+          -0.0057071706164089075,
+          -0.006507159217317482,
+          -0.006415936466485861,
+          -0.00506881224530098,
+          -0.005830157448956763,
+          -0.00705000578554793,
+          -0.007441809999960247,
+          -0.006749375136125169,
+          -0.006034605776035873,
+          -0.007509484806608291,
+          -0.009392980575547716,
+          -0.009553602241298087,
+          -0.00984691236410784,
+          -0.008474908477794085,
+          -0.006433066518957586,
+          -0.01096194437577902
+        ],
+        "n": [
+          43504,
+          49795,
+          50036,
+          50077,
+          50018,
+          49982,
+          49926,
+          49823,
+          49569,
+          49558,
+          49397,
+          49317,
+          49210,
+          49048,
+          48981,
+          48701,
+          48494,
+          47857,
+          47251,
+          45908
+        ]
+      },
+      "SALT": {
+        "delta_J": [
+          -0.01079474701411498,
+          -0.012580612771248889,
+          -0.005430292898932043,
+          -0.006104243109947394,
+          -0.007133277460631637,
+          -0.0077436818838153565,
+          -0.008011274413300074,
+          -0.007176922922643936,
+          -0.009035507951802302,
+          -0.007426623376337038,
+          -0.007551015815045803,
+          -0.006150308554803363,
+          -0.00947656493115212,
+          -0.00969378737627824,
+          -0.009788025492060592,
+          -0.007658994907065897,
+          -0.010253750111830606,
+          -0.0077905142813526895,
+          -0.0035524163643174678,
+          -0.009518438643497662
+        ],
+        "n": [
+          43504,
+          49795,
+          50036,
+          50077,
+          50018,
+          49982,
+          49926,
+          49823,
+          49569,
+          49558,
+          49397,
+          49317,
+          49210,
+          49048,
+          48981,
+          48701,
+          48494,
+          47857,
+          47251,
+          45908
+        ]
+      }
+    }
+  },
+  "selected_neural": "dense_large_s1234",
+  "pending": [],
+  "search_completed": 7,
+  "search_registered": 7,
+  "evidence_status": "2022-2023 previously used development; not independent test",
+  "task": "retrospective same-month reconstruction at 20 observed depth levels",
+  "spread": "sample standard deviation across seeds, ddof=1; not a confidence interval",
+  "depth_statistic": "J(three-seed ensemble mean) minus J(matched anchor) at each observed depth; no interpolation experiment",
+  "sources": {
+    "comparison": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/comparison_20261007.json",
+      "sha256": "8814ac65f69f0169197c4283fc0fe1aace7c3a5ca5a11e9ff33fbdeae8e350ed"
+    },
+    "manifest": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/campaign_20261007.json",
+      "sha256": "c5a579ec16900209e4346f445731dc3260c4e2a451ba1362e785e43473e3ac9a"
+    },
+    "selection": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/selected_20261007.json",
+      "sha256": "9d7bd51350c5bcb2cfd7caa2cc833dda13c1b8e11a4b4ca753bdef41434fd3b6"
+    },
+    "ablations": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/ablations_20261007.json",
+      "sha256": "4fc4f09f5c849193bd3f66cef8838b328e0a4951928b5c3764888d8931971ef2"
+    },
+    "levels": {
+      "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/prepared_scenes/anc_satday_dfs/datasets/6c95d595c418b789b8c92cf40fd26d1116c3c2a9cfa38788294dbecba59d97c0/cohort_levels.npy",
+      "sha256": "a2b0c30cceeddb69bc2a85f4433a18fb3bcbb46b84b9cae726da88a754f7c649"
+    },
+    "completed_summaries": [
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_base_s1234/summary_seed1234.json",
+        "sha256": "c2351f9f96d20355eac12a33de9c4b395ce9cb1a5c67bb9ad41542a416a156dd"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_s1234/summary_seed1234.json",
+        "sha256": "e2410f669b6f230e5cd8f456329bce60d74f9784edce8a012c663177bd394abf"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/soft_moe_base_s1234/summary_seed1234.json",
+        "sha256": "c4ba97af2e25a5a9c59387cf349658626d2b0e81b8a0f03fb1126077a6beb062"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/soft_moe_large_s1234/summary_seed1234.json",
+        "sha256": "4d9205ff17533040d0b99f588c982bd2e7a8a127dfd6fb0d944548fbb7f0dfe1"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/local_transformer_base_s1234/summary_seed1234.json",
+        "sha256": "10d2881b3843ee45f3d0b141e23b494145749984cdd7e14f446d79c9dc92554f"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/local_transformer_large_s1234/summary_seed1234.json",
+        "sha256": "ee4a37796b47ea04ce2f40cbc4a35e2bf64149e4e9b25313f6236196f140bf8d"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/analysis_only_s1234/summary_seed1234.json",
+        "sha256": "f124654fcdd31aec267c81bac17e817d7c5fa66a7a27ef1927c8361b89aa3e42"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_full_s1234/summary_seed1234.json",
+        "sha256": "b9a0ef6a169d671fe2912058823df7fdcd11a1e01c6afcd8764ecd4bc773d736"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_full_s1235/summary_seed1235.json",
+        "sha256": "4dab556255cd3a84148a7df7783c58f94aa9157e9f114aa20f5090310f98fbe2"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_full_s1236/summary_seed1236.json",
+        "sha256": "1fb74f28da2b019b975347b1fb0b513c7512dd2224eea3b4faadf5ad3c671f05"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_latent_off_s1234/summary_seed1234.json",
+        "sha256": "39b00d2df5af9cfd153e4a92ff66ecb1e047655bcb11b0e619066abfbb29b18a"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_latent_off_s1235/summary_seed1235.json",
+        "sha256": "53693944b20733a438c9f32f74e8bd185d443225cc769286053767ca94673441"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_latent_off_s1236/summary_seed1236.json",
+        "sha256": "d7f921b4f96e799422a80f4733caa8b5bcb6cf5f53dbd975030ae8334882dc88"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_local_off_s1234/summary_seed1234.json",
+        "sha256": "0876bcad7c860dbdc0f10c483e13cdb6fe6e332a086780afe5e23b3a4ddf6898"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_local_off_s1235/summary_seed1235.json",
+        "sha256": "376c181a41859dc22369ea8099a691dab71c4fadba0ab387ce840b76a9ef2fcf"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_fixed_oi_local_off_s1236/summary_seed1236.json",
+        "sha256": "1b079e27d67ec8832d795f797d7f98a072f4d044eea23b2cf765d81b92e915f9"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/analysis_only_s1235/summary_seed1235.json",
+        "sha256": "f506893abc6bd4e271a70f99605b6a86e9e1c772234428f9947ebe4567528a0f"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/analysis_only_s1236/summary_seed1236.json",
+        "sha256": "b692524bed68220a443429f5bd444df303fc4f6a44800057f57aa1e244e03a81"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_s1235/summary_seed1235.json",
+        "sha256": "862ecb75fe4f818a44927e1b3c9a480b3b865c712ff079754cf7be4ec933a192"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/dense_large_s1236/summary_seed1236.json",
+        "sha256": "e41ebf20a888f46d16cceede056485666aae5aca6103b3c0be85cfde5ff707d5"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/local_transformer_large_s1235/summary_seed1235.json",
+        "sha256": "23e4171b94f9d02aec2fdbba23ca5a0f35534dfed3cd19bb49444a85e76a5cca"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/local_transformer_large_s1236/summary_seed1236.json",
+        "sha256": "3f736c2d8aee157d92b71b3bd3e3878d33f9985910aae4f51a18a1822461866f"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/soft_moe_large_s1235/summary_seed1235.json",
+        "sha256": "232febf96172fefd29bb723821832de7d155dfc679448c834a2be1c3391130d7"
+      },
+      {
+        "path": "/DATA2/zihao/projects/ocean_project/.claude/worktrees/anchored-fusion/outputs/latent_ocean/soft_moe_large_s1236/summary_seed1236.json",
+        "sha256": "2c9a5fdc1a72ea7060d17e7309c0297009e6945883eb02ffdb2e7f66d911e605"
+      }
+    ]
+  }
+}

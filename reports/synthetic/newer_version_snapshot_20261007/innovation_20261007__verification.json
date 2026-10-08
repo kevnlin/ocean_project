@@ -1,0 +1,8 @@
+{
+  "verified_at_utc": "2026-10-07T21:18:27.508678+00:00",
+  "unique_focused_tests_passed": 170,
+  "sandbox_cuda_tests_skipped": 2,
+  "separate_actual_cuda_verification": "all 12 recipes; full source pool;1024queries;3optimizerstepsperrecipe;exactinitialOI;finiteoutputsandgradients",
+  "engineering_only": true,
+  "formal_new_results_complete": false
+}

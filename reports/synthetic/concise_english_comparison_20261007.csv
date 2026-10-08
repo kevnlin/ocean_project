@@ -1,0 +1,19 @@
+as_of_utc,split,year,method,family,inputs,status,completed_seeds,required_seeds,steps_per_run,epochs,parameters,temperature_rmse_degC_mean,temperature_rmse_degC_sample_sd,salinity_rmse_PSU_mean,salinity_rmse_PSU_sample_sd,valid_values_per_variable,aggregation
+2026-10-07T15:43:26Z,validation,2004,Previous 64-slot model,previous_token64,Argo,pending,0,3,15000,,407111,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,Dense Transformer 64,dense64,Argo,complete_three_seeds,3,3,15000,,268180,0.08676231860215994,7.575679566579902e-05,0.021394549785696843,3.588406631980114e-05,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,Soft MoE 192,soft_moe192,Argo,complete_three_seeds,3,3,15000,,8343198,0.08605391734114505,0.00010751340936345662,0.02143360000427179,2.664233510448389e-05,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,Dense Transformer 192,dense192,Argo,complete_three_seeds,3,3,15000,,4338840,0.08622565010239087,0.0004023545222751708,0.021412149984478688,2.970194320548019e-05,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,Local Transformer 192,local_transformer192,Argo,complete_three_seeds,3,3,15000,,4858776,0.07836904265903162,0.00014239720637337764,0.02001944947445967,9.651827644165383e-05,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,"Soft MoE 192, latent disabled",soft_moe192_latent_off,Argo,complete_three_seeds,3,3,15000,,8343198,0.08643967462721369,0.00011836783325196635,0.021424087957402176,8.601929798233328e-05,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,"Soft MoE 192, local correction disabled",soft_moe192_local_off,Argo,complete_three_seeds,3,3,15000,,8343198,0.09059928916682557,0.0,0.021847956908044374,4.2491873609703695e-18,92517,Three-seed mean and sample SD (ddof=1)
+2026-10-07T15:43:26Z,validation,2004,"4DVarNet, official-code task adaptation",official4dvarnet,Argo,pending,2,3,15000,,241200,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,Dense Transformer 192,dense192,Argo + synthetic SST/SSS/SSH,pending,0,3,15000,,4386840,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,Soft MoE 192,soft_moe192,Argo + synthetic SST/SSS/SSH,pending,0,3,15000,,8391198,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,"Soft MoE 192, latent disabled",soft_moe192_latent_off,Argo + synthetic SST/SSS/SSH,pending,0,3,15000,,8391198,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,"4DVarNet, official-code task adaptation",official4dvarnet,Argo + synthetic SST/SSS/SSH,pending,0,3,15000,,250278,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,Previous 64-slot model,previous_token64,Argo + synthetic SST/SSS/SSH,pending,0,3,15000,,384327,,,,,92517,Pending; no partial average
+2026-10-07T15:43:26Z,validation,2004,Climatology,climatology,Argo,fixed_deterministic_baseline,0,0,0,,0,0.7671488093525671,,0.12600730248715247,,92517,Fixed method / fixed single seed
+2026-10-07T15:43:26Z,validation,2004,Nearest profile,nearest_profile,Argo,fixed_deterministic_baseline,0,0,0,,0,0.18400532966489444,,0.03851096870570276,,92517,Fixed method / fixed single seed
+2026-10-07T15:43:26Z,validation,2004,"Classical OI, validation tuned",oi,Argo,fixed_deterministic_baseline,0,0,0,,0,0.09059928936997619,,0.021847956897878655,,92517,Fixed method / fixed single seed
+2026-10-07T15:43:26Z,validation,2004,Prior learned anisotropic OI,prior_learned_oi,Argo,fixed_single_seed_baseline,1,1,1500,,120,0.08388640811334364,,0.02069483176466215,,92517,Fixed method / fixed single seed
+2026-10-07T15:43:26Z,validation,2004,"Pointwise MLP, fixed single run",fixed_pointwise_mlp,Argo,fixed_single_seed_baseline,1,1,,30,134658,0.1883199416814454,,0.038578786210212906,,92517,Fixed method / fixed single seed
