@@ -25,6 +25,11 @@ Two guards run before any number is written:
 
 Writes outputs/audit/synthetic/fixed_baselines/{summary,tuning}.json.
 
+``--cohort NAME`` runs the same on another synthetic cohort
+(``data/synthetic_argo/NAME.nc``, e.g. ``ihesp_hr_uniform``) and writes to
+``fixed_baselines_NAME``. The identity guard compares with a model trained on
+the CESM2 cohort, so it does not apply there and is skipped.
+
   .venv/bin/python experiments/synthetic/44_synth_argo_oi.py           # a few minutes, CPU
   .venv/bin/python experiments/synthetic/44_synth_argo_oi.py --smoke   # 1 month, prints only
 """
@@ -68,17 +73,20 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--workers", type=int, default=12, help="processes, one month each")
 ap.add_argument("--out", default=None,
                 help="default: outputs/audit/synthetic/fixed_baselines")
+ap.add_argument("--cohort", default=None,
+                help="another synthetic cohort, by file name without .nc; default: cesm2_uniform")
 ap.add_argument("--smoke", action="store_true",
                 help="one validation month, a 2 x 2 x 1 grid, no edge rule, "
                      "no identity check; prints and writes nothing")
 args = ap.parse_args()
-OUT = args.out or os.path.join(ROOT, "outputs", "audit", "synthetic", "fixed_baselines")
+OUT = args.out or os.path.join(ROOT, "outputs", "audit", "synthetic", "fixed_baselines"
+                               + (f"_{args.cohort}" if args.cohort else ""))
 t0 = time.time()
 
 # ------------------------------------------------------------------ data
 # the cohort, its normalisation and the fixed evaluation sets are the audit's own
 # (ocean_tokenizer.synth_argo_eval), shared with the other baseline drivers
-c, norm, OBS = synth_argo_eval.load(ROOT)              # OBS: (P, L) z-scored anomaly
+c, norm, OBS = synth_argo_eval.load(ROOT, cohort=args.cohort)   # OBS: (P, L) z-scored anomaly
 LEV = c.levels
 BAND_OF = band_of_levels(LEV)                          # (L,) band name per level
 
@@ -227,7 +235,10 @@ print(f"synthetic cohort: {len(val)} validation months, {len(test)} test months,
 
 
 ident = {}
-if not args.smoke:
+if args.cohort is not None:
+    print(f"cohort {args.cohort}: identity check skipped (its reference is a CESM2-cohort model)",
+          flush=True)
+elif not args.smoke:
     # a zero prediction must reproduce the trained model's stored fingerprint
     ident = {split: identity_check(ROOT, split, score(evs, "climatology"))
              for split, evs in (("validation", val), ("development", test))}
@@ -309,7 +320,7 @@ def git_commit():
         return None
 
 
-cpath = cohort_path(ROOT, "synthetic")
+cpath = cohort_path(ROOT, "synthetic", cohort=args.cohort)
 summary = {
     "tag": "fixed_baselines", "region": "synthetic", "target": "anomaly_exact",
     "splits": {k: list(v) for k, v in SPLITS.items()},
@@ -321,7 +332,8 @@ summary = {
                                             "queries": int(ev["tgt"].size)}
                          for ev in evs}
                   for name, evs in (("validation", val), ("development", test))},
-    "identity_check": {"reference": REFERENCE, **ident},
+    "identity_check": ({"reference": REFERENCE, **ident} if args.cohort is None
+                       else {"skipped": "the reference model was trained on the CESM2 cohort"}),
     "oi_selection": oi_selection, "oi_single_selection": oi_single_selection,
     "baselines": baselines, "runtime_s": time.time() - t0}
 tuning = {
