@@ -72,3 +72,6 @@ venv/
 /outputs/innovation_20261007/
 /outputs/latent_ocean/
 /outputs/anchored_fusion/
+
+# Radius / local-scale runs of 2026-10-08: weights, prediction arrays, logs.
+/outputs/radius_scale_20261008/
