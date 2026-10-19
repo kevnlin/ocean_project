@@ -13,6 +13,12 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       cohort's OI length scales and error ratios, expanded from bands to levels
   --state-channels, --encoder-channels, --evolution-channels, --hidden   model size
 
+  --dataset real_global   the real 2016-2023 Argo cohort with OISST, OISSS and DUACS SLA
+                      (``real_forecast_scenes``; caches of ``105``, OI of ``106``); pass
+                      --val-years 2021. The training split is 2016-2020 (--train-years is unused).
+  --init-from PATH    start from the model weights of another run's checkpoint (another
+                      dataset is allowed: weights only, a new optimiser and schedule)
+
 The model never reads the frozen OI (the persisted OI is still scored as the reference) and
 works in per-depth z units, so --scale is refused. Log length scales, log error ratios and
 the log decay times get no weight decay.
@@ -52,6 +58,7 @@ from ocean_tokenizer.latent_experiment import masked_losses
 from ocean_tokenizer.synthetic_latent_experiment import EVAL_SEED
 from ocean_tokenizer.forecast_scenes import LEADS
 from ocean_tokenizer.grid_forecast_scenes import GridForecastScenes
+from ocean_tokenizer.real_forecast_scenes import RealGridForecastScenes
 from ocean_tokenizer.grid_kriging_ocean import BACKGROUNDS, KRIGING, GridKrigingConfig, GridKrigingModel, GridSpec
 from ocean_tokenizer.reconstruction_metrics import evaluate_reconstruction, inverse_standardize
 from ocean_tokenizer.innovation_ocean import RECIPES
@@ -77,6 +84,12 @@ def arguments():
                    help="target years that choose the checkpoint and are scored at the end")
     p.add_argument("--lagged-surface", type=Path, default=FORECAST / "lagged_surface.npz")
     p.add_argument("--surface-grids", type=Path, default=OUTPUT / "surface_grids.npz")
+    p.add_argument("--dataset", choices=["cesm2", "real_global"], default="cesm2")
+    p.add_argument("--real-caches", type=Path, default=ROOT / "outputs/real_global_20261019")
+    p.add_argument("--real-oi-summary", type=Path,
+                   default=ROOT / "outputs/audit/real/fixed_baselines_real_global/summary.json")
+    p.add_argument("--init-from", type=Path, default=None,
+                   help="model weights of another run's checkpoint (any dataset); a new optimiser and schedule")
     p.add_argument("--kriging", choices=KRIGING, default="ka_flow")
     p.add_argument("--background", choices=BACKGROUNDS, default="joint",
                    help="prior: innovations against a surface-only prior state; joint: one state reads everything")
@@ -220,10 +233,15 @@ def main():
         torch.backends.cudnn.allow_tf32 = True
     if args.oi_summary is None:
         args.oi_summary = ROOT/"outputs/audit/synthetic"/f"fixed_baselines_{args.cohort}"/"summary.json"
-    data = GridForecastScenes(ROOT, args.device, surface_grids=args.surface_grids, leads=args.leads,
-                              lagged_surface=args.lagged_surface if args.surface else None,
-                              train_years=args.train_years, surface=args.surface, satellite_cache=args.satellite_cache,
-                              oi_summary=args.oi_summary, cohort=args.cohort)
+    if args.dataset == "real_global":
+        data = RealGridForecastScenes(ROOT, args.device, caches=args.real_caches, oi_summary=args.real_oi_summary,
+                                      leads=args.leads)
+    else:
+        data = GridForecastScenes(ROOT, args.device, surface_grids=args.surface_grids, leads=args.leads,
+                                  lagged_surface=args.lagged_surface if args.surface else None,
+                                  train_years=args.train_years, surface=args.surface, satellite_cache=args.satellite_cache,
+                                  oi_summary=args.oi_summary, cohort=args.cohort)
+    split_of_year = getattr(data, "split_of_year", lambda year: {2004: "validation", 2005: "development"}.get(year))
     grid = GridSpec(lat0=float(data.grid_lat[0]), dlat=float(data.grid_lat[1] - data.grid_lat[0]),
                     lon0=float(data.grid_lon[0]), dlon=float(data.grid_lon[1] - data.grid_lon[0]),
                     n_lat=len(data.grid_lat), n_lon=len(data.grid_lon))
@@ -241,7 +259,7 @@ def main():
             **{name: table_metadata[name] for name in ("fit", "definition", "cell_deg", "month_window", "pseudo", "floor")}}
         data.configure(None, scale, "query")
     source_hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py")}
+        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py", ROOT/"src/ocean_tokenizer/real_forecast_scenes.py", ROOT/"src/ocean_tokenizer/real_global.py")}
     analysis, anchor_analysis = data.analysis(), data.analysis()
     bands = band_of_levels(data.levels)
     cfg = GridKrigingConfig(grid=grid.as_tuple(), n_levels=len(data.levels), n_query_features=58,
@@ -268,6 +286,17 @@ def main():
                          "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
+    if args.init_from is not None:
+        if checkpoint is not None:
+            raise ValueError("--init-from starts a new run; it excludes --load-checkpoint")
+        source = torch.load(args.init_from, map_location="cpu", weights_only=True)
+        if GridKrigingConfig(**source["config"]) != cfg:
+            raise ValueError("--init-from: the checkpoint's model configuration differs from this run's")
+        model.load_state_dict(source["model"], strict=True)
+        data.metadata["init_from"] = {"path": str(args.init_from), "step": source["step"],
+                                      "dataset": source["data"].get("cohort", source["data"].get("cohort_fingerprint")),
+                                      "sha256": hashlib.sha256(Path(args.init_from).read_bytes()).hexdigest()}
+        del source
     if checkpoint is not None:
         model.load_state_dict(checkpoint["model"], strict=True)
         analysis.load_state_dict(checkpoint["analysis"], strict=True)
@@ -286,7 +315,8 @@ def main():
         analysis.requires_grad_(False)
     anchor_analysis.requires_grad_(False)
     val = data.forecast_months(args.val_years, args.val_cells)
-    identity = {"validation": data.identity_check("validation", [ev for ev in val if ev.lead == 0 and ev.month // 12 == 4])}
+    identity = {"validation": data.identity_check(
+        "validation", [ev for ev in val if ev.lead == 0 and split_of_year(2000 + ev.month // 12) == "validation"])}
     geometries, fixed_baselines = {}, {}
 
     def key(ev):
@@ -371,7 +401,7 @@ def main():
         if 0 in leads:
             # lead 0 is the usual evaluation: its OI must replay 44 on the cells 44 scored
             for y in years:
-                split = {2004: "validation", 2005: "development"}.get(y)
+                split = split_of_year(y)
                 if split == ("development" if full_cells else "validation"):
                     oi_identity[split] = data.baseline_identity_check(split, by_lead["0"]["by_year"][str(y)]["baseline_scores"])
         mean = lambda pick: float(np.mean([pick(by_lead[str(lead)]["scores"]) for lead in leads]))
@@ -515,7 +545,7 @@ def main():
         raise ValueError("--evaluate-only requires --load-checkpoint")
     final_validation = evaluate(val)
     full = data.forecast_months(args.val_years, 0)
-    development = [ev for ev in full if ev.lead == 0 and ev.month // 12 == 5]
+    development = [ev for ev in full if ev.lead == 0 and split_of_year(2000 + ev.month // 12) == "development"]
     if development:
         identity["development"] = data.identity_check("development", development)
     forecast_best = evaluate(full, save_arrays=out/f"forecast_seed{args.seed}.npz", full_cells=True)
