@@ -75,3 +75,8 @@ venv/
 
 # Radius / local-scale runs of 2026-10-08: weights, prediction arrays, logs.
 /outputs/radius_scale_20261008/
+/outputs/long_record_20261017/
+/outputs/forecast_20261019/
+
+# KA pilot of 2026-10-19: weights, prediction arrays, logs.
+/outputs/ka_pilot_20261019/
