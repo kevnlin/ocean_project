@@ -422,6 +422,23 @@ class LatentOceanModel(nn.Module):
             mask_with_null = torch.cat((token_valid, token_valid.new_ones((q, 1))), dim=1)
             h, contextual = self.local_transformer(h, local_with_null, mask_with_null)
             local = contextual[:, :k]
+        local_candidate, evidence_stats, diagnostics = self._local_weights(
+            h, local, geometry, innovation, valid, scene)
+        gate = self.local_gate(torch.cat((h, evidence_stats), dim=-1)).tanh()
+        # No evidence in a variable means no local overwrite of its known baseline.
+        gate = gate * valid.any(dim=1).to(gate.dtype)
+        correction = gate * (local_candidate - baseline_correction)
+        return h, correction, evidence_stats, {**diagnostics, "local_gate": gate.detach(),
+                                               "local_coverage": evidence_stats[:, :2].detach()}
+
+    def _local_weights(self, h: Tensor, local: Tensor, geometry: Tensor, innovation: Tensor,
+                       valid: Tensor, scene: Mapping[str, Tensor]) -> tuple[Tensor, Tensor, dict[str, Tensor]]:
+        """Combine the neighbours' innovations: ``(candidate [Q,2], [coverage, variance] [Q,4], diagnostics)``.
+
+        A softmax over learned scores, a distance penalty and a null key. Subclasses
+        may replace the weighting; ``_local_evidence`` gates whatever this returns.
+        """
+        k = local.shape[1]
         paired = torch.cat((h[:, None].expand(-1, k, -1), local), dim=-1)
         scores = self.local_scorer(paired)
         scales = self.log_local_scales.clamp(-5.0, 12.0).exp()
@@ -433,13 +450,7 @@ class LatentOceanModel(nn.Module):
         coverage = weights.sum(dim=1)
         centered = innovation - local_candidate[:, None]
         variance = (weights * centered.square()).sum(dim=1)
-        evidence_stats = torch.cat((coverage, variance), dim=-1)
-        gate = self.local_gate(torch.cat((h, evidence_stats), dim=-1)).tanh()
-        # No evidence in a variable means no local overwrite of its known baseline.
-        gate = gate * valid.any(dim=1).to(gate.dtype)
-        correction = gate * (local_candidate - baseline_correction)
-        return h, correction, evidence_stats, {"local_gate": gate.detach(),
-                                               "local_coverage": coverage.detach()}
+        return local_candidate, torch.cat((coverage, variance), dim=-1), {}
 
     def decode(self, scene: Mapping[str, Tensor], state: Mapping[str, Any]) -> dict[str, Any]:
         """Read one query chunk from a previously encoded scene context."""
