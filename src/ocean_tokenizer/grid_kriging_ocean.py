@@ -44,7 +44,7 @@ from torch.nn import functional as F
 
 from .kriging_attention import MODES, KrigingAttention
 
-KRIGING = MODES + ("none",)
+KRIGING = MODES + ("softmax", "none")
 BACKGROUNDS = ("joint", "prior")
 
 
@@ -97,6 +97,43 @@ def sample_grid_features(field: Tensor, lat: Tensor, lon: Tensor, grid: GridSpec
     f = field.permute(1, 2, 0)
     return (f[i0, j0] * (1 - wy) * (1 - wx) + f[i0, j1] * (1 - wy) * wx
             + f[i1, j0] * wy * (1 - wx) + f[i1, j1] * wy * wx)
+
+
+class SoftmaxReadout(nn.Module):
+    """The attention baseline for the read-out: a softmax over learned scores of the neighbours,
+    a distance penalty with a learned length scale per variable and level, and a null key, so
+    the weights are positive and sum to at most one (each neighbour votes on its own).
+
+    Same inputs and outputs as ``KrigingAttention``; ``variance`` is the weighted spread of the
+    innovations, as in the softmax path of ``latent_ocean``.
+    """
+
+    def __init__(self, width: int, init_ell_km):
+        super().__init__()
+        log_ell = torch.as_tensor(init_ell_km, dtype=torch.float32).log()
+        if log_ell.ndim != 2 or log_ell.shape[0] != 2:
+            raise ValueError("init_ell_km must be [2, n_levels]")
+        self.log_ell = nn.Parameter(log_ell)
+        self.scorer = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, 2))
+        self.null_score = nn.Linear(width, 2)
+
+    def forward(self, h, local, offsets, innovation, valid, level, decay=None):
+        q, k = innovation.shape[:2]
+        dtype = self.scorer[0].weight.dtype
+        scores = self.scorer(torch.cat((h.to(dtype)[:, None].expand(-1, k, -1), local.to(dtype)), -1))
+        ell = self.log_ell.clamp(math.log(10.), math.log(5000.))[:, level].T.exp()       # [Q,2]
+        distance = offsets.to(dtype).square().sum(-1, keepdim=True) / ell[:, None].square()
+        scores = (scores - .5 * distance).masked_fill(~valid, float("-inf"))
+        scores = torch.cat((scores, self.null_score(h.to(dtype))[:, None]), 1)
+        weights = scores.softmax(1)[:, :k].transpose(1, 2)                                # [Q,2,K]
+        d = torch.where(valid, innovation, torch.zeros_like(innovation)).transpose(1, 2).to(dtype)
+        estimate = (weights * d).sum(-1)
+        variance = (weights * (d - estimate[..., None]).square()).sum(-1)
+        if decay is not None:
+            estimate = estimate * decay.to(dtype)
+        out_dtype = innovation.dtype
+        return {"estimate": estimate.to(out_dtype), "variance": variance.to(out_dtype),
+                "weights": weights.to(out_dtype), "length_scale_km": ell.detach().to(out_dtype)}
 
 
 def _groups(channels):
@@ -262,8 +299,12 @@ class GridKrigingModel(nn.Module):
         self.mean_head = nn.Sequential(nn.Linear(c.hidden, c.hidden), nn.SiLU(), nn.Linear(c.hidden, 2))
         nn.init.zeros_(self.mean_head[-1].weight)
         nn.init.zeros_(self.mean_head[-1].bias)
-        self.kriging = (None if c.kriging == "none" else
-                        KrigingAttention(c.hidden, c.kriging, c.kriging_ell_km, c.kriging_gamma))
+        if c.kriging == "none":
+            self.kriging = None
+        elif c.kriging == "softmax":
+            self.kriging = SoftmaxReadout(c.hidden, c.kriging_ell_km)
+        else:
+            self.kriging = KrigingAttention(c.hidden, c.kriging, c.kriging_ell_km, c.kriging_gamma)
         self.log_decay_months = nn.Parameter(torch.full((2, c.n_levels), math.log(c.init_decay_months)))
         self.std_head = nn.Sequential(nn.Linear(c.hidden + 2, c.hidden), nn.SiLU(), nn.Linear(c.hidden, 2))
         nn.init.zeros_(self.std_head[-1].weight)
