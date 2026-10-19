@@ -76,7 +76,7 @@ def completed(item):
     return True
 
 
-def ready(item):
+def has_pretrained(item):
     return item["needs"] is None or Path(item["needs"]).exists()
 
 
@@ -112,8 +112,7 @@ def queue(pending, places, stagger, status, *, min_free_mb, retry_after, attempt
         for place in places:
             if place in running or not pending or time.time() - last_launch < stagger:
                 continue
-            ready_now = [j for j in pending if not_before.get(j["tag"], 0) <= time.time() and ready(j)]
-            ready = ready_now
+            ready = [j for j in pending if not_before.get(j["tag"], 0) <= time.time() and has_pretrained(j)]
             if not ready:
                 break
             free = free_mb(place[0])
