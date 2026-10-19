@@ -110,9 +110,12 @@ class KrigingAttention(nn.Module):
                 nn.init.zeros_(head[-1].bias)
 
     def forward(self, h: Tensor, local: Tensor, offsets: Tensor, innovation: Tensor,
-                valid: Tensor, level: Tensor) -> dict[str, Tensor]:
+                valid: Tensor, level: Tensor, decay: Tensor | None = None) -> dict[str, Tensor]:
         """``h [Q,W]``, ``local [Q,K,W]``, ``offsets [Q,K,2]`` km east/north of the query,
-        ``innovation`` and ``valid`` ``[Q,K,2]``, ``level [Q]``."""
+        ``innovation`` and ``valid`` ``[Q,K,2]``, ``level [Q]``.
+
+        ``decay [Q,2]`` in [0, 1] multiplies the query-neighbour covariance: the neighbours
+        were observed earlier than the query (a forecast lead), so they explain less of it."""
         q, k = innovation.shape[:2]
         f64 = torch.float64
         with torch.autocast(device_type=h.device.type, enabled=False):
@@ -143,6 +146,8 @@ class KrigingAttention(nn.Module):
             system = (cov[..., 1:, 1:] * v[..., :, None] * v[..., None, :]
                       + torch.diag_embed(nugget * v + (1. - v)))
             rhs = cov[..., 0, 1:] * v
+            if decay is not None:
+                rhs = rhs * decay.to(f64)[..., None]
             weights = torch.linalg.solve(system, rhs[..., None])[..., 0] * v
             d = torch.where(valid, innovation, torch.zeros_like(innovation)).transpose(1, 2).to(f64)
             estimate = (weights * d).sum(-1)

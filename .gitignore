@@ -80,3 +80,4 @@ venv/
 
 # KA pilot of 2026-10-19: weights, prediction arrays, logs.
 /outputs/ka_pilot_20261019/
+/outputs/grid_ka_20261019/

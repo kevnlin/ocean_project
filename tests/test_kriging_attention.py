@@ -167,3 +167,16 @@ def test_without_oi_anchor_replaces_only_the_baseline():
     assert torch.equal(out["baseline"], scene["query_background"])
     assert out["local_innovation"] is scene["local_innovation"]
     assert torch.equal(scene["baseline"], torch.tensor([[.5, -.2]]))
+
+
+def test_a_lead_decay_scales_the_weights_and_returns_the_prior_variance():
+    ell, gamma = _init()
+    attention = KrigingAttention(16, "ka_oi", ell, gamma).double()
+    h, local, offsets, innovation, valid, level = _inputs()
+    base = attention(h, local, offsets, innovation, valid, level)
+    decay = torch.rand(len(level), 2, dtype=torch.float64)
+    out = attention(h, local, offsets, innovation, valid, level, decay=decay)
+    torch.testing.assert_close(out["weights"], decay[..., None] * base["weights"])
+    torch.testing.assert_close(out["estimate"], decay * base["estimate"])
+    # explained variance shrinks with the square of the decay
+    torch.testing.assert_close(1 - out["variance"], decay.square() * (1 - base["variance"]))
