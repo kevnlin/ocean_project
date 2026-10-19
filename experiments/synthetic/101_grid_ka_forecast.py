@@ -290,8 +290,12 @@ def main():
         if checkpoint is not None:
             raise ValueError("--init-from starts a new run; it excludes --load-checkpoint")
         source = torch.load(args.init_from, map_location="cpu", weights_only=True)
-        if GridKrigingConfig(**source["config"]) != cfg:
-            raise ValueError("--init-from: the checkpoint's model configuration differs from this run's")
+        # the kriging length scales and error ratios of the configuration only initialise
+        # parameters (or the ka_oi buffers), which the loaded state replaces; the rest must match
+        mine, theirs = cfg.to_dict(), GridKrigingConfig(**source["config"]).to_dict()
+        differs = {k for k in mine if mine[k] != theirs[k]} - {"kriging_ell_km", "kriging_gamma"}
+        if differs:
+            raise ValueError(f"--init-from: the model configuration differs in {sorted(differs)}")
         model.load_state_dict(source["model"], strict=True)
         data.metadata["init_from"] = {"path": str(args.init_from), "step": source["step"],
                                       "dataset": source["data"].get("cohort", source["data"].get("cohort_fingerprint")),
