@@ -10,6 +10,10 @@ Writes ``reports/synthetic/grid_ka_20261019.{md,json}`` from every finished summ
   real    ``107`` (scratch, zeroshot, finetune) on every cell of 2021 (the selection year), the
           persisted real OI of the same cells, and the tuned OI of ``106``
 
+  matched  scratch and finetune on the 2021 validation draw at equal numbers of real-data steps,
+          from the runs' validation history (8,000 cells a month, the selection metric's cells),
+          with the persisted OI of the same cells: the fair test of what CESM2 pretraining buys
+
 Unfinished runs are listed. Temperature in degC, salinity in PSU.
 """
 from __future__ import annotations
@@ -91,6 +95,50 @@ def table(rows, title, note):
     return lines
 
 
+MATCHED_STEPS = (1000, 2000, 5000, 10000)
+
+
+def matched(real_dir=None):
+    """Mean over seeds of scratch and finetune at equal real-data steps, from their histories."""
+    real_dir = real_dir or REAL
+    rows, oi = {}, None
+    for arm in ("scratch", "finetune"):
+        for seed in SEEDS:
+            s = summary(real_dir, arm, seed)
+            if s is None:
+                continue
+            if oi is None:
+                oi = {l: {ch: v["baseline_scores"][ch]["rmse_physical"] for ch in CH}
+                      for l, v in s["initial"]["by_lead"].items()}
+            for record in s["history"]:
+                if record["step"] in MATCHED_STEPS:
+                    rows.setdefault((arm, record["step"]), []).append(
+                        {l: {ch: v[ch] for ch in CH} for l, v in record["by_lead"].items()})
+    mean = {key: {l: {ch: float(np.mean([r[l][ch] for r in runs])) for ch in CH} for l in LEADS}
+            for key, runs in rows.items()}
+    counts = {key: len(runs) for key, runs in rows.items()}
+    return mean, counts, oi
+
+
+def matched_table():
+    mean, counts, oi = matched()
+    if not mean:
+        return []
+    lines = ["", "## Real: scratch against fine-tuned at equal real-data steps (2021 validation draw)", "",
+             "| steps | run | seeds | " + " | ".join(f"lead {l}" for l in LEADS) + " |",
+             "|" + "---|" * (len(LEADS) + 3)]
+    for step in MATCHED_STEPS:
+        for arm in ("scratch", "finetune"):
+            if (arm, step) in mean:
+                m = mean[arm, step]
+                lines.append(f"| {step} | {arm} | {counts[arm, step]} | " + " | ".join(
+                    f"{m[l]['TEMP']:.4f} / {m[l]['SALT']:.4f}" for l in LEADS) + " |")
+    if oi:
+        lines.append("| – | persisted OI | – | " + " | ".join(
+            f"{oi[l]['TEMP']:.4f} / {oi[l]['SALT']:.4f}" for l in LEADS) + " |")
+    return lines
+
+
 def main():
     cesm2 = {name: (description, collect(folder, name)) for name, folder, description in CESM2_ROWS}
     real = {name: (description, collect(REAL, name)) for name, description in REAL_ROWS}
@@ -104,6 +152,7 @@ def main():
     lines += table({k: v for k, v in real.items()}, "Real Argo + satellites (2021)",
                    "Inputs of month t, held-out floats of month t + lead; checkpoint chosen on 2021 and scored on "
                    "every cell of 2021. 2022-2023 is scored once at the end of the study.")
+    lines += matched_table()
     if REAL_OI.exists():
         oi = json.loads(REAL_OI.read_text())["baselines"]
         lines += ["", "Tuned OI of 106 (lead 0): " + "; ".join(
