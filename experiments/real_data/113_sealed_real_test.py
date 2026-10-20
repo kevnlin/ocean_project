@@ -6,12 +6,14 @@ trained on 2016-2020 and its checkpoint chosen on 2021 (``docs/paper/2026-10-19-
 
   --register CHECKPOINT ...   records every checkpoint (all gridded-model runs: scratch, fine-tuned,
                               zero shot, the ARMOR3D- and Aardvark-style baselines) and the cohort,
-                              anomaly cache, satellite caches and OI selection by sha256
+                              anomaly cache, satellite caches and OI selection by sha256, and each
+                              checkpoint's spread calibration if ``116`` fitted one (on the run's 2021)
   --score                     verifies every recorded file, then scores each checkpoint on every
                               held-out cell of 2022-2023 at leads 0, 1, 3, 6 (``sealed_scoring``:
                               RMSE, MAE, bias, R², r, CRPS, NLL, 68/95 % coverage, by depth band and
                               level, with the persisted OI and the WOA23 climatology on the same
-                              cells); writes results.json and never overwrites it
+                              cells; Gaussian scores also under the registered calibration); writes
+                              results.json and never overwrites it
   --check CHECKPOINT          opens nothing: scores the run's own 2021 cells and requires its
                               summary's scores back
 
@@ -31,10 +33,12 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from ocean_tokenizer import calibration as CAL
 from ocean_tokenizer import sealed_scoring as SS
 
 CACHES = ROOT / "outputs/real_global_20261019"
 OUTPUT = CACHES / "sealed"
+CALIBRATIONS = ROOT / "outputs/calibration_20261020"
 REGISTRATION = OUTPUT / "registration.json"
 RESULTS = OUTPUT / "results.json"
 TEST_YEARS = (2022, 2023)
@@ -45,7 +49,7 @@ DATA = {"cohort": ROOT / "data/argo_cohort/global_global.nc", "anomalies": ROOT 
         "oi_summary": ROOT / "outputs/audit/real/fixed_baselines_real_global/summary.json"}
 
 
-def evaluate(path, years, device, cache):
+def evaluate(path, years, device, cache, scales=None):
     """``sealed_scoring.summarize`` of one checkpoint on every held-out cell of ``years``."""
     import numpy as np
     import torch
@@ -67,7 +71,13 @@ def evaluate(path, years, device, cache):
     model = model.to(data.device).eval()
     collected = SS.collect(model, data, data.analysis(), data.forecast_months(list(years), 0),
                            training.get("eval_context_profiles") or training["context_profiles"], training["amp"])
-    return checkpoint, SS.summarize(collected, data.norm, data.levels, years)
+    return checkpoint, SS.summarize(collected, data.norm, data.levels, years, scales)
+
+
+def calibration_of(checkpoint):
+    """The calibration ``116`` fitted to a checkpoint's run, if any."""
+    path = CALIBRATIONS / CAL.record_name(Path(checkpoint).parent)
+    return path if path.exists() else None
 
 
 def check(path, device):
@@ -99,7 +109,8 @@ def score(device):
     results, cache = {"registration_sha256": SS.sha256(REGISTRATION), "started_unix": time.time(), "entries": []}, {}
     for entry in record["entries"]:
         started = time.time()
-        checkpoint, outcome = evaluate(entry["checkpoint"], TEST_YEARS, device, cache)
+        scales = json.loads(Path(entry["calibration"]["path"]).read_text())["scales"] if "calibration" in entry else None
+        checkpoint, outcome = evaluate(entry["checkpoint"], TEST_YEARS, device, cache, scales)
         results["entries"].append({**entry, "tag": checkpoint["training"]["tag"], "seed": checkpoint["seed"],
                                    "step": checkpoint["step"], "seconds": time.time() - started, "by_lead": outcome})
         print(json.dumps({"scored": checkpoint["training"]["tag"], "rmse": {
@@ -123,10 +134,11 @@ def main():
     if args.check:
         check(args.check, args.device)
     elif args.register:
-        record = SS.register(REGISTRATION, [("grid", Path(p)) for p in args.register], DATA,
+        record = SS.register(REGISTRATION, [("grid", Path(p), calibration_of(p)) for p in args.register], DATA,
                              {"dataset": "real_global 2016-2023", "test_years": list(TEST_YEARS),
                               "leads": list(LEADS), "cells": "every held-out-float cell"})
-        print(f"registered {len(record['entries'])} checkpoints -> {REGISTRATION}")
+        print(f"registered {len(record['entries'])} checkpoints ({sum('calibration' in e for e in record['entries'])} "
+              f"with a calibration) -> {REGISTRATION}")
     else:
         score(args.device)
 

@@ -5,14 +5,16 @@ every run had been set up (``docs/superpowers/specs/2026-10-19-sealed-cesm2-test
 refuses to run twice:
 
   --register FAMILY:CHECKPOINT ...   records every checkpoint and data file (sha256), the test years
-                                     and leads. FAMILY is "grid" (runner 101, any backbone) or
+                                     and leads, and each checkpoint's spread calibration if ``116`` fitted
+                                     one (on the run's 2004-2005; ``outputs/calibration_20261020``). FAMILY is "grid" (runner 101, any backbone) or
                                      "reference" (runner 94, the OI-anchored local transformer with
                                      its local OI-error scale table)
   --score                            verifies every recorded file, then scores each checkpoint on
                                      every cell of 2006-2007 at leads 0, 1, 3, 6
                                      (``sealed_scoring``: RMSE, MAE, bias, R², r, CRPS, NLL,
                                      68/95 % coverage, by depth band and by level, with the
-                                     persisted OI and the climatology on the same cells); writes
+                                     persisted OI and the climatology on the same cells; Gaussian
+                                     scores also under the registered calibration); writes
                                      results.json and never overwrites it
   --check FAMILY:CHECKPOINT          opens nothing: scores 2004-2005 of the test cohort (rows
                                      identical to training's) and requires the run's own scores back
@@ -33,9 +35,11 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from ocean_tokenizer import calibration as CAL
 from ocean_tokenizer import sealed_scoring as SS
 
 OUTPUT = ROOT / "outputs/cesm2_test_20261019"
+CALIBRATIONS = ROOT / "outputs/calibration_20261020"
 REGISTRATION = OUTPUT / "registration.json"
 RESULTS = OUTPUT / "results.json"
 COHORT = "cesm2_long_test"
@@ -79,7 +83,7 @@ def model_of(family, checkpoint, device):
     return model.to(device).eval()
 
 
-def evaluate(family, path, years, device, cache):
+def evaluate(family, path, years, device, cache, scales=None):
     """``sealed_scoring.summarize`` of one checkpoint on every cell of ``years``."""
     import numpy as np
     import torch
@@ -97,7 +101,13 @@ def evaluate(family, path, years, device, cache):
     model = model_of(family, checkpoint, data.device)
     collected = SS.collect(model, data, data.analysis(), data.forecast_months(list(years), 0),
                            training.get("eval_context_profiles") or training["context_profiles"], training["amp"])
-    return checkpoint, SS.summarize(collected, data.norm, data.levels, years)
+    return checkpoint, SS.summarize(collected, data.norm, data.levels, years, scales)
+
+
+def calibration_of(checkpoint):
+    """The calibration ``116`` fitted to a checkpoint's run, if any."""
+    path = CALIBRATIONS / CAL.record_name(Path(checkpoint).parent)
+    return path if path.exists() else None
 
 
 def check(family, path, device):
@@ -129,7 +139,8 @@ def score(device):
     results, cache = {"registration_sha256": SS.sha256(REGISTRATION), "started_unix": time.time(), "entries": []}, {}
     for entry in record["entries"]:
         started = time.time()
-        checkpoint, outcome = evaluate(entry["family"], entry["checkpoint"], TEST_YEARS, device, cache)
+        scales = json.loads(Path(entry["calibration"]["path"]).read_text())["scales"] if "calibration" in entry else None
+        checkpoint, outcome = evaluate(entry["family"], entry["checkpoint"], TEST_YEARS, device, cache, scales)
         results["entries"].append({**entry, "tag": checkpoint["training"]["tag"], "seed": checkpoint["seed"],
                                    "step": checkpoint["step"], "seconds": time.time() - started, "by_lead": outcome})
         print(json.dumps({"scored": checkpoint["training"]["tag"], "rmse": {
@@ -155,9 +166,11 @@ def main():
         check(family, path, args.device)
     elif args.register:
         entries = [(item.split(":", 1)[0], Path(item.split(":", 1)[1])) for item in args.register]
+        entries = [(family, path, calibration_of(path)) for family, path in entries]
         record = SS.register(REGISTRATION, entries, DATA, {"cohort": COHORT, "test_years": list(TEST_YEARS),
                                                              "leads": list(LEADS), "cells": "every held-out cell"})
-        print(f"registered {len(record['entries'])} checkpoints -> {REGISTRATION}")
+        print(f"registered {len(record['entries'])} checkpoints ({sum('calibration' in e for e in record['entries'])} "
+              f"with a calibration) -> {REGISTRATION}")
     else:
         score(args.device)
 
