@@ -17,7 +17,8 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       (``real_forecast_scenes``; caches of ``105``, OI of ``106``); pass
                       --val-years 2021. The training split is 2016-2020 (--train-years is unused).
   --init-from PATH    start from the model weights of another run's checkpoint (another
-                      dataset is allowed: weights only, a new optimiser and schedule)
+                      dataset is allowed: weights only, a new optimiser and schedule); with
+                      --resume-training it must name the resumed run's own source, and is not reloaded
   --real-train-years N  real data: train on the last N years of 2016-2020 only (label budget)
   --backbone poseidon  the public Poseidon-T processor (PDE-pretrained, ``--poseidon-init``) as the state
                       encoder instead of our U-Net; it is lead-conditioned, so the separate evolution is off
@@ -203,6 +204,34 @@ def diagnostic_summary(value):
             "sd": float(value.std(unbiased=False)), "min": float(value.min()), "max": float(value.max())}
 
 
+def restore_training_inputs(args, training):
+    """The data a checkpoint was trained on; inputs its run did not read (the real cohort has no CESM2
+    satellite cache or lagged surface) stay None. A satellite cache passed on the command line is kept."""
+    path = lambda value: None if value is None else Path(value)
+    args.surface = training["surface"]
+    if args.surface and args.satellite_cache is None:
+        args.satellite_cache = path(training["satellite_cache"])
+    args.cohort, args.train_years = training["cohort"], training["train_years"]
+    args.scale = training["scale"]
+    args.leads, args.val_years = training["leads"], training["val_years"]
+    args.lagged_surface = path(training["lagged_surface"])
+    args.surface_grids = path(training["surface_grids"])
+    if args.scale is not None:
+        args.scale_tables = Path(training["scale_tables"])
+
+
+def resumed_provenance(args, checkpoint):
+    """The --init-from record a run loaded from ``checkpoint`` keeps. --init-from starts a new run; a
+    resumed run may repeat it (a queue re-issues the original command) only with the same source."""
+    recorded = checkpoint["data"].get("init_from")
+    if args.init_from is not None:
+        if not args.resume_training:
+            raise ValueError("--init-from starts a new run; it excludes --load-checkpoint")
+        if recorded is None or recorded["path"] != str(args.init_from):
+            raise ValueError("--init-from differs from the source of the run being resumed")
+    return recorded
+
+
 def main():
     args = arguments()
     if args.resume_training and (args.load_checkpoint is None or args.warm_start or args.evaluate_only):
@@ -216,17 +245,7 @@ def main():
     if args.load_checkpoint and (args.resume_training or args.evaluate_only):
         saved = torch.load(args.load_checkpoint, map_location="cpu", weights_only=True)
         args.seed = saved["seed"]
-        args.surface = saved["training"]["surface"]
-        if args.surface and args.satellite_cache is None:
-            args.satellite_cache = Path(saved["training"]["satellite_cache"])
-        # the data a checkpoint was trained on
-        args.cohort, args.train_years = saved["training"]["cohort"], saved["training"]["train_years"]
-        args.scale = saved["training"]["scale"]
-        args.leads, args.val_years = saved["training"]["leads"], saved["training"]["val_years"]
-        args.lagged_surface = Path(saved["training"]["lagged_surface"])
-        args.surface_grids = Path(saved["training"]["surface_grids"])
-        if args.scale is not None:
-            args.scale_tables = Path(saved["training"]["scale_tables"])
+        restore_training_inputs(args, saved["training"])
         del saved
     if args.scale is not None:
         raise ValueError("the gridded model works in per-depth z units; --scale is not available")
@@ -306,9 +325,12 @@ def main():
                          "backbone", "poseidon_init"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
-    if args.init_from is not None:
-        if checkpoint is not None:
-            raise ValueError("--init-from starts a new run; it excludes --load-checkpoint")
+    if checkpoint is not None:
+        # the checkpoint's own state replaces the source's weights; its record of them stays
+        recorded = resumed_provenance(args, checkpoint)
+        if recorded is not None and not args.warm_start:
+            data.metadata["init_from"] = recorded
+    elif args.init_from is not None:
         source = torch.load(args.init_from, map_location="cpu", weights_only=True)
         # the kriging length scales and error ratios of the configuration only initialise
         # parameters (or the ka_oi buffers), which the loaded state replaces; the rest must match
