@@ -211,7 +211,7 @@ def figure(cells, level, month, title, path):
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Ellipse
-    fig, panels = plt.subplots(1, 4, figsize=(22, 4.8), gridspec_kw={"width_ratios": [1.15, 1.25, .75, .75]})
+    fig, panels = plt.subplots(1, 4, figsize=(23, 4.8), gridspec_kw={"width_ratios": [1.15, 1.25, .75, .75], "wspace": .55})
     grid_lat, grid_lon = cells["grid_lat"], cells["grid_lon"]
     ssh = cells["ssh_grids"][list(cells["ssh_months"]).index(month)].astype(np.float32)
     keep = (cells["month"] == month) & (cells["level"] == level)
