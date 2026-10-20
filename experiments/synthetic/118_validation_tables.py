@@ -55,7 +55,8 @@ REAL_ROWS = {
         ("C: Poseidon-T + KA", SELECTION, "rc_poseidon")],
     "Baselines": [
         ("ARMOR3D-style (prior background + OI kernel)", FORMAL, "r_gp_oi"),
-        ("Aardvark-style (no exact-value read-out)", FORMAL, "r_none")],
+        ("Aardvark-style (no exact-value read-out)", FORMAL, "r_none"),
+        ("Poseidon-T fine-tuned (no read-out)", SELECTION, "rp_none")],
     "Simulation pretraining (A)": [
         ("CESM2-pretrained, fine-tuned 5 years", REAL, "finetune"),
         ("noise-pretrained, fine-tuned 5 years", FORMAL, "r_finetune_noise"),
