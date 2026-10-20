@@ -42,3 +42,13 @@ def test_the_gradient_of_a_field_rising_northward():
     field = np.repeat(grid_lat[:, None], len(grid_lon), 1) * 2.
     gradient = align.ssh_gradient(field, np.array([10.2, -40.]), np.array([-60., 200.3]), grid_lat, grid_lon)
     assert gradient[:, 1] == pytest.approx(2. / align.KM_PER_DEGREE) and gradient[:, 0] == pytest.approx(0.)
+
+
+def test_tilt_correlation_separates_turning_with_the_flow_from_zonal_elongation():
+    rng = np.random.default_rng(1)
+    phi = rng.uniform(-np.pi / 3, np.pi / 3, 50000)                  # isoline angles from east
+    gradient = np.stack([np.sin(phi), -np.cos(phi)], -1)             # gradients whose isolines lie at phi
+    assert align.tilt_correlation(phi, gradient) == pytest.approx(1., abs=1e-9)
+    assert abs(align.tilt_correlation(np.zeros_like(phi) + rng.normal(scale=.05, size=phi.shape), gradient)) < .02
+    block = align.block(np.zeros(4), np.full(4, 300.), np.full(4, 100.), np.array([[0., 1.], [1., 0.], [0., 1.], [1., 0.]]))
+    assert block["always_east"] == pytest.approx(block["alignment"]) and block["zonal_orientation"] == pytest.approx(1.)
