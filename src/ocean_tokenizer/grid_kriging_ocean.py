@@ -239,6 +239,9 @@ class GridKrigingConfig:
     #: ablation switches; the trained model has both
     evolution: bool = True
     lead_decay: bool = True
+    #: the state encoder: our U-Net, or the public Poseidon-T processor (a baseline backbone, lead-conditioned)
+    backbone: str = "unet"
+    poseidon_init: str = "pretrained"
     std_min: float = .03
     std_max: float = 3.
     initial_std: float = .6
@@ -254,6 +257,10 @@ class GridKrigingConfig:
             raise ValueError("a kriging read-out needs kriging_ell_km and kriging_gamma as [2][n_levels]")
         if not 0 < self.std_min < self.initial_std < self.std_max:
             raise ValueError("require 0 < std_min < initial_std < std_max")
+        if self.backbone not in ("unet", "poseidon") or self.poseidon_init not in ("pretrained", "random"):
+            raise ValueError("backbone must be unet or poseidon; poseidon_init pretrained or random")
+        if self.backbone == "poseidon" and (self.evolution or self.background != "joint"):
+            raise ValueError("the Poseidon backbone is lead-conditioned itself: evolution off, background joint")
 
     @property
     def grid_spec(self):
@@ -290,6 +297,9 @@ class GridKrigingModel(nn.Module):
         if c.background == "prior":
             self.prior_encoder = UNet(c.surface_channels, c.state_channels, c.encoder_channels)
             self.encoder = UNet(c.state_channels + c.profile_channels, c.state_channels, c.encoder_channels)
+        elif c.backbone == "poseidon":
+            from .poseidon_backbone import PoseidonEncoder
+            self.encoder = PoseidonEncoder(c.input_channels, c.state_channels, c.poseidon_init)
         else:
             self.encoder = UNet(c.input_channels, c.state_channels, c.encoder_channels)
         self.lead_embedding = nn.Sequential(nn.Linear(3, c.lead_dim), nn.SiLU(), nn.Linear(c.lead_dim, c.lead_dim))
@@ -338,6 +348,14 @@ class GridKrigingModel(nn.Module):
         if self.prior_encoder is not None:
             prior = self.prior_encoder(context)
             grid0 = self.encoder(torch.cat((prior, profiles[None].to(prior.dtype)), 1)) if lead else None
+        elif self.config.backbone == "poseidon":
+            # one direct operator per lead; the neighbours' background is the lead-0 state
+            x = torch.cat((profiles[None], context), 1)
+            grid_lead = self.encoder(x, lead)
+            grid0 = grid_lead if not lead else (self.encoder(x, 0) if self.kriging is not None else grid_lead)
+            diagnostics = {"state_rms": grid_lead.detach().float().square().mean().sqrt()}
+            return {"query_grid": grid_lead[0], "neighbour_grid": grid0[0], "lead": lead,
+                    "aux_loss": grid_lead.new_zeros(()), "diagnostics": diagnostics}
         else:
             grid0 = self.encoder(torch.cat((profiles[None], context), 1))
         evolve = lead and self.evolution is not None

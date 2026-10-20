@@ -19,6 +19,8 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
   --init-from PATH    start from the model weights of another run's checkpoint (another
                       dataset is allowed: weights only, a new optimiser and schedule)
   --real-train-years N  real data: train on the last N years of 2016-2020 only (label budget)
+  --backbone poseidon  the public Poseidon-T processor (PDE-pretrained, ``--poseidon-init``) as the state
+                      encoder instead of our U-Net; it is lead-conditioned, so the separate evolution is off
   --no-evolution, --no-lead-decay   ablations: no lead evolution of the state; no damping of the
                       kriging read-out with the lead
   --profile-noise S, --surface-noise S   training only: each step draws a noise level uniformly up
@@ -97,6 +99,8 @@ def arguments():
                    default=ROOT / "outputs/audit/real/fixed_baselines_real_global/summary.json")
     p.add_argument("--real-train-years", type=int, default=None)
     p.add_argument("--no-evolution", action="store_true")
+    p.add_argument("--backbone", choices=["unet", "poseidon"], default="unet")
+    p.add_argument("--poseidon-init", choices=["pretrained", "random"], default="pretrained")
     p.add_argument("--no-lead-decay", action="store_true")
     p.add_argument("--profile-noise", type=float, default=0.)
     p.add_argument("--surface-noise", type=float, default=0.)
@@ -271,14 +275,15 @@ def main():
             **{name: table_metadata[name] for name in ("fit", "definition", "cell_deg", "month_window", "pseudo", "floor")}}
         data.configure(None, scale, "query")
     source_hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py", ROOT/"src/ocean_tokenizer/real_forecast_scenes.py", ROOT/"src/ocean_tokenizer/real_global.py")}
+        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py", ROOT/"src/ocean_tokenizer/real_forecast_scenes.py", ROOT/"src/ocean_tokenizer/real_global.py", ROOT/"src/ocean_tokenizer/poseidon_backbone.py")}
     analysis, anchor_analysis = data.analysis(), data.analysis()
     bands = band_of_levels(data.levels)
     cfg = GridKrigingConfig(grid=grid.as_tuple(), n_levels=len(data.levels), n_query_features=58,
             state_channels=args.state_channels, encoder_channels=tuple(args.encoder_channels),
             evolution_channels=tuple(args.evolution_channels), hidden=args.hidden, max_lead=max(args.leads),
             kriging=args.kriging, background=args.background,
-            evolution=not args.no_evolution, lead_decay=not args.no_lead_decay,
+            evolution=not args.no_evolution and args.backbone == "unet", lead_decay=not args.no_lead_decay,
+            backbone=args.backbone, poseidon_init=args.poseidon_init,
             kriging_ell_km=[[data.oi_selection[ch][b]["L_km"] for b in bands] for ch in CH],
             kriging_gamma=[[data.oi_selection[ch][b]["gamma"] for b in bands] for ch in CH])
     checkpoint = None
@@ -297,7 +302,8 @@ def main():
                          "lr", "analysis_lr", "weight_decay", "nll_weight", "val_every", "val_cells",
                          "eval_chunk", "freeze_analysis", "analysis_only", "amp", "latent_off", "local_off", "surface", "recipe", "max_shift_m", "covariance_rank",
                          "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden",
-                         "real_train_years", "no_evolution", "no_lead_decay", "profile_noise", "surface_noise"):
+                         "real_train_years", "no_evolution", "no_lead_decay", "profile_noise", "surface_noise",
+                         "backbone", "poseidon_init"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
     if args.init_from is not None:
