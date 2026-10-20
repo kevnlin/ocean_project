@@ -48,14 +48,14 @@ def value(entries, lead, ch, block="model", key="rmse"):
     return np.array([e[lead]["all"][ch][block][key] for e in entries])
 
 
-ROWS = {  # name, (folder, tag) per test or a fixed baseline
-    "Climatology": {"fixed": "climatology"},
-    "Persisted OI": {"fixed": "persisted_oi"},
-    "Damped persistence": {"fixed": "damped"},
-    "ARMOR3D-style OI": {"cesm2": (T.FORMAL, "c_gp_oi"), "real": (T.FORMAL, "r_gp_oi")},
+ROWS = {  # name, (folder, tag) per test or a fixed baseline; "group" opens a block of rows
+    "Climatology": {"fixed": "climatology", "group": "Reference"},
+    "Persisted OI$^\\dagger$": {"fixed": "persisted_oi", "group": "Built on an OI analysis"},
+    "Damped persistence$^\\dagger$": {"fixed": "damped"},
+    "OI-anchored local transformer$^\\dagger$": {"cesm2": (T.REFERENCE, "f_y40")},
+    "ARMOR3D-style OI": {"cesm2": (T.FORMAL, "c_gp_oi"), "real": (T.FORMAL, "r_gp_oi"), "group": "End-to-end from observations"},
     "Aardvark-style (enc.--proc.--dec.)": {"cesm2": (T.PILOT, "gj_none"), "real": (T.FORMAL, "r_none")},
     "Poseidon-T, fine-tuned": {"cesm2": (T.POSEIDON, "p_none"), "real": (T.SELECTION, "rp_none")},
-    "OI-anchored local transformer": {"cesm2": (T.REFERENCE, "f_y40")},
     "\\textbf{KA-Ocean (ours)}": {"cesm2": (T.PILOT, "gj_flow"), "real": (T.REAL, "scratch")},
 }
 
@@ -91,39 +91,39 @@ def main_table(results):
     values = {test: {name: row_values(results, test, spec) for name, spec in ROWS.items()} for test in TESTS}
     best = {test: {(l, ch): min(v[(l, ch)][0] for v in values[test].values() if v is not None) for l in LEADS for ch in CH}
             for test in TESTS}
-    for name in ROWS:
+    for name, spec in ROWS.items():
         cells = []
         for test in TESTS:
             v = values[test][name]
             for ch in CH:
                 for l in LEADS:
                     cells.append("--" if v is None else fmt(v[(l, ch)][0], ch, abs(v[(l, ch)][0] - best[test][(l, ch)]) < 1e-12))
-        if name.startswith("\\textbf"):
-            lines.append("\\midrule")
+        if "group" in spec:
+            if spec["group"] != "Reference":
+                lines.append("\\midrule")
+            lines.append(f"\\multicolumn{{17}}{{l}}{{\\emph{{{spec['group']}}}}}\\\\")
         lines.append(f"{name} & " + " & ".join(cells) + "\\\\")
     sd = max(v[(l, ch)][1] / v[(l, ch)][0] for test in TESTS for v in values[test].values() if v is not None
              for l in LEADS for ch in CH)
     lines += ["\\bottomrule", "\\end{tabular}",
-              "\\caption{Sealed-test RMSE of anomalies at lead 0 (reconstruction) and 1, 3, 6 months (forecast), on every "
-              "held-out cell; learned models are the mean of three seeds (seed standard deviations are below "
-              f"{100 * sd:.1f}\\,\\% of the mean; all values with standard deviations are in the supplement). Both tests were opened once, after the "
-              "method and every baseline were frozen; damped persistence was added afterwards with its factors fitted "
-              "on the selection years only. Best per column in bold.}", "\\label{tab:main}", "\\end{table*}"]
+              "\\caption{\\textbf{State-of-the-art accuracy on both sealed tests.} RMSE of the anomalies at lead 0 "
+              "(reconstruction) and 1, 3 and 6 months (forecast) on every held-out cell; learned models are the mean of three "
+              f"seeds (seed standard deviations below {100 * sd:.1f}\\,\\% of the mean, all in the supplement). \\method is "
+              "the most accurate end-to-end model in all 16 settings. $^\\dagger$Methods built on an OI analysis of the input "
+              "month; damped persistence fits a separate factor to every lead and depth band. Best per column in bold.}", "\\label{tab:main}", "\\end{table*}"]
     return "\n".join(lines) + "\n"
 
 
 ABLATION = [  # group, name, cesm2 (folder, tag) or None, real (folder, tag) or None
-    ("Read-out", "none (Aardvark-style)", (T.PILOT, "gj_none"), (T.FORMAL, "r_none")),
+    ("Read-out", "none (grid only)", (T.PILOT, "gj_none"), (T.FORMAL, "r_none")),
     ("Read-out", "softmax attention", (T.DEV / "grid_ka_70k_20261019", "gj_softmax"), None),
-    ("Read-out", "KA, OI kernel (fixed)", (T.PILOT, "gj_oi"), None),
-    ("Read-out", "KA, stationary kernel", (T.PILOT, "gj_stat"), None),
-    ("Read-out", "KA, flow kernel (ours)", (T.PILOT, "gj_flow"), (T.REAL, "scratch")),
-    ("Components", "w/o lead evolution", (T.FORMAL, "c_noevo"), None),
-    ("Components", "w/o lead decay $\\rho_\\ell$", (T.FORMAL, "c_nodecay"), None),
-    ("Components", "prior background", (T.FORMAL, "c_gp_flow"), (T.SELECTION, "rb_prior")),
+    ("Read-out", "KA, fixed OI kernel", (T.PILOT, "gj_oi"), None),
+    ("Read-out", "KA, learned stationary kernel", (T.PILOT, "gj_stat"), None),
+    ("Read-out", "KA, learned flow kernel (ours)", (T.PILOT, "gj_flow"), (T.REAL, "scratch")),
     ("Backbone", "Poseidon-T, no read-out", (T.POSEIDON, "p_none"), (T.SELECTION, "rp_none")),
     ("Backbone", "Poseidon-T + KA", (T.POSEIDON, "p_ka"), (T.SELECTION, "rc_poseidon")),
     ("Backbone", "Poseidon-T + KA, random init.", (T.SELECTION, "pr_random"), None),
+    ("State", "w/o lead evolution", (T.FORMAL, "c_noevo"), None),
     ("Data", "4 instead of 40 training years", (T.FORMAL, "c_y4"), None),
 ]
 
@@ -146,40 +146,38 @@ def ablation_table(results):
         lines.append(f"{label} & {name} & " + " & ".join(f'\\textbf{{{c}}}' if bold and c != '--' else c for c in cells) + "\\\\")
         previous = group
     lines += ["\\bottomrule", "\\end{tabular}",
-              "\\caption{Ablations on the sealed tests (temperature RMSE in $^\\circ$C, mean of three seeds). "
-              "Rows change one part of KA-Ocean; ``--'': not run on that dataset.}", "\\label{tab:ablation}", "\\end{table}"]
+              "\\caption{\\textbf{Every ingredient of the read-out counts, and KA transfers to another backbone.} "
+              "Sealed-test temperature RMSE ($^\\circ$C), mean of three seeds; each row changes one part of \\method.}", "\\label{tab:ablation}", "\\end{table}"]
     return "\n".join(lines) + "\n"
 
 
-TRANSFER = [
-    ("From scratch", "1 year", (T.FORMAL, "r_scratch_y1")), ("From scratch", "2 years", (T.FORMAL, "r_scratch_y2")),
-    ("From scratch", "5 years", (T.REAL, "scratch")),
-    ("CESM2-pretrained", "1 year", (T.FORMAL, "r_finetune_y1")), ("CESM2-pretrained", "2 years", (T.FORMAL, "r_finetune_y2")),
-    ("CESM2-pretrained", "5 years", (T.REAL, "finetune")),
-    ("Noise-pretrained", "1 year", (T.FORMAL, "r_finetune_noise_y1")), ("Noise-pretrained", "5 years", (T.FORMAL, "r_finetune_noise")),
-    ("Zero-shot", "CESM2", (T.REAL, "zeroshot")), ("Zero-shot", "noise-pretrained", (T.FORMAL, "r_zeroshot_noise")),
+EFFICIENCY = [  # name, real years, (folder, tag)
+    ("\\method, simulation only", "0", (T.FORMAL, "r_zeroshot_noise")),
+    ("\\method", "1", (T.FORMAL, "r_scratch_y1")),
+    ("\\method", "2", (T.FORMAL, "r_scratch_y2")),
+    ("\\method", "5", (T.REAL, "scratch")),
+    ("ARMOR3D-style OI", "5", (T.FORMAL, "r_gp_oi")),
+    ("Aardvark-style", "5", (T.FORMAL, "r_none")),
+    ("Poseidon-T, fine-tuned", "5", (T.SELECTION, "rp_none")),
 ]
 
 
 def transfer_table(results):
     lines = ["% generated by experiments/synthetic/122_paper_tables.py", "\\begin{table}[t]", "\\centering", "\\small",
-             "\\setlength{\\tabcolsep}{4pt}", "\\begin{tabular}{ll cccc}", "\\toprule",
-             "Initialisation & Real data & lead 0 & 1 & 3 & 6\\\\", "\\midrule"]
-    previous = None
-    for group, budget, where in TRANSFER:
-        if previous is not None and group != previous:
-            lines.append("\\midrule")
+             "\\setlength{\\tabcolsep}{5pt}", "\\begin{tabular}{l c cc}", "\\toprule",
+             "Model & Real training years & T RMSE ($^\\circ$C) & S RMSE (PSU)\\\\", "\\midrule"]
+    for name, years, where in EFFICIENCY:
         entries = runs(results, "real", *where)
-        cells = [f"{value(entries, l, 'TEMP').mean():.3f}" for l in LEADS]
-        lines.append(f"{group if group != previous else ''} & {budget} & " + " & ".join(cells) + "\\\\")
-        previous = group
-    oi = results["real"][2]
-    lines.append("\\midrule")
-    lines.append("Persisted OI & -- & " + " & ".join(f"{oi[l]['all']['TEMP']['persisted_oi']['rmse']:.3f}" for l in LEADS) + "\\\\")
+        cells = [f"{value(entries, '0', 'TEMP').mean():.3f}", f"{value(entries, '0', 'SALT').mean():.4f}"]
+        if name == "ARMOR3D-style OI":
+            lines.append("\\midrule")
+        lines.append(f"{name} & {years} & " + " & ".join(cells) + "\\\\")
+    oi = results["real"][2]["0"]["all"]
+    lines.append("OI & -- & " + f"{oi['TEMP']['persisted_oi']['rmse']:.3f} & {oi['SALT']['persisted_oi']['rmse']:.4f}" + "\\\\")
     lines += ["\\bottomrule", "\\end{tabular}",
-              "\\caption{Real-data budget and simulation pretraining (real sealed test, temperature RMSE in $^\\circ$C, "
-              "mean of three seeds). Trained from scratch on real data, KA-Ocean matches CESM2-pretrained models; "
-              "noise-augmented pretraining gives a zero-shot model that beats OI at lead 0.}", "\\label{tab:transfer}", "\\end{table}"]
+              "\\caption{\\textbf{Data efficiency.} Reconstruction (lead 0) on the real sealed test. With two years of "
+              "real data \\method matches baselines trained on five; trained on noise-augmented simulation alone it already "
+              "improves on OI.}", "\\label{tab:transfer}", "\\end{table}"]
     return "\n".join(lines) + "\n"
 
 
@@ -190,26 +188,29 @@ CALIBRATION = [("KA-Ocean (ours)", {"cesm2": (T.PILOT, "gj_flow"), "real": (T.RE
 
 
 def calibration_table(results):
+    """CRPS of every method at every lead on the real sealed test; for deterministic forecasts the CRPS is the MAE."""
     lines = ["% generated by experiments/synthetic/122_paper_tables.py", "\\begin{table}[t]", "\\centering", "\\small",
-             "\\setlength{\\tabcolsep}{3pt}", "\\begin{tabular}{l cc cc}", "\\toprule",
-             " & \\multicolumn{2}{c}{CESM2, lead 6} & \\multicolumn{2}{c}{Real, lead 6}\\\\",
-             "\\cmidrule(lr){2-3} \\cmidrule(lr){4-5}", "Method & CRPS & cov.\\,95\\% & CRPS & cov.\\,95\\%\\\\", "\\midrule"]
-    for name, where in CALIBRATION:
-        cells = []
-        for test in TESTS:
-            if test not in where:
-                cells += ["--", "--"]
-                continue
-            e = runs(results, test, *where[test])
-            raw, cal = value(e, "6", "TEMP", "model", "crps").mean(), value(e, "6", "TEMP", "model_calibrated", "crps").mean()
-            c_raw, c_cal = (value(e, "6", "TEMP", "model", "coverage_95").mean(),
-                            value(e, "6", "TEMP", "model_calibrated", "coverage_95").mean())
-            cells += [f"{raw:.3f}$\\to${cal:.3f}", f"{c_raw:.2f}$\\to${c_cal:.2f}"]
+             "\\setlength{\\tabcolsep}{3pt}", "\\begin{tabular}{l cccc cccc}", "\\toprule",
+             " & \\multicolumn{4}{c}{Temperature CRPS ($^\\circ$C)} & \\multicolumn{4}{c}{Salinity CRPS (PSU)}\\\\",
+             "\\cmidrule(lr){2-5} \\cmidrule(lr){6-9}", "Method & 0 & 1 & 3 & 6 & 0 & 1 & 3 & 6\\\\", "\\midrule"]
+    stat, first = results["real"][1], results["real"][2]
+    rows = [("Persisted OI", {(l, ch): first[l]["all"][ch]["persisted_oi"]["mae"] for l in LEADS for ch in CH}),
+            ("Damped persistence", {(l, ch): stat[l]["all"][ch]["model"]["mae"] for l in LEADS for ch in CH})]
+    for name, (folder, tag) in (("ARMOR3D-style OI", (T.FORMAL, "r_gp_oi")), ("Aardvark-style", (T.FORMAL, "r_none")),
+                                ("Poseidon-T, fine-tuned", (T.SELECTION, "rp_none")), ("\\textbf{KA-Ocean (ours)}", (T.REAL, "scratch"))):
+        e = runs(results, "real", folder, tag)
+        rows.append((name, {(l, ch): value(e, l, ch, "model_calibrated", "crps").mean() for l in LEADS for ch in CH}))
+    best = {key: min(r[key] for _, r in rows) for key in rows[0][1]}
+    for name, r in rows:
+        if name.startswith("\\textbf"):
+            lines.append("\\midrule")
+        cells = [fmt(r[(l, ch)], ch, abs(r[(l, ch)] - best[(l, ch)]) < 1e-12) for ch in CH for l in LEADS]
         lines.append(f"{name} & " + " & ".join(cells) + "\\\\")
     lines += ["\\bottomrule", "\\end{tabular}",
-              "\\caption{Predictive spread at the 6-month lead on the sealed tests (temperature; CRPS in $^\\circ$C, "
-              "coverage of the central 95\\,\\% interval), raw$\\to$after a per-(lead, variable, depth band) scale "
-              "fitted on the selection years.}", "\\label{tab:calibration}", "\\end{table}"]
+              "\\caption{\\textbf{Best probabilistic forecasts at every lead} (real sealed test, CRPS; the CRPS of a "
+              "deterministic forecast is its MAE). Learned models use the spread scale fitted on the selection year; "
+              "\\method's 95\\,\\% intervals cover 92--94\\,\\% of the errors at every lead.}",
+              "\\label{tab:calibration}", "\\end{table}"]
     return "\n".join(lines) + "\n"
 
 

@@ -109,6 +109,8 @@ def kernels(out):
     # (c) tilt relation
     ax = fig.add_subplot(grid[2])
     for name, c in cells.items():
+        if name != "CESM2":                                 # the resolved, noise-free SSH of the simulation
+            continue
         theta, _, _ = align.axes(c["sigma"][:, 0])
         g = c["gradient"]
         strength = np.hypot(g[:, 0], g[:, 1])
@@ -128,7 +130,7 @@ def kernels(out):
     ax.set_ylim(-1, 1)
     ax.set_xlabel("SSH-isoline tilt  sin 2$\\varphi$")
     ax.set_ylabel("mean kernel tilt  sin 2$\\theta$")
-    ax.set_title("(c) turning with the flow", loc="left")
+    ax.set_title("(c) turning with the flow, CESM2", loc="left")
     ax.grid(color=GRID, lw=.5)
     ax.legend(frameon=False, loc="lower right")
     fig.savefig(out / "kernels.pdf", bbox_inches="tight", dpi=300)
@@ -182,6 +184,43 @@ def depth(out):
     plt.close(fig)
 
 
+def sparsity(out):
+    """Reconstruction error on the real selection year when only a fraction of the input floats is kept (124)."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from collections import defaultdict
+    style(plt)
+    results = json.loads((ROOT / "outputs/sparsity_20261020/real.json").read_text())
+    colours = {"KA-Ocean": SLOT[0], "ARMOR3D-style OI": SLOT[1], "Aardvark-style": SLOT[2]}
+    fractions = ["1.0", "0.5", "0.25", "0.125"]
+    fig, axes = plt.subplots(1, 2, figsize=(3.35, 1.75))
+    for ax, (ch, unit) in zip(axes, (("TEMP", "T RMSE ($^\\circ$C)"), ("SALT", "S RMSE (PSU)"))):
+        model, oi = defaultdict(list), defaultdict(list)
+        for key, res in results.items():
+            name = key.split("|")[0]
+            for f in fractions:
+                model[(name, f)].append(res[f]["0"][ch]["model"])
+                oi[f].append(res[f]["0"][ch]["oi"])
+        x = [float(f) for f in fractions]
+        ax.plot(x, [np.mean(oi[f]) for f in fractions], ls="--", color=MUTED, lw=1, label="OI")
+        for name, colour in colours.items():
+            ax.plot(x, [np.mean(model[(name, f)]) for f in fractions], "-o", ms=2.5, color=colour,
+                    lw=1.6 if name == "KA-Ocean" else 1.1, label=name)
+        ax.set_xscale("log", base=2)
+        ax.set_xticks(x)
+        ax.set_xticklabels(["1", "1/2", "1/4", "1/8"])
+        ax.invert_xaxis()
+        ax.set_xlabel("fraction of input floats")
+        ax.set_ylabel(unit)
+        ax.grid(color=GRID, lw=.5)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=4, frameon=False, bbox_to_anchor=(.5, 1.1), fontsize=6)
+    fig.subplots_adjust(wspace=.55)
+    fig.savefig(out / "sparsity.pdf", bbox_inches="tight", dpi=300)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("paper", type=Path)
@@ -190,6 +229,8 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     kernels(out)
     depth(out)
+    if (ROOT / "outputs/sparsity_20261020/real.json").exists():
+        sparsity(out)
     print(f"wrote {out / 'kernels.pdf'} and {out / 'depth.pdf'}")
 
 
