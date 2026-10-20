@@ -39,6 +39,13 @@ def test_each_arm_runs_its_candidate_at_the_setup_of_its_dataset():
     assert command[command.index("--val-years") + 1:command.index("--val-years") + 3] == ["2004", "2005"]
 
 
+def test_the_poseidon_baseline_on_real_data_has_no_read_out():
+    command = campaign.job("rp_none", 1234)["command"]
+    assert value(command, "--kriging") == "none" and value(command, "--backbone") == "poseidon"
+    assert value(command, "--dataset") == "real_global" and value(command, "--poseidon-init") == "pretrained"
+    assert campaign.job("rb_prior", 1234)["kriging"] == "ka_flow"
+
+
 def test_a_failed_run_resumes_from_its_last_checkpoint(tmp_path, monkeypatch):
     monkeypatch.setattr(campaign, "OUTPUT", tmp_path)
     item = campaign.job("rb_prior", 1235)

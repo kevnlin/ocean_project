@@ -11,7 +11,9 @@ before these runs finished (``docs/superpowers/specs/2026-10-20-method-selection
 
 Real-data arms use 107's scratch setup (real 2016-2020, 30,000 steps, checkpoint chosen on 2021);
 ``pr_random`` is C with randomly initialised Poseidon-T weights at 112's CESM2 setup (70,000 steps,
-checkpoint chosen on 2004-2005): does the public pretraining or the architecture help. Seeds
+checkpoint chosen on 2004-2005): does the public pretraining or the architecture help. ``rp_none``
+(added after the decision) is Poseidon-T without the kriging read-out on real data, the real-data
+counterpart of 112's p_none: does the read-out help another backbone on real data too. Seeds
 1234-1236; no run reads a sealed year. As in 112: a run starts only on a GPU with ``--min-free-mb``
 free, and a failed run continues from its last checkpoint.
 """
@@ -38,10 +40,13 @@ CESM2 = ["--context-profiles", "6080", "--queries", "1024", "--amp", "--train-ye
 #: dataset -> (reference options, steps, schedule)
 SETUPS = {"real": (REAL, 30000, ["--val-every", "1000", "--checkpoint-every", "500"]),
           "cesm2": (CESM2, 70000, ["--val-every", "2000", "--checkpoint-every", "500"])}
-#: arm -> (dataset, background, backbone, Poseidon-T initialisation); the first arms start first
-ARMS = {"rb_prior": ("real", "prior", "unet", "pretrained"),
-        "rc_poseidon": ("real", "joint", "poseidon", "pretrained"),
-        "pr_random": ("cesm2", "joint", "poseidon", "random")}
+#: arm -> (dataset, background, backbone, Poseidon-T initialisation, kriging); the first arms start first
+ARMS = {"rb_prior": ("real", "prior", "unet", "pretrained", "ka_flow"),
+        "rc_poseidon": ("real", "joint", "poseidon", "pretrained", "ka_flow"),
+        "pr_random": ("cesm2", "joint", "poseidon", "random", "ka_flow"),
+        "rp_none": ("real", "joint", "poseidon", "pretrained", "none")}
+#: the arms of the "selection" queue (its watchdog restarts it without --arms); rp_none runs in its own queue
+DEFAULT_ARMS = ("rb_prior", "rc_poseidon", "pr_random")
 
 
 def write_json(path, value):
@@ -52,16 +57,17 @@ def write_json(path, value):
 
 
 def job(arm, seed, smoke=False):
-    dataset, background, backbone, init = ARMS[arm]
+    dataset, background, backbone, init, kriging = ARMS[arm]
     reference, steps, schedule = SETUPS[dataset]
     if smoke:
         steps, schedule = 40, ["--val-every", "20", "--checkpoint-every", "20"]
     folder = (OUTPUT / "smoke" if smoke else OUTPUT) / f"{arm}_s{seed}"
     command = [sys.executable, "-u", str(RUNNER), *reference, *schedule, "--steps", str(steps),
-               "--background", background, "--kriging", "ka_flow", "--backbone", backbone,
+               "--background", background, "--kriging", kriging, "--backbone", backbone,
                "--poseidon-init", init, "--seed", str(seed), "--tag", f"{arm}_s{seed}", "--output", str(folder)]
     return {"tag": f"{arm}_s{seed}", "arm": arm, "seed": seed, "steps": steps, "dataset": dataset,
-            "background": background, "backbone": backbone, "poseidon_init": init, "output": str(folder),
+            "background": background, "backbone": backbone, "poseidon_init": init, "kriging": kriging,
+            "output": str(folder),
             "command": command}
 
 
@@ -72,7 +78,7 @@ def completed(item):
     summary = json.loads(path.read_text())
     config = summary["config"]
     if (summary.get("completed_steps") != item["steps"] or summary.get("seed") != item["seed"]
-            or summary.get("kriging") != "ka_flow" or config.get("background") != item["background"]
+            or summary.get("kriging") != item["kriging"] or config.get("background") != item["background"]
             or config.get("backbone") != item["backbone"] or config.get("poseidon_init") != item["poseidon_init"]
             or (summary["data"].get("cohort") == "real_global 2016-2023") != (item["dataset"] == "real")
             or "forecast" not in summary):
@@ -153,7 +159,7 @@ def queue(pending, places, stagger, status, *, min_free_mb, retry_after, attempt
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--arms", nargs="+", choices=list(ARMS), default=list(ARMS))
+    parser.add_argument("--arms", nargs="+", choices=list(ARMS), default=list(DEFAULT_ARMS))
     parser.add_argument("--seeds", nargs="+", type=int, default=[1234, 1235, 1236])
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--gpus", default="1,3")
