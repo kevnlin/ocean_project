@@ -38,3 +38,16 @@ def test_years_map_to_the_real_splits():
     data = scenes()
     assert [data.split_of_year(y) for y in (2016, 2020, 2021, 2022, 2023, 2024)] == \
         ["train", "train", "validation", "development", "development", None]
+
+
+def test_a_shorter_training_window_keeps_the_last_years_of_the_training_split():
+    data = scenes()
+    c = data.c
+    c.month_index = np.array([228, 228, 229, 229, 240, 240])            # 2019-01, 2019-02, 2020-01
+    c.year = 2000 + c.month_index // 12
+    c.year_split[:] = "train"
+    c._by_month = {228: (0, 2), 229: (2, 4), 240: (4, 6)}
+    data.months_available = {228, 229, 240}
+    for years, expected in ((1, [240]), (2, [228, 229, 240]), (None, [228, 229, 240])):
+        data.train_years, data._months_cache = years, {}
+        assert data.months("train") == expected, years

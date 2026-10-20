@@ -236,6 +236,9 @@ class GridKrigingConfig:
     kriging_ell_km: tuple = ()
     kriging_gamma: tuple = ()
     init_decay_months: float = 3.0
+    #: ablation switches; the trained model has both
+    evolution: bool = True
+    lead_decay: bool = True
     std_min: float = .03
     std_max: float = 3.
     initial_std: float = .6
@@ -290,8 +293,8 @@ class GridKrigingModel(nn.Module):
         else:
             self.encoder = UNet(c.input_channels, c.state_channels, c.encoder_channels)
         self.lead_embedding = nn.Sequential(nn.Linear(3, c.lead_dim), nn.SiLU(), nn.Linear(c.lead_dim, c.lead_dim))
-        self.evolution = UNet(c.state_channels, c.state_channels, c.evolution_channels, cond_dim=c.lead_dim,
-                              zero_head=True)
+        self.evolution = (UNet(c.state_channels, c.state_channels, c.evolution_channels, cond_dim=c.lead_dim,
+                               zero_head=True) if c.evolution else None)
         self.level_embedding = nn.Embedding(c.n_levels, c.level_dim)
         width = c.state_channels + c.n_query_features + c.level_dim + c.lead_dim
         self.decoder = nn.Sequential(nn.Linear(width, c.hidden), nn.SiLU(), nn.Linear(c.hidden, c.hidden),
@@ -337,7 +340,8 @@ class GridKrigingModel(nn.Module):
             grid0 = self.encoder(torch.cat((prior, profiles[None].to(prior.dtype)), 1)) if lead else None
         else:
             grid0 = self.encoder(torch.cat((profiles[None], context), 1))
-        grid_lead = grid0 + self.evolution(grid0, self._lead(lead, grid0)[None]) if lead else grid0
+        evolve = lead and self.evolution is not None
+        grid_lead = grid0 + self.evolution(grid0, self._lead(lead, grid0)[None]) if evolve else grid0
         # the state a query reads, and the state the neighbours' innovations are taken against
         query_grid = grid_lead if grid_lead is not None else prior
         neighbour_grid = prior if prior is not None else grid0
@@ -374,7 +378,8 @@ class GridKrigingModel(nn.Module):
             innovation = torch.where(valid, innovation - self.mean_head(h_local).to(innovation.dtype),
                                      torch.zeros_like(innovation))
             offsets = torch.nan_to_num(offsets)
-            decay = torch.exp(-float(lead) / self.log_decay_months[:, level].T.exp())
+            decay = (torch.exp(-float(lead) / self.log_decay_months[:, level].T.exp()) if c.lead_decay
+                     else torch.ones(q, 2, dtype=self.log_decay_months.dtype, device=self.log_decay_months.device))
             out = self.kriging(h, h_local, offsets, innovation, valid, level, decay=decay)
             mean = mean + out["estimate"]
             variance = out["variance"]

@@ -35,7 +35,7 @@ from .real_global import REAL_SPLITS, cohort_fingerprint, load_real, raw_profile
 
 class RealGridForecastScenes(GridForecastScenes):
 
-    def __init__(self, root, device="cpu", *, caches, oi_summary, leads=LEADS):
+    def __init__(self, root, device="cpu", *, caches, oi_summary, leads=LEADS, train_years=None):
         self.root, self.device = Path(root), torch.device(device)
         c, norm, obs = load_real(self.root)
         self.c, self.norm, self.obs = c, norm, obs
@@ -102,7 +102,7 @@ class RealGridForecastScenes(GridForecastScenes):
         self.attach_surface_grids(torch.as_tensor(grids["grids"], device=self.device), grids["grid_month"])
         self.months_available = set(int(m) for m in np.unique(c.month_index))
         self._months_cache, self._training_pools = {}, {}
-        self.train_years = None
+        self.train_years = None if train_years is None else int(train_years)
         self.fg_checkpoint = {"method": "zero standardized-anomaly background; no satellite first guess"}
         self.metadata = {
             "cohort_fingerprint": fingerprint, "cohort": "real_global 2016-2023",
@@ -121,9 +121,15 @@ class RealGridForecastScenes(GridForecastScenes):
             "local_radius_km": None, "local_scale_sha256": None, "local_scale_by": None}
 
     def months(self, split):
+        """Months of a split with inputs and queries; with ``train_years`` the training months are
+        the last that many years of the training split (2020, 2019-2020, ...)."""
         if split not in self._months_cache:
+            first = -np.inf
+            if split == "train" and getattr(self, "train_years", None):
+                first = REAL_SPLITS["train"][1] - self.train_years + 1
             self._months_cache[split] = [
                 int(m) for m in self.c.months_in(split) if int(m) in self.months_available
+                and 2000 + int(m) // 12 >= first
                 and self.c.month(int(m), float_split="cohort_float").size
                 and self.c.month(int(m), float_split="heldout_float").size]
         return self._months_cache[split]

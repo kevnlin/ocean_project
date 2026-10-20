@@ -18,6 +18,13 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       --val-years 2021. The training split is 2016-2020 (--train-years is unused).
   --init-from PATH    start from the model weights of another run's checkpoint (another
                       dataset is allowed: weights only, a new optimiser and schedule)
+  --real-train-years N  real data: train on the last N years of 2016-2020 only (label budget)
+  --no-evolution, --no-lead-decay   ablations: no lead evolution of the state; no damping of the
+                      kriging read-out with the lead
+  --profile-noise S, --surface-noise S   training only: each step draws a noise level uniformly up
+                      to S and adds that much Gaussian noise (z units) to the month's input profiles
+                      (the same draw in the state and in the neighbours) and to the surface inputs;
+                      evaluation always reads clean data
 
 The model never reads the frozen OI (the persisted OI is still scored as the reference) and
 works in per-depth z units, so --scale is refused. Log length scales, log error ratios and
@@ -88,6 +95,11 @@ def arguments():
     p.add_argument("--real-caches", type=Path, default=ROOT / "outputs/real_global_20261019")
     p.add_argument("--real-oi-summary", type=Path,
                    default=ROOT / "outputs/audit/real/fixed_baselines_real_global/summary.json")
+    p.add_argument("--real-train-years", type=int, default=None)
+    p.add_argument("--no-evolution", action="store_true")
+    p.add_argument("--no-lead-decay", action="store_true")
+    p.add_argument("--profile-noise", type=float, default=0.)
+    p.add_argument("--surface-noise", type=float, default=0.)
     p.add_argument("--init-from", type=Path, default=None,
                    help="model weights of another run's checkpoint (any dataset); a new optimiser and schedule")
     p.add_argument("--kriging", choices=KRIGING, default="ka_flow")
@@ -235,7 +247,7 @@ def main():
         args.oi_summary = ROOT/"outputs/audit/synthetic"/f"fixed_baselines_{args.cohort}"/"summary.json"
     if args.dataset == "real_global":
         data = RealGridForecastScenes(ROOT, args.device, caches=args.real_caches, oi_summary=args.real_oi_summary,
-                                      leads=args.leads)
+                                      leads=args.leads, train_years=args.real_train_years)
     else:
         data = GridForecastScenes(ROOT, args.device, surface_grids=args.surface_grids, leads=args.leads,
                                   lagged_surface=args.lagged_surface if args.surface else None,
@@ -266,6 +278,7 @@ def main():
             state_channels=args.state_channels, encoder_channels=tuple(args.encoder_channels),
             evolution_channels=tuple(args.evolution_channels), hidden=args.hidden, max_lead=max(args.leads),
             kriging=args.kriging, background=args.background,
+            evolution=not args.no_evolution, lead_decay=not args.no_lead_decay,
             kriging_ell_km=[[data.oi_selection[ch][b]["L_km"] for b in bands] for ch in CH],
             kriging_gamma=[[data.oi_selection[ch][b]["gamma"] for b in bands] for ch in CH])
     checkpoint = None
@@ -283,7 +296,8 @@ def main():
             for name in ("seed", "steps", "queries", "context_profiles", "eval_context_profiles",
                          "lr", "analysis_lr", "weight_decay", "nll_weight", "val_every", "val_cells",
                          "eval_chunk", "freeze_analysis", "analysis_only", "amp", "latent_off", "local_off", "surface", "recipe", "max_shift_m", "covariance_rank",
-                         "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden"):
+                         "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden",
+                         "real_train_years", "no_evolution", "no_lead_decay", "profile_noise", "surface_noise"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
     if args.init_from is not None:
@@ -492,7 +506,24 @@ def main():
         optimizer_start = time.time()
         for step in range(start_step, args.steps+1):
             m, src, rows, levels = data.training_draw(rng, args.queries)
+            if args.profile_noise > 0:
+                # one draw per value of the month's input profiles, seen alike by the state and the neighbours
+                sigma = float(rng.uniform(0., args.profile_noise))
+                source_rows = data.indices(src)
+                clean = data.innovation[source_rows].clone()
+                noise = torch.randn(clean.shape, device=clean.device) * sigma
+                data.innovation[source_rows] = torch.where(data.valid[source_rows], clean + noise, clean)
             scene = data.scene(src, rows, levels, analysis, args.context_profiles, rng)
+            if args.profile_noise > 0:
+                data.innovation[source_rows] = clean
+            if args.surface_noise > 0:
+                sigma = float(rng.uniform(0., args.surface_noise))
+                scene["surface_grid"] = scene["surface_grid"] + torch.randn_like(scene["surface_grid"]) * sigma
+                for name in ("query_features", "local_features"):
+                    features = scene[name].clone()
+                    for column in (44, 46, 48):          # SST, SSS, SSH z-scores; 45/47/49 are their flags
+                        features[..., column] += torch.randn_like(features[..., column]) * sigma * features[..., column + 1]
+                    scene[name] = features
             target, valid = data.network_targets(rows, levels)
             with torch.autocast(device_type=data.device.type, dtype=torch.bfloat16,
                                 enabled=args.amp and data.device.type == "cuda"):

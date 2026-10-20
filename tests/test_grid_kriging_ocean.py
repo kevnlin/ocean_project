@@ -213,3 +213,22 @@ def test_a_prior_model_trains_its_prior_at_every_lead_and_its_analysis_for_forec
     assert grads["prior_encoder.head.weight"].abs().sum() > 0
     analysis = grads["encoder.head.weight"]
     assert (analysis is not None and analysis.abs().sum() > 0) == bool(lead)
+
+
+def test_without_evolution_a_forecast_reads_the_months_own_state():
+    model = _active(_model(evolution=False))
+    state = model.encode(_scene(lead=3))
+    torch.testing.assert_close(state["query_grid"], state["neighbour_grid"])
+    assert not any(name.startswith("evolution.") for name, _ in model.named_parameters())
+
+
+def test_without_lead_decay_a_forecast_starts_as_the_undamped_analysis():
+    model = _model(lead_decay=False)
+    torch.testing.assert_close(model(_scene(lead=3))["mean"], model(_scene(lead=0))["mean"])
+
+
+def test_the_new_switches_default_to_the_trained_model():
+    config = _config()
+    assert config.evolution and config.lead_decay
+    old = {k: v for k, v in config.to_dict().items() if k not in ("evolution", "lead_decay")}
+    assert GridKrigingConfig(**old) == config
