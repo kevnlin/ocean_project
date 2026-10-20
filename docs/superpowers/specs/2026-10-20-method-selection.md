@@ -40,3 +40,18 @@ no "Poseidon-T + prior background" candidate. Seeds 1234, 1235, 1236 for every r
   public pretraining from the architecture; it is an ablation, not part of the rule.
 * The chosen method is frozen; then both sealed tests are registered and scored once (`109`, `113`),
   after Zihao confirms.
+
+## Outcome (2026-10-20 07:58, `outputs/selection_20261020/decision.json`, written once)
+
+| | CESM2 score (ratio to A) | Real score (ratio to A) | Overall |
+|---|---|---|---|
+| A | 0.8057 (1.0000) | 0.8801 (1.0000) | 1.0000 |
+| B | 0.7998 (0.9927) | 0.8802 (1.0001) | 0.9964 |
+| C | 0.7958 (0.9877) | 0.8846 (1.0052) | 0.9964 |
+
+Lowest overall: B (C equal to four decimals). Both are within 0.005 of A, so **A is the method**:
+the U-Net state with kriging attention (flow kernel) and the joint background, as frozen on
+2026-10-19. The gains of B and C on CESM2 do not carry over to real data. B stays in the paper as the
+background ablation; C as kriging attention on another backbone (Poseidon-T: 0.966 → 0.796 on CESM2
+with the read-out). `rc_poseidon_s1236` ran out of GPU memory in its final evaluation (another
+user's job) and was finished by the queue from its complete training state.
