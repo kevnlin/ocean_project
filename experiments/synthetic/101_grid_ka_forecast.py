@@ -108,6 +108,11 @@ def arguments():
     p.add_argument("--init-from", type=Path, default=None,
                    help="model weights of another run's checkpoint (any dataset); a new optimiser and schedule")
     p.add_argument("--kriging", choices=KRIGING, default="ka_flow")
+    p.add_argument("--multivariate", action="store_true",
+                   help="solve temperature and salinity jointly in the read-out (linear model of coregionalisation)")
+    p.add_argument("--thin-inputs", nargs=2, type=int, default=None, metavar=("MIN", "MAX"),
+                   help="augmentation: each training step keeps n ~ U[MIN, MAX] of the month's input profiles "
+                        "(state and neighbours alike); evaluation reads every input")
     p.add_argument("--background", choices=BACKGROUNDS, default="joint",
                    help="prior: innovations against a surface-only prior state; joint: one state reads everything")
     p.add_argument("--state-channels", type=int, default=128)
@@ -300,7 +305,7 @@ def main():
     cfg = GridKrigingConfig(grid=grid.as_tuple(), n_levels=len(data.levels), n_query_features=58,
             state_channels=args.state_channels, encoder_channels=tuple(args.encoder_channels),
             evolution_channels=tuple(args.evolution_channels), hidden=args.hidden, max_lead=max(args.leads),
-            kriging=args.kriging, background=args.background,
+            kriging=args.kriging, background=args.background, multivariate=args.multivariate,
             evolution=not args.no_evolution and args.backbone == "unet", lead_decay=not args.no_lead_decay,
             backbone=args.backbone, poseidon_init=args.poseidon_init,
             kriging_ell_km=[[data.oi_selection[ch][b]["L_km"] for b in bands] for ch in CH],
@@ -322,7 +327,7 @@ def main():
                          "eval_chunk", "freeze_analysis", "analysis_only", "amp", "latent_off", "local_off", "surface", "recipe", "max_shift_m", "covariance_rank",
                          "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden",
                          "real_train_years", "no_evolution", "no_lead_decay", "profile_noise", "surface_noise",
-                         "backbone", "poseidon_init"):
+                         "backbone", "poseidon_init", "multivariate", "thin_inputs"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
     if checkpoint is not None:
@@ -534,6 +539,12 @@ def main():
         optimizer_start = time.time()
         for step in range(start_step, args.steps+1):
             m, src, rows, levels = data.training_draw(rng, args.queries)
+            if args.thin_inputs is not None:
+                # density augmentation: the state and the neighbour search see the same random subset
+                low, high = args.thin_inputs
+                keep = int(rng.integers(low, high + 1))
+                if keep < len(src):
+                    src = np.sort(rng.choice(src, keep, replace=False))
             if args.profile_noise > 0:
                 # one draw per value of the month's input profiles, seen alike by the state and the neighbours
                 sigma = float(rng.uniform(0., args.profile_noise))
