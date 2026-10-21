@@ -40,7 +40,9 @@ METHODS = [  # name, colour, CESM2 run, real run (None: not run there)
     ("Aardvark-style", SLOT[2], (T.PILOT, "gj_none"), (T.FORMAL, "r_none")),
     ("Poseidon-T", SLOT[3], (T.POSEIDON, "p_none"), (T.SELECTION, "rp_none")),
     ("OI-anchored transformer", SLOT[4], (T.REFERENCE, "f_y40"), None)]
-TESTS = {"CESM2": ROOT / "outputs/cesm2_test_20261019", "Real": ROOT / "outputs/real_global_20261019/sealed"}
+#: "Real" is the sealed 2024 test (ka-dev4's 133), which keeps damped persistence inside results.json
+TESTS = {"CESM2": ROOT / "outputs/cesm2_test_20261019",
+         "Real": Path("/DATA2/linke/ocean_project_ka_dev4/outputs/real_2024_test/sealed")}
 
 
 def style(plt):
@@ -151,7 +153,9 @@ def depth(out):
         levels = np.asarray(json.loads(next((T.PILOT / "gj_flow_s1234").glob("summary_seed*.json")).read_text())["data"]["levels_m"])
         first = results["entries"][0]["by_lead"][lead]["all"]["TEMP"]
         ax.plot(first["persisted_oi"]["by_level"], levels, ls="--", color=MUTED, lw=1, label="persisted OI")
-        stat = json.loads((TESTS[test] / "results_statistical.json").read_text())["by_lead"][lead]["all"]["TEMP"]["model"]
+        damped = (results["damped_persistence"] if "damped_persistence" in results
+                  else json.loads((TESTS[test] / "results_statistical.json").read_text()))
+        stat = damped["by_lead"][lead]["all"]["TEMP"]["model"]
         ax.plot(stat["by_level"], levels, ls=":", color=MUTED, lw=1.2, label="damped persistence")
         for name, colour, cesm2, real in METHODS:
             where = cesm2 if test == "CESM2" else real
@@ -167,7 +171,7 @@ def depth(out):
         ax.yaxis.set_major_locator(ticker.FixedLocator([5, 10, 25, 50, 100, 250, 500, 1000]))
         ax.yaxis.set_major_formatter(ticker.FixedFormatter(["5", "10", "25", "50", "100", "250", "500", "1000"]))
         ax.yaxis.set_minor_locator(ticker.NullLocator())
-        ax.set_title(f"{test}, lead {lead}", loc="left")
+        ax.set_title(f"{'Real 2024' if test == 'Real' else test}, lead {lead}", loc="left")
         ax.set_xlabel("T RMSE ($^\\circ$C)")
         ax.grid(color=GRID, lw=.5)
         if k == 0:
