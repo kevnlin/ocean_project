@@ -27,6 +27,8 @@ FORMAL, REAL = DEV / "formal_20261019", DEV / "real_global_20261019"
 POSEIDON = Path("/DATA2/linke/ocean_project_ka_dev2/outputs/poseidon_20261019")
 REFERENCE = Path("/DATA2/linke/ocean_project/outputs/forecast_20261019")
 SELECTION = ROOT / "outputs/selection_20261020"
+#: the CLOINet-style read-out (ka-dev4's 131), scored on the opened tests in a declared extra pass (134)
+CLUSTER = Path("/DATA2/linke/ocean_project_ka_dev4/outputs/cluster_20261021")
 
 CESM2 = {
     "Candidates (method selection, 115)": [
@@ -47,7 +49,8 @@ CESM2 = {
         ("A on a 4-year window", FORMAL, "c_y4"),
         ("A with noise pretraining", FORMAL, "c_noise"),
         ("Anchored transformer, 4-year window", REFERENCE, "f_y4"),
-        ("C with random Poseidon-T weights", SELECTION, "pr_random")]}
+        ("C with random Poseidon-T weights", SELECTION, "pr_random"),
+        ("A with CLOINet's cluster covariance", CLUSTER, "cl_cesm2")]}
 REAL_ROWS = {
     "Candidates (method selection, 115)": [
         ("A: U-Net + KA, joint background", REAL, "scratch"),
@@ -67,7 +70,9 @@ REAL_ROWS = {
         ("CESM2-pretrained, fine-tuned 2 years", FORMAL, "r_finetune_y2"),
         ("from scratch, 1 year", FORMAL, "r_scratch_y1"),
         ("CESM2-pretrained, fine-tuned 1 year", FORMAL, "r_finetune_y1"),
-        ("noise-pretrained, fine-tuned 1 year", FORMAL, "r_finetune_noise_y1")]}
+        ("noise-pretrained, fine-tuned 1 year", FORMAL, "r_finetune_noise_y1")],
+    "Read-out (A)": [
+        ("A with CLOINet's cluster covariance", CLUSTER, "cl_real")]}
 
 
 def finished(folder, tag):

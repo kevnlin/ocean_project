@@ -31,8 +31,10 @@ def load():
     for test, folder in TESTS.items():
         results = json.loads((folder / "results.json").read_text())
         statistical = json.loads((folder / "results_statistical.json").read_text())
-        out[test] = ({e["checkpoint"]: e["by_lead"] for e in results["entries"]}, statistical["by_lead"],
-                     results["entries"][0]["by_lead"])
+        by_path = {e["checkpoint"]: e["by_lead"] for e in results["entries"]}
+        extra = T.CLUSTER / "sealed" / f"results_{test}.json"      # the declared extra pass (134)
+        by_path.update({e["checkpoint"]: e["by_lead"] for e in json.loads(extra.read_text())["entries"]})
+        out[test] = (by_path, statistical["by_lead"], results["entries"][0]["by_lead"])
     return out
 
 
@@ -119,6 +121,7 @@ ABLATION = [  # group, name, cesm2 (folder, tag) or None, real (folder, tag) or 
     ("Read-out", "softmax attention", (T.DEV / "grid_ka_70k_20261019", "gj_softmax"), None),
     ("Read-out", "KA, fixed OI kernel", (T.PILOT, "gj_oi"), None),
     ("Read-out", "KA, learned stationary kernel", (T.PILOT, "gj_stat"), None),
+    ("Read-out", "KA, CLOINet's cluster covariance$^\\ddagger$", (T.CLUSTER, "cl_cesm2"), (T.CLUSTER, "cl_real")),
     ("Read-out", "KA, learned flow kernel (ours)", (T.PILOT, "gj_flow"), (T.REAL, "scratch")),
     ("Backbone", "Poseidon-T, no read-out", (T.POSEIDON, "p_none"), (T.SELECTION, "rp_none")),
     ("Backbone", "Poseidon-T + KA", (T.POSEIDON, "p_ka"), (T.SELECTION, "rc_poseidon")),
@@ -147,7 +150,9 @@ def ablation_table(results):
         previous = group
     lines += ["\\bottomrule", "\\end{tabular}",
               "\\caption{\\textbf{Every ingredient of the read-out counts, and KA transfers to another backbone.} "
-              "Test temperature RMSE ($^\\circ$C), mean of three seeds; each row changes one part of \\method.}", "\\label{tab:ablation}", "\\end{table}"]
+              "Test temperature RMSE ($^\\circ$C), mean of three seeds; each row changes one part of \\method. "
+              "$^\\ddagger$CLOINet's covariance~\\cite{cutolo2024cloinet} in KA's solve, trained and scored once after "
+              "the tests were opened (supplement).}", "\\label{tab:ablation}", "\\end{table}"]
     return "\n".join(lines) + "\n"
 
 
