@@ -27,6 +27,9 @@ TESTS = {"cesm2": ROOT / "outputs/cesm2_test_20261019",
 TITLE = {"cesm2": "CESM2 OSSE, sealed test 2006--2007", "real": "Real Argo, sealed test 2024",
          "real2223": "Real Argo, held-out test 2022--2023"}
 EXTRA = {"cesm2": "cesm2", "real2223": "real"}         # the declared extra pass of 134, per test
+#: the official 4DVarNet's declared extra pass (ka-4dvar 161), per test
+FOURDVAR = Path("/DATA2/linke/ocean_project_ka_4dvar/outputs/fourdvarnet_20261021")
+FOURDVAR_PASS = {"cesm2": "cesm2", "real": "real2024", "real2223": "real"}
 MAIN_TESTS = ("cesm2", "real")
 LEADS = ("0", "1", "3", "6")
 CH = ("TEMP", "SALT")
@@ -43,6 +46,8 @@ def load():
         if test in EXTRA:
             extra = T.CLUSTER / "sealed" / f"results_{EXTRA[test]}.json"
             by_path.update({e["checkpoint"]: e["by_lead"] for e in json.loads(extra.read_text())["entries"]})
+        extra = FOURDVAR / "sealed" / f"results_{FOURDVAR_PASS[test]}.json"
+        by_path.update({e["checkpoint"]: e["by_lead"] for e in json.loads(extra.read_text())["entries"]})
         out[test] = (by_path, statistical["by_lead"], results["entries"][0]["by_lead"])
     return out
 
@@ -66,6 +71,7 @@ ROWS = {  # name, (folder, tag) per test or a fixed baseline; "group" opens a bl
     "OI-anchored local transformer$^\\dagger$": {"cesm2": (T.REFERENCE, "f_y40")},
     "ARMOR3D-style OI": {"cesm2": (T.FORMAL, "c_gp_oi"), "real": (T.FORMAL, "r_gp_oi"), "group": "End-to-end from observations"},
     "Aardvark-style (enc.--proc.--dec.)": {"cesm2": (T.PILOT, "gj_none"), "real": (T.FORMAL, "r_none")},
+    "4DVarNet, official code$^\\ddagger$": {"cesm2": (FOURDVAR, "fv_cesm2"), "real": (FOURDVAR, "fv_real")},
     "Poseidon-T, fine-tuned": {"cesm2": (T.POSEIDON, "p_none"), "real": (T.SELECTION, "rp_none")},
     "\\textbf{KA-Ocean (ours)}": {"cesm2": (T.PILOT, "gj_flow"), "real": (T.REAL, "scratch")},
 }
@@ -122,7 +128,8 @@ def main_table(results):
               "(reconstruction) and 1, 3 and 6 months (forecast) on every held-out cell; learned models are the mean of three "
               f"seeds (seed standard deviations below {100 * sd:.1f}\\,\\% of the mean, all in the supplement). \\method is "
               "ahead of every end-to-end baseline in all 16 settings. $^\\dagger$Methods built on an OI analysis of the input "
-              "month; damped persistence fits a separate factor to every lead and depth band. Best per column in bold.}", "\\label{tab:main}", "\\end{table*}"]
+              "month; damped persistence fits a separate factor to every lead and depth band. $^\\ddagger$Authors' code; "
+              "forecasts persist its reconstruction. Best per column in bold.}", "\\label{tab:main}", "\\end{table*}"]
     return "\n".join(lines) + "\n"
 
 
@@ -209,8 +216,10 @@ def calibration_table(results):
              " & \\multicolumn{4}{c}{Temperature CRPS ($^\\circ$C)} & \\multicolumn{4}{c}{Salinity CRPS (PSU)}\\\\",
              "\\cmidrule(lr){2-5} \\cmidrule(lr){6-9}", "Method & 0 & 1 & 3 & 6 & 0 & 1 & 3 & 6\\\\", "\\midrule"]
     stat, first = results["real"][1], results["real"][2]
+    fourdvar = runs(results, "real", FOURDVAR, "fv_real")
     rows = [("Persisted OI", {(l, ch): first[l]["all"][ch]["persisted_oi"]["mae"] for l in LEADS for ch in CH}),
-            ("Damped persistence", {(l, ch): stat[l]["all"][ch]["model"]["mae"] for l in LEADS for ch in CH})]
+            ("Damped persistence", {(l, ch): stat[l]["all"][ch]["model"]["mae"] for l in LEADS for ch in CH}),
+            ("4DVarNet, official code", {(l, ch): value(fourdvar, l, ch, "model", "mae").mean() for l in LEADS for ch in CH})]
     for name, (folder, tag) in (("ARMOR3D-style OI", (T.FORMAL, "r_gp_oi")), ("Aardvark-style", (T.FORMAL, "r_none")),
                                 ("Poseidon-T, fine-tuned", (T.SELECTION, "rp_none")), ("\\textbf{KA-Ocean (ours)}", (T.REAL, "scratch"))):
         e = runs(results, "real", folder, tag)
