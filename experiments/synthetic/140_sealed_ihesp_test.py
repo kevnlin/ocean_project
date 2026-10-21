@@ -54,7 +54,9 @@ ALPHAS = ROOT / "outputs/ihesp_20261021/damped_persistence.json"
 DAMPED_SOURCE = ROOT / "outputs/ihesp_20261021/ih_ka_s1234"
 T.DATA = {"cohort": ROOT / "data/synthetic_argo/ihesp_hr_test.nc", "satellites": CACHES / "satellites.npz",
           "surface_grids": CACHES / "surface_grids.npz", "lagged_surface": CACHES / "lagged_surface.npz",
-          "oi_summary": ROOT / "outputs/audit/synthetic/fixed_baselines_ihesp_hr_uniform/summary.json",
+          # the test cohort's own OI file (44 --cohort ihesp_hr_test): OI tuned on its 2004 rows, which are the training
+          # cohort's, so the selection and the 2004-2005 scores equal fixed_baselines_ihesp_hr_uniform's exactly
+          "oi_summary": ROOT / "outputs/audit/synthetic/fixed_baselines_ihesp_hr_test/summary.json",
           "damped_persistence_factors": ALPHAS}
 SELECTION = (2004, 2005)
 

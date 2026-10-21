@@ -56,6 +56,14 @@ Statistical baselines on the same cells: persisted OI (the frozen OI selection o
 `outputs/audit/synthetic/fixed_baselines_ihesp_hr_uniform`), damped persistence (factors fitted on
 2004-2005) and the climatology.
 
+## Amendment before any scoring (2026-10-21, 03:00)
+
+The scenes of the test cohort need an OI file computed on that cohort, as CESM2's test did
+(`44 --cohort cesm2_long_test`). `44 --cohort ihesp_hr_test` tuned the OI on the test cohort's 2004
+rows, which are the training cohort's: its selection and its 2004-2005 scores equal
+`fixed_baselines_ihesp_hr_uniform`'s exactly, so the persisted OI is still the frozen selection. `140`
+reads `outputs/audit/synthetic/fixed_baselines_ihesp_hr_test/summary.json`. No test month was scored.
+
 ## Protocol
 
 1. Checkpoint of every run: the lowest mean standardised RMSE over leads on the fixed 8,000-cell
