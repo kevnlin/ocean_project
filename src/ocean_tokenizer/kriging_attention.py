@@ -31,6 +31,12 @@ Modes
                  correlate by B = 1 - sum_c (m_ac - m_bc)^2, with no distance
                  term; amplitudes and error ratios as in ka_flow. B need not be
                  positive definite, as in CLOINet.
+  ka_scores      DKNN's covariance (Chen et al. 2024) in the same local solve:
+                 scaled dot products of learned query and key projections of
+                 every point's state vector, without a softmax, the
+                 neighbours' own scores removed from the system's diagonal;
+                 error ratios as in ka_flow. Neither symmetric nor positive
+                 definite, as in DKNN.
 
 The kernel and the solve run in float64, outside autocast.
 """
@@ -42,7 +48,9 @@ from typing import Mapping
 import torch
 from torch import Tensor, nn
 
-MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster")
+MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster", "ka_scores")
+#: width of the query and key projections of ka_scores, per variable
+SCORE_DIM = 32
 #: bounds of the flow heads: length-scale factor e^1.4 ~ 4, shear 1, amplitude e^1, error ratio e^2
 SHAPE_BOUND, SHEAR_BOUND, AMPLITUDE_BOUND, NUGGET_BOUND = 1.4, 1.0, 1.0, 2.0
 
@@ -86,6 +94,15 @@ def cluster_correlation(memberships: Tensor) -> Tensor:
                  - 2. * memberships @ memberships.transpose(-1, -2))
 
 
+def score_covariance(queries: Tensor, keys: Tensor) -> Tensor:
+    """DKNN's covariance of points ``[..., A, D]``: scaled dot products ``q_a . k_b / sqrt(D)``,
+    with every point's own score removed except the first (the query's prior variance)."""
+    scores = queries @ keys.transpose(-1, -2) / math.sqrt(queries.shape[-1])
+    own = torch.eye(scores.shape[-1], dtype=torch.bool, device=scores.device)
+    own[0, 0] = False
+    return scores.masked_fill(own, 0.)
+
+
 def without_oi_anchor(scene: Mapping[str, Tensor]) -> dict[str, Tensor]:
     """The scene with the frozen OI anchor replaced by the background (climatology)."""
     return {**scene, "baseline": scene["query_background"]}
@@ -114,7 +131,7 @@ class KrigingAttention(nn.Module):
         else:
             self.log_ell = nn.Parameter(log_ell.float())
             self.log_gamma = nn.Parameter(log_gamma.float())
-        self.query_head = self.local_head = None
+        self.query_head = self.local_head = self.key_head = None
         if mode == "ka_flow":
             # per variable: query (a, b, c, log amplitude); neighbour the same plus its error ratio
             self.query_head = nn.Sequential(nn.Linear(width, width), nn.SiLU(), nn.Linear(width, 2 * 4))
@@ -122,6 +139,13 @@ class KrigingAttention(nn.Module):
             for head in (self.query_head, self.local_head):
                 nn.init.zeros_(head[-1].weight)
                 nn.init.zeros_(head[-1].bias)
+        elif mode == "ka_scores":
+            # per variable: query and key projections of every point; a neighbour's error ratio
+            self.query_head = nn.Linear(width, 2 * SCORE_DIM)
+            self.key_head = nn.Linear(width, 2 * SCORE_DIM)
+            self.local_head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, 2))
+            nn.init.zeros_(self.local_head[-1].weight)
+            nn.init.zeros_(self.local_head[-1].bias)
         elif mode == "ka_cluster":
             # per variable: query (n_clusters logits, log amplitude); neighbour also its error ratio.
             # The logits keep their random start (equal memberships are a saddle of B); the
@@ -150,8 +174,17 @@ class KrigingAttention(nn.Module):
             shape = torch.zeros(q, 2, k + 1, 3, dtype=f64, device=h.device)
             log_amplitude = torch.zeros(q, 2, k + 1, dtype=f64, device=h.device)
             nugget = gamma[..., None].expand(q, 2, k)
-            memberships = None
-            if self.mode == "ka_cluster":
+            memberships = scored = None
+            if self.mode == "ka_scores":
+                dtype = self.query_head.weight.dtype
+                points = torch.cat((h[:, None], local), 1).to(dtype)                             # [Q,1+K,W]
+                queries = self.query_head(points).to(f64).view(q, k + 1, 2, SCORE_DIM).transpose(1, 2)
+                keys = self.key_head(points).to(f64).view(q, k + 1, 2, SCORE_DIM).transpose(1, 2)
+                scored = score_covariance(queries, keys)                                       # [Q,2,1+K,1+K]
+                pair = torch.cat((local.to(dtype), h.to(dtype)[:, None].expand(-1, k, -1)), -1)
+                ratio = self.local_head(pair).to(f64).view(q, k, 2).transpose(1, 2)            # [Q,2,K]
+                nugget = gamma[..., None] * (NUGGET_BOUND * ratio.tanh()).exp()
+            elif self.mode == "ka_cluster":
                 c = self.n_clusters
                 dtype = self.query_head[0].weight.dtype
                 hq = self.query_head(h.to(dtype)).to(f64).view(q, 2, c + 1)
@@ -174,7 +207,8 @@ class KrigingAttention(nn.Module):
             xy = torch.cat((offsets.new_zeros(q, 1, 2), offsets), 1).to(f64)[:, None]
             sigma = length_scale_matrices(ell[..., None], shape)                        # [Q,2,1+K,3]
             amplitude = log_amplitude.exp()
-            corr = ps_covariance(xy, sigma, xy, sigma) if memberships is None else cluster_correlation(memberships)
+            corr = (scored if scored is not None else cluster_correlation(memberships) if memberships is not None
+                    else ps_covariance(xy, sigma, xy, sigma))
             cov = corr * amplitude[..., :, None] * amplitude[..., None, :]              # [Q,2,1+K,1+K]
             v = valid.transpose(1, 2).to(f64)                                           # [Q,2,K]
             # an invalid neighbour is an identity row: weight 0, the others' system untouched
