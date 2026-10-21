@@ -5,13 +5,20 @@ from ocean_tokenizer.kriging_attention import KrigingAttention, cluster_correlat
 from test_kriging_attention import _init, _inputs
 
 
-def test_cluster_correlation_is_cloinets_membership_similarity():
+def test_cluster_correlation_is_the_cosine_of_the_memberships():
     m = torch.tensor([[1., 0., 0.], [1., 0., 0.], [0., 1., 0.], [.5, .5, 0.]], dtype=torch.float64)
     corr = cluster_correlation(m)
-    # B_ab = 1 - sum_c (m_ac - m_bc)^2: one cluster +1, two clusters -1, half-shared 0.5
+    # same memberships 1, disjoint clusters 0, half-shared 1/sqrt(2)
     torch.testing.assert_close(torch.diagonal(corr), torch.ones(4, dtype=torch.float64))
-    assert corr[0, 1] == 1. and corr[0, 2] == -1. and corr[0, 3] == .5 and corr[2, 3] == .5
+    assert corr[0, 1] == 1. and corr[0, 2] == 0.
+    torch.testing.assert_close(corr[0, 3], torch.tensor(.5 ** .5, dtype=torch.float64))
     torch.testing.assert_close(corr, corr.T)
+
+
+def test_cluster_correlation_is_positive_semi_definite_for_any_memberships():
+    g = torch.Generator().manual_seed(4)
+    m = torch.randn(64, 33, 20, generator=g, dtype=torch.float64).mul(3.).softmax(-1)
+    assert torch.linalg.eigvalsh(cluster_correlation(m)).min() > -1e-10
 
 
 def test_cluster_mode_has_no_distance_term():

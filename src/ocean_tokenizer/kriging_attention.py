@@ -25,12 +25,15 @@ Modes
                  Paciorek-Schervish non-stationary Gaussian, which keeps the
                  system positive definite. Zero-initialised heads start it as
                  ka_stationary.
-  ka_cluster     CLOINet's covariance (Cutolo et al. 2024) in the same local
-                 solve: every point gets soft memberships of ``n_clusters``
-                 clusters (a softmax of a head on the state) and two points
-                 correlate by B = 1 - sum_c (m_ac - m_bc)^2, with no distance
-                 term; amplitudes and error ratios as in ka_flow. B need not be
-                 positive definite, as in CLOINet.
+  ka_cluster     CLOINet's cluster covariance (Cutolo et al. 2024) in the same
+                 local solve: every point gets soft memberships of
+                 ``n_clusters`` clusters (a softmax of a head on the state) and
+                 two points correlate by the cosine of their membership
+                 vectors (1 for the same memberships, 0 for disjoint clusters),
+                 with no distance term; amplitudes and error ratios as in
+                 ka_flow. CLOINet's own similarity 1 - sum_c (m_ac - m_bc)^2 is
+                 indefinite, and in the local solve it made training diverge
+                 (2026-10-21); the cosine is its positive semi-definite form.
 
 The kernel and the solve run in float64, outside autocast.
 """
@@ -80,10 +83,10 @@ def ps_covariance(xy_a: Tensor, sigma_a: Tensor, xy_b: Tensor, sigma_b: Tensor) 
 
 
 def cluster_correlation(memberships: Tensor) -> Tensor:
-    """CLOINet's covariance of soft cluster memberships ``[..., A, C]``: ``1 - sum_c (m_ac - m_bc)^2``."""
-    squared = memberships.square().sum(-1)
-    return 1. - (squared[..., :, None] + squared[..., None, :]
-                 - 2. * memberships @ memberships.transpose(-1, -2))
+    """Cluster correlation of soft memberships ``[..., A, C]``: the cosine of the membership
+    vectors, positive semi-definite with a unit diagonal."""
+    unit = memberships / memberships.norm(dim=-1, keepdim=True)
+    return unit @ unit.transpose(-1, -2)
 
 
 def without_oi_anchor(scene: Mapping[str, Tensor]) -> dict[str, Tensor]:
