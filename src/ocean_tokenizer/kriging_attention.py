@@ -25,6 +25,12 @@ Modes
                  Paciorek-Schervish non-stationary Gaussian, which keeps the
                  system positive definite. Zero-initialised heads start it as
                  ka_stationary.
+  ka_cluster     CLOINet's covariance (Cutolo et al. 2024) in the same local
+                 solve: every point gets soft memberships of ``n_clusters``
+                 clusters (a softmax of a head on the state) and two points
+                 correlate by B = 1 - sum_c (m_ac - m_bc)^2, with no distance
+                 term; amplitudes and error ratios as in ka_flow. B need not be
+                 positive definite, as in CLOINet.
 
 The kernel and the solve run in float64, outside autocast.
 """
@@ -36,7 +42,7 @@ from typing import Mapping
 import torch
 from torch import Tensor, nn
 
-MODES = ("ka_oi", "ka_stationary", "ka_flow")
+MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster")
 #: bounds of the flow heads: length-scale factor e^1.4 ~ 4, shear 1, amplitude e^1, error ratio e^2
 SHAPE_BOUND, SHEAR_BOUND, AMPLITUDE_BOUND, NUGGET_BOUND = 1.4, 1.0, 1.0, 2.0
 
@@ -73,6 +79,13 @@ def ps_covariance(xy_a: Tensor, sigma_a: Tensor, xy_b: Tensor, sigma_b: Tensor) 
     return (det_a * det_b).pow(.25) / det_m.sqrt() * torch.exp(-.5 * quad)
 
 
+def cluster_correlation(memberships: Tensor) -> Tensor:
+    """CLOINet's covariance of soft cluster memberships ``[..., A, C]``: ``1 - sum_c (m_ac - m_bc)^2``."""
+    squared = memberships.square().sum(-1)
+    return 1. - (squared[..., :, None] + squared[..., None, :]
+                 - 2. * memberships @ memberships.transpose(-1, -2))
+
+
 def without_oi_anchor(scene: Mapping[str, Tensor]) -> dict[str, Tensor]:
     """The scene with the frozen OI anchor replaced by the background (climatology)."""
     return {**scene, "baseline": scene["query_background"]}
@@ -85,7 +98,8 @@ class KrigingAttention(nn.Module):
     normally the frozen OI's settings expanded from its depth bands to levels.
     """
 
-    def __init__(self, width: int, mode: str, init_ell_km, init_gamma, min_gamma: float = 1e-3):
+    def __init__(self, width: int, mode: str, init_ell_km, init_gamma, min_gamma: float = 1e-3,
+                 n_clusters: int = 20):
         super().__init__()
         if mode not in MODES:
             raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
@@ -93,7 +107,7 @@ class KrigingAttention(nn.Module):
         log_gamma = torch.as_tensor(init_gamma, dtype=torch.float64).clamp_min(min_gamma).log()
         if log_ell.ndim != 2 or log_ell.shape[0] != 2 or log_gamma.shape != log_ell.shape:
             raise ValueError("init_ell_km and init_gamma must both be [2, n_levels]")
-        self.mode, self.min_gamma = mode, float(min_gamma)
+        self.mode, self.min_gamma, self.n_clusters = mode, float(min_gamma), int(n_clusters)
         if mode == "ka_oi":
             self.register_buffer("log_ell", log_ell)
             self.register_buffer("log_gamma", log_gamma)
@@ -107,6 +121,17 @@ class KrigingAttention(nn.Module):
             self.local_head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, 2 * 5))
             for head in (self.query_head, self.local_head):
                 nn.init.zeros_(head[-1].weight)
+                nn.init.zeros_(head[-1].bias)
+        elif mode == "ka_cluster":
+            # per variable: query (n_clusters logits, log amplitude); neighbour also its error ratio.
+            # The logits keep their random start (equal memberships are a saddle of B); the
+            # amplitude and error-ratio outputs start at zero.
+            c = self.n_clusters
+            self.query_head = nn.Sequential(nn.Linear(width, width), nn.SiLU(), nn.Linear(width, 2 * (c + 1)))
+            self.local_head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, 2 * (c + 2)))
+            for head, extra in ((self.query_head, 1), (self.local_head, 2)):
+                with torch.no_grad():
+                    head[-1].weight.view(2, c + extra, -1)[:, c:].zero_()
                 nn.init.zeros_(head[-1].bias)
 
     def forward(self, h: Tensor, local: Tensor, offsets: Tensor, innovation: Tensor,
@@ -125,7 +150,17 @@ class KrigingAttention(nn.Module):
             shape = torch.zeros(q, 2, k + 1, 3, dtype=f64, device=h.device)
             log_amplitude = torch.zeros(q, 2, k + 1, dtype=f64, device=h.device)
             nugget = gamma[..., None].expand(q, 2, k)
-            if self.query_head is not None:
+            memberships = None
+            if self.mode == "ka_cluster":
+                c = self.n_clusters
+                dtype = self.query_head[0].weight.dtype
+                hq = self.query_head(h.to(dtype)).to(f64).view(q, 2, c + 1)
+                pair = torch.cat((local.to(dtype), h.to(dtype)[:, None].expand(-1, k, -1)), -1)
+                hl = self.local_head(pair).to(f64).view(q, k, 2, c + 2).transpose(1, 2)  # [Q,2,K,C+2]
+                memberships = torch.cat((hq[:, :, None, :c], hl[..., :c]), 2).softmax(-1)  # [Q,2,1+K,C]
+                log_amplitude = AMPLITUDE_BOUND * torch.cat((hq[:, :, None, c], hl[..., c]), 2).tanh()
+                nugget = gamma[..., None] * (NUGGET_BOUND * hl[..., c + 1].tanh()).exp()
+            elif self.query_head is not None:
                 dtype = self.query_head[0].weight.dtype
                 hq = self.query_head(h.to(dtype)).to(f64).view(q, 2, 4)
                 pair = torch.cat((local.to(dtype), h.to(dtype)[:, None].expand(-1, k, -1)), -1)
@@ -139,8 +174,8 @@ class KrigingAttention(nn.Module):
             xy = torch.cat((offsets.new_zeros(q, 1, 2), offsets), 1).to(f64)[:, None]
             sigma = length_scale_matrices(ell[..., None], shape)                        # [Q,2,1+K,3]
             amplitude = log_amplitude.exp()
-            cov = (ps_covariance(xy, sigma, xy, sigma)
-                   * amplitude[..., :, None] * amplitude[..., None, :])                 # [Q,2,1+K,1+K]
+            corr = ps_covariance(xy, sigma, xy, sigma) if memberships is None else cluster_correlation(memberships)
+            cov = corr * amplitude[..., :, None] * amplitude[..., None, :]              # [Q,2,1+K,1+K]
             v = valid.transpose(1, 2).to(f64)                                           # [Q,2,K]
             # an invalid neighbour is an identity row: weight 0, the others' system untouched
             system = (cov[..., 1:, 1:] * v[..., :, None] * v[..., None, :]
