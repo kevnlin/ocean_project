@@ -25,7 +25,8 @@ from .calibration import apply_scales
 from .point_baselines import BANDS, CH, band_of_levels
 from .reconstruction_metrics import gaussian_metrics, regression_metrics
 
-FAMILIES = ("grid", "reference")
+#: "fourdvarnet": the official 4DVarNet of ``160``, scored by ``161``
+FAMILIES = ("grid", "reference", "fourdvarnet")
 
 
 def sha256(path):
