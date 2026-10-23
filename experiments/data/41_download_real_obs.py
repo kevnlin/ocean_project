@@ -72,6 +72,10 @@ ap.add_argument("--streams", nargs="+", default=["ssh", "sst", "sss"],
                 choices=["ssh", "sst", "sss"])
 ap.add_argument("--smoke", action="store_true")
 ap.add_argument("--overwrite", action="store_true")
+ap.add_argument("--align", choices=["intersection", "union"], default="intersection",
+                help="month axis of the store: the months every stream has (default), or every "
+                     "month any stream has, a stream's missing months left NaN (OISSS starts in "
+                     "2011-08: the 2011-2015 extension needs 'union' so SSS is masked, not dropped)")
 args = ap.parse_args()
 if args.smoke:
     args.start, args.end = 2016, 2016
@@ -209,6 +213,9 @@ if "sss" in args.streams:
     files = sorted(os.path.join(raw, f) for f in os.listdir(raw)
                    if f.endswith(".nc"))
     ds = xr.open_mfdataset(files, combine="by_coords").load()
+    # the native folder may hold granules of other years (earlier downloads into the same
+    # folder): keep the requested years only, as the SST stream does
+    ds = ds.sel(time=slice(f"{Y0}-01-01", f"{Y1}-12-31"))
     ren = {}
     if "lat" in ds.dims:
         ren.update(lat="latitude", lon="longitude")
@@ -235,13 +242,29 @@ if not fields:
 # the month labels instead, and fabricate nothing.
 common = None
 for k, (v, t) in fields.items():
-    common = set(t.tolist()) if common is None else (common & set(t.tolist()))
+    if common is None:
+        common = set(t.tolist())
+    elif args.align == "union":
+        common = common | set(t.tolist())
+    else:
+        common = common & set(t.tolist())
 tt = np.array(sorted(common), dtype="datetime64[M]")
 if tt.size == 0:
     raise SystemExit("streams share no months in common")
 for k, (v, t) in list(fields.items()):
     pos = {m: i for i, m in enumerate(t.tolist())}
-    fields[k] = v[[pos[m] for m in tt.tolist()]]
+    if args.align == "union":
+        # a month the stream does not have is all-NaN (masked downstream), never fabricated
+        filled = np.full((tt.size,) + v.shape[1:], np.nan, dtype=v.dtype)
+        have = [i for i, m in enumerate(tt.tolist()) if m in pos]
+        filled[have] = v[[pos[tt[i].item()] for i in have]]
+        fields[k] = filled
+        if len(have) != tt.size:
+            missing = [str(m) for i, m in enumerate(tt) if i not in set(have)]
+            print(f"  note: {k} has no data for {len(missing)} of {tt.size} months "
+                  f"({missing[0]} .. {missing[-1]}); left NaN", flush=True)
+    else:
+        fields[k] = v[[pos[m] for m in tt.tolist()]]
     if v.shape[0] != tt.size:
         print(f"  note: {k} had {v.shape[0]} months, {tt.size} in common",
               flush=True)
@@ -259,6 +282,7 @@ out = xr.Dataset({k: (("time", "lat", "lon"), v) for k, v in fields.items()},
                                  "analysis grid",
                         "regrid": "exact block mean from native resolution",
                         "lon_convention": "0-360",
+                        "month_alignment": args.align,
                         "provenance": json.dumps(meta)})
 if os.path.exists(args.zarr):
     import shutil
@@ -266,7 +290,7 @@ if os.path.exists(args.zarr):
 enc = {k: {"chunks": (min(24, months), 90, 180)} for k in fields}
 out.to_zarr(args.zarr, mode="w", encoding=enc, zarr_format=3, consolidated=True)
 print(f"\nwrote {args.zarr}", flush=True)
-print(f"  time {tt[0]} .. {tt[-1]}  ({months} months, from stream intersection)",
+print(f"  time {tt[0]} .. {tt[-1]}  ({months} months, from stream {args.align})",
       flush=True)
 for k, a in fields.items():
     print(f"  {k:4s} {a.shape}  finite {100*np.isfinite(a).mean():5.1f}%  "

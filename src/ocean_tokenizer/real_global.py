@@ -2,8 +2,9 @@
 
 ``global_global.nc`` with WOA23 subtracted at each profile's own position (the "exact" anomaly
 of ``audit_tools.load_cohort``), cut to 2016-2023, the years of the 1-degree satellite store
-``data/real_obs_1deg.zarr``. 2025 is the sealed holdout of the Real-Data v1 registration and is
-never read. Splits by year as the original real-data ``latent_experiment.SPLITS``; floats keep
+``data/real_obs_1deg.zarr`` (``years`` extends the cut: 2024 for the sealed test, 2011 for the
+10-year training window, whose statistics stay the 2016-2020 ones). 2025 is the sealed holdout of
+the Real-Data v1 registration and is never read. Splits by year as the original real-data ``latent_experiment.SPLITS``; floats keep
 the cohort's stored ``float_split``. A value more than ``QC_Z`` training standard deviations from
 the training mean is treated as missing, as ``latent_experiment.OceanScenes`` does.
 """
@@ -47,17 +48,39 @@ def quality_controlled(z: np.ndarray, limit: float = QC_Z) -> np.ndarray:
     return z
 
 
-def load_real(root, *, splits=REAL_SPLITS, years=YEARS):
+def training_splits(splits, train_split):
+    """``splits`` with its training years replaced by ``train_split`` (a longer window, e.g.
+    2011-2020): the other splits are kept and must not overlap it."""
+    lo, hi = (int(y) for y in train_split)
+    if lo > hi:
+        raise ValueError(f"empty training split {train_split}")
+    for name, (a, b) in splits.items():
+        if name != "train" and not (hi < a or lo > b):
+            raise ValueError(f"the training split {train_split} overlaps the {name} split {(a, b)}")
+    return {**{k: tuple(v) for k, v in splits.items()}, "train": (lo, hi)}
+
+
+def load_real(root, *, splits=REAL_SPLITS, years=YEARS, train_split=None):
     """``(cohort, norm, obs)`` like ``synth_argo_eval.load``: the 2016-2023 at-position anomaly
     cohort, its training-year normalisation and ``{channel: (P, L)}`` quality-controlled z-scores.
     The cohort's TEMP/SALT hold the same anomalies with the QC'd values set to NaN, so every
-    method sees the same missing values."""
+    method sees the same missing values.
+
+    ``train_split`` (e.g. ``(2011, 2020)``) relabels the training years AFTER the normalisation
+    and the quality control were fitted on ``splits``' training years: the per-level statistics,
+    the targets and the validation cells stay those of ``splits``, only the months a model trains
+    on change (``years`` must cover the window)."""
     c, _ = load_cohort(str(root), "global", splits, anomaly="exact")
     c = subset_cohort(c, (c.year >= years[0]) & (c.year <= years[1]))
     norm = ArgoNorm.fit(c, "train")
     obs = {ch: quality_controlled(norm.z(ch, getattr(c, ch))) for ch in CH}
     for ch in CH:
         getattr(c, ch)[np.isnan(obs[ch])] = np.nan
+    if train_split is not None:
+        table = training_splits(splits, train_split)
+        if table["train"][0] < years[0] or table["train"][1] > years[1]:
+            raise ValueError(f"the training split {train_split} is outside the loaded years {years}")
+        c.apply_splits(table)
     return c, norm, obs
 
 

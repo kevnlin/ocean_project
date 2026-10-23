@@ -20,6 +20,10 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       dataset is allowed: weights only, a new optimiser and schedule); with
                       --resume-training it must name the resumed run's own source, and is not reloaded
   --real-train-years N  real data: train on the last N years of 2016-2020 only (label budget)
+  --real-years A B, --real-train-split A B, --real-oi-cohort F
+                      real data on another span of the cohort (2011-2024) and a longer training window
+                      (2011-2020) with the 2016-2020 normalisation, targets, validation cells and OI
+                      selection unchanged; the caches of ``162`` and the OI cohort fingerprint of ``106``
   --backbone poseidon  the public Poseidon-T processor (PDE-pretrained, ``--poseidon-init``) as the state
                       encoder instead of our U-Net; it is lead-conditioned, so the separate evolution is off
   --no-evolution, --no-lead-decay   ablations: no lead evolution of the state; no damping of the
@@ -99,6 +103,15 @@ def arguments():
     p.add_argument("--real-oi-summary", type=Path,
                    default=ROOT / "outputs/audit/real/fixed_baselines_real_global/summary.json")
     p.add_argument("--real-train-years", type=int, default=None)
+    p.add_argument("--real-years", nargs=2, type=int, default=[2016, 2023], metavar=("FIRST", "LAST"),
+                   help="real data: years of the cohort the caches were built on (2016 2023; 2011 2024 for the "
+                        "10-year window); the normalisation stays the 2016-2020 one")
+    p.add_argument("--real-train-split", nargs=2, type=int, default=None, metavar=("FIRST", "LAST"),
+                   help="real data: training years (default 2016-2020); the normalisation, the targets, the 2021 "
+                        "validation cells and the OI selection stay those of 2016-2020")
+    p.add_argument("--real-oi-cohort", default=None, metavar="FINGERPRINT",
+                   help="real data: fingerprint of the 2016-2023 cohort the frozen OI selection was made on, "
+                        "when the loaded cohort is another span of years (as 133 does for 2024)")
     p.add_argument("--no-evolution", action="store_true")
     p.add_argument("--backbone", choices=["unet", "poseidon"], default="unet")
     p.add_argument("--poseidon-init", choices=["pretrained", "random"], default="pretrained")
@@ -275,7 +288,8 @@ def main():
         args.oi_summary = ROOT/"outputs/audit/synthetic"/f"fixed_baselines_{args.cohort}"/"summary.json"
     if args.dataset == "real_global":
         data = RealGridForecastScenes(ROOT, args.device, caches=args.real_caches, oi_summary=args.real_oi_summary,
-                                      leads=args.leads, train_years=args.real_train_years)
+                                      leads=args.leads, train_years=args.real_train_years, years=args.real_years,
+                                      train_split=args.real_train_split, oi_cohort_fingerprint=args.real_oi_cohort)
     else:
         data = GridForecastScenes(ROOT, args.device, surface_grids=args.surface_grids, leads=args.leads,
                                   lagged_surface=args.lagged_surface if args.surface else None,
@@ -326,7 +340,8 @@ def main():
                          "lr", "analysis_lr", "weight_decay", "nll_weight", "val_every", "val_cells",
                          "eval_chunk", "freeze_analysis", "analysis_only", "amp", "latent_off", "local_off", "surface", "recipe", "max_shift_m", "covariance_rank",
                          "kriging", "background", "state_channels", "encoder_channels", "evolution_channels", "hidden",
-                         "real_train_years", "no_evolution", "no_lead_decay", "profile_noise", "surface_noise",
+                         "real_train_years", "real_years", "real_train_split", "real_oi_cohort",
+                         "no_evolution", "no_lead_decay", "profile_noise", "surface_noise",
                          "backbone", "poseidon_init", "multivariate", "thin_inputs"):
                 setattr(args, name, checkpoint["training"][name])
     model = GridKrigingModel(cfg).to(data.device)
@@ -626,6 +641,7 @@ def main():
     summary = {"completed_steps": checkpoint["training"]["steps"] if args.evaluate_only else args.steps,
                "tag": args.tag, "seed": args.seed, "config": cfg.to_dict(), "data": data.metadata,
                "train_years": args.train_years, "training_months": len(data.months("train")),
+               "real_train_split": getattr(data, "train_split", None), "real_splits": data.metadata.get("splits"),
                "loss_units": "per-depth z" if args.scale is None else "local scale " + args.scale,
                "peak_gpu_memory_mb": torch.cuda.max_memory_allocated()/2**20 if data.device.type == "cuda" else None,
                "training": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},

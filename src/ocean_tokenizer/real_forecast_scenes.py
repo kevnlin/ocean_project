@@ -20,6 +20,11 @@ training split's, not a window before 2004.
 normalisation, the training months and every 2016-2023 row are unchanged); its caches are built on
 that cohort, and ``oi_cohort_fingerprint`` names the 2016-2023 cohort whose frozen OI selection it
 reuses, so no OI is fitted or scored on 2024 before the test.
+
+``train_split=(2011, 2020)`` with ``years=(2011, 2024)`` is the 10-year training window: the
+normalisation, the quality control, the targets, the 2021 validation cells and the OI selection are
+still the 2016-2020-fitted ones (``real_global.load_real``), only the training months grow; the
+caches are built on that cohort (``162_real_y10_inputs.py``).
 """
 from __future__ import annotations
 
@@ -35,19 +40,25 @@ from .grid_forecast_scenes import GridForecastScenes
 from .latent_experiment import array_fingerprint
 from .oi import _lonlat_to_xyz
 from .point_baselines import CH
-from .real_global import REAL_SPLITS, YEARS, cohort_fingerprint, load_real, raw_profiles, real_eval_month
+from .real_global import (REAL_SPLITS, YEARS, cohort_fingerprint, load_real, raw_profiles, real_eval_month,
+                          training_splits)
 
 
 class RealGridForecastScenes(GridForecastScenes):
 
     def __init__(self, root, device="cpu", *, caches, oi_summary, leads=LEADS, train_years=None,
-                 years=YEARS, oi_cohort_fingerprint=None):
+                 years=YEARS, oi_cohort_fingerprint=None, train_split=None):
         self.root, self.device = Path(root), torch.device(device)
         years = tuple(int(y) for y in years)
-        if years[0] != YEARS[0] or years[1] < YEARS[1] or years[1] > 2024:
-            raise ValueError("the real cohort runs from 2016 to 2023 or 2024; 2025 is never read")
-        c, norm, obs = load_real(self.root, years=years)
+        if years[0] > YEARS[0] or years[0] < 2002 or years[1] < YEARS[1] or years[1] > 2024:
+            raise ValueError("the real cohort covers 2016-2023, extended back to 2002 at the earliest "
+                             "and forward to 2024 at the latest; 2025 is never read")
+        c, norm, obs = load_real(self.root, years=years, train_split=train_split)
         self.c, self.norm, self.obs = c, norm, obs
+        #: the year splits the model trains and validates on; the normalisation, the quality
+        #: control, the targets and the OI selection are REAL_SPLITS' whatever the training split
+        self.splits = training_splits(REAL_SPLITS, train_split) if train_split is not None else dict(REAL_SPLITS)
+        self.train_split = None if train_split is None else [int(y) for y in train_split]
         self.levels = np.asarray(c.levels)
         self.n_levels = len(self.levels)
         y = np.stack([obs[ch] for ch in CH], axis=-1)
@@ -117,9 +128,12 @@ class RealGridForecastScenes(GridForecastScenes):
             "cohort_fingerprint": fingerprint, "cohort": f"real_global {years[0]}-{years[1]}",
             "feature_fingerprint": satellite_meta["feature_fingerprint"],
             "scene_fingerprint": array_fingerprint((day, c.float_split, c.year_split)),
-            "splits": {k: list(v) for k, v in REAL_SPLITS.items()}, "n_profiles": int(len(c.lat)),
+            "splits": {k: list(v) for k, v in self.splits.items()},
+            "normalization_splits": {k: list(v) for k, v in REAL_SPLITS.items()},
+            "train_split": self.train_split, "n_profiles": int(len(c.lat)),
             "n_levels": self.n_levels, "levels_m": self.levels.tolist(),
-            "anomaly_target": "WOA23 at the profile position", "normalization": "training years only",
+            "anomaly_target": "WOA23 at the profile position",
+            "normalization": f"training years {REAL_SPLITS['train'][0]}-{REAL_SPLITS['train'][1]} only",
             "qc": "values beyond 10 training standard deviations are missing",
             "task": "inputs of month t, held-out floats of month t + lead",
             "satellite": satellite_meta.get("source"), "satellite_sha256": satellites_sha,
@@ -135,7 +149,7 @@ class RealGridForecastScenes(GridForecastScenes):
         if split not in self._months_cache:
             first = -np.inf
             if split == "train" and getattr(self, "train_years", None):
-                first = REAL_SPLITS["train"][1] - self.train_years + 1
+                first = self.splits["train"][1] - self.train_years + 1
             self._months_cache[split] = [
                 int(m) for m in self.c.months_in(split) if int(m) in self.months_available
                 and 2000 + int(m) // 12 >= first
@@ -144,7 +158,7 @@ class RealGridForecastScenes(GridForecastScenes):
         return self._months_cache[split]
 
     def split_of_year(self, year):
-        return next((name for name, (lo, hi) in REAL_SPLITS.items() if lo <= year <= hi), None)
+        return next((name for name, (lo, hi) in self.splits.items() if lo <= year <= hi), None)
 
     def forecast_months(self, years, max_cells=8000):
         """Every target month of ``years`` at every lead whose input month is in the record; all
