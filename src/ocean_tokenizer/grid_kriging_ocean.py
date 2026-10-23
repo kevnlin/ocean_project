@@ -233,6 +233,8 @@ class GridKrigingConfig:
     max_lead: int = 6
     kriging: str = "ka_flow"
     background: str = "joint"
+    #: temperature and salinity solved jointly (linear model of coregionalisation) in the read-out
+    multivariate: bool = False
     kriging_ell_km: tuple = ()
     kriging_gamma: tuple = ()
     init_decay_months: float = 3.0
@@ -261,6 +263,8 @@ class GridKrigingConfig:
             raise ValueError("backbone must be unet or poseidon; poseidon_init pretrained or random")
         if self.backbone == "poseidon" and (self.evolution or self.background != "joint"):
             raise ValueError("the Poseidon backbone is lead-conditioned itself: evolution off, background joint")
+        if self.multivariate and self.kriging in ("none", "softmax"):
+            raise ValueError("the multivariate solve needs a kriging read-out")
 
     @property
     def grid_spec(self):
@@ -317,7 +321,8 @@ class GridKrigingModel(nn.Module):
         elif c.kriging == "softmax":
             self.kriging = SoftmaxReadout(c.hidden, c.kriging_ell_km)
         else:
-            self.kriging = KrigingAttention(c.hidden, c.kriging, c.kriging_ell_km, c.kriging_gamma)
+            self.kriging = KrigingAttention(c.hidden, c.kriging, c.kriging_ell_km, c.kriging_gamma,
+                                            multivariate=c.multivariate)
         self.log_decay_months = nn.Parameter(torch.full((2, c.n_levels), math.log(c.init_decay_months)))
         self.std_head = nn.Sequential(nn.Linear(c.hidden + 2, c.hidden), nn.SiLU(), nn.Linear(c.hidden, 2))
         nn.init.zeros_(self.std_head[-1].weight)

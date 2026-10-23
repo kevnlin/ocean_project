@@ -15,6 +15,11 @@ CESM2, so one model reads both:
 Differences from the CESM2 scenes: monthly counts vary (no input parity), the splits are years
 (train 2016-2020, validation 2021, development 2022-2023), and the training months are the
 training split's, not a window before 2004.
+
+``years=(2016, 2024)`` adds the 2024 test year (its rows are outside every split, so the
+normalisation, the training months and every 2016-2023 row are unchanged); its caches are built on
+that cohort, and ``oi_cohort_fingerprint`` names the 2016-2023 cohort whose frozen OI selection it
+reuses, so no OI is fitted or scored on 2024 before the test.
 """
 from __future__ import annotations
 
@@ -30,14 +35,18 @@ from .grid_forecast_scenes import GridForecastScenes
 from .latent_experiment import array_fingerprint
 from .oi import _lonlat_to_xyz
 from .point_baselines import CH
-from .real_global import REAL_SPLITS, cohort_fingerprint, load_real, raw_profiles, real_eval_month
+from .real_global import REAL_SPLITS, YEARS, cohort_fingerprint, load_real, raw_profiles, real_eval_month
 
 
 class RealGridForecastScenes(GridForecastScenes):
 
-    def __init__(self, root, device="cpu", *, caches, oi_summary, leads=LEADS, train_years=None):
+    def __init__(self, root, device="cpu", *, caches, oi_summary, leads=LEADS, train_years=None,
+                 years=YEARS, oi_cohort_fingerprint=None):
         self.root, self.device = Path(root), torch.device(device)
-        c, norm, obs = load_real(self.root)
+        years = tuple(int(y) for y in years)
+        if years[0] != YEARS[0] or years[1] < YEARS[1] or years[1] > 2024:
+            raise ValueError("the real cohort runs from 2016 to 2023 or 2024; 2025 is never read")
+        c, norm, obs = load_real(self.root, years=years)
         self.c, self.norm, self.obs = c, norm, obs
         self.levels = np.asarray(c.levels)
         self.n_levels = len(self.levels)
@@ -62,7 +71,7 @@ class RealGridForecastScenes(GridForecastScenes):
         summary_path = Path(oi_summary)
         summary = json.loads(summary_path.read_text())
         if (summary["target"] != "anomaly_exact" or summary["splits"] != {k: list(v) for k, v in REAL_SPLITS.items()}
-                or summary["cohort"]["fingerprint"] != fingerprint):
+                or summary["cohort"]["fingerprint"] != (oi_cohort_fingerprint or fingerprint)):
             raise ValueError("the OI baselines were computed on another cohort, target or split")
         self.oi_selection = summary["oi_selection"]
         self.baseline_reference = summary["baselines"]["oi"]["scores"]
@@ -82,7 +91,7 @@ class RealGridForecastScenes(GridForecastScenes):
         self.lat, self.lon = tensor(c.lat), tensor(c.lon % 360.)
         self.xyz_np = _lonlat_to_xyz(c.lat, c.lon)
         self.xyz = tensor(self.xyz_np, torch.float64)
-        temp, salt, day = raw_profiles(self.root)
+        temp, salt, day = raw_profiles(self.root, years)
         self.day, self.depth = tensor(day), tensor(c.levels)
         mean = np.stack([norm.mean[ch] for ch in CH], -1)
         std = np.stack([norm.std[ch] for ch in CH], -1)
@@ -105,7 +114,7 @@ class RealGridForecastScenes(GridForecastScenes):
         self.train_years = None if train_years is None else int(train_years)
         self.fg_checkpoint = {"method": "zero standardized-anomaly background; no satellite first guess"}
         self.metadata = {
-            "cohort_fingerprint": fingerprint, "cohort": "real_global 2016-2023",
+            "cohort_fingerprint": fingerprint, "cohort": f"real_global {years[0]}-{years[1]}",
             "feature_fingerprint": satellite_meta["feature_fingerprint"],
             "scene_fingerprint": array_fingerprint((day, c.float_split, c.year_split)),
             "splits": {k: list(v) for k, v in REAL_SPLITS.items()}, "n_profiles": int(len(c.lat)),
