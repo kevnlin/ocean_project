@@ -285,7 +285,7 @@ def run_truth(truth, args, device):
     print(f"[{truth}] " + json.dumps({"oracle": out["runs"]["oracle"][0], "oi": out["runs"]["oi"][0]}), flush=True)
     for seed in args.seeds:
         rng = np.random.default_rng(5 + seed)                                        # shared across kinds, as in 125
-        for kind in TRAINED:
+        for kind in args.kinds:
             t0 = time.time()
             model = train(kind, train_scenes, xy, rng, seed, args.steps, device)
             r = {"seed": seed, **evaluate(model, tb, device), "train_s": round(time.time() - t0)}
@@ -413,6 +413,7 @@ def main():
     parser.add_argument("--test-fields", type=int, default=200)
     parser.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     parser.add_argument("--truths", nargs="+", default=list(TRUTHS), choices=TRUTHS)
+    parser.add_argument("--kinds", nargs="+", default=list(TRAINED), help="trained read-outs to run (ka-dev8: the fixed feature-row initialisation of ka_deep / ka_product)")
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--aggregate", action="store_true", help="only join the per-truth partial results")
     args = parser.parse_args()

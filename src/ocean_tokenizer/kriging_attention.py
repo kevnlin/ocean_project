@@ -71,6 +71,8 @@ MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster", "ka_deep", "ka_produ
 SHAPE_BOUND, SHEAR_BOUND, AMPLITUDE_BOUND, NUGGET_BOUND = 1.4, 1.0, 1.0, 2.0
 #: learned coordinates of ka_deep / ka_product: how many and how far (tanh bound, in correlation units)
 N_FEATURES, FEATURE_BOUND = 4, 3.0
+#: start of the feature rows of ka_deep / ka_product (see KrigingAttention.__init__)
+FEATURE_INIT_STD = 1e-3
 #: ka_multiscale: the second kernel's length-scale factor and the log amplitude it starts from
 SECOND_SCALE, SECOND_LOG_AMPLITUDE = 3.0, -1.5
 
@@ -179,6 +181,16 @@ class KrigingAttention(nn.Module):
                 for head in (self.query_head, self.local_head):
                     nn.init.zeros_(head[-1].weight)
                     nn.init.zeros_(head[-1].bias)
+            if mode in ("ka_deep", "ka_product"):
+                # the feature Gaussian's gradient is exactly zero while every feature is zero (a
+                # saddle: found 2026-10-21 on the controlled benchmark, where the features never
+                # moved), so the feature rows start at small random weights; the estimate still starts
+                # within a few per cent of the stationary kernel's
+                start = 1 if mode == "ka_deep" else 4
+                for head in (self.query_head, self.local_head):
+                    with torch.no_grad():
+                        rows = head[-1].weight.view(2, -1, head[-1].in_features)
+                        rows[:, start:start + N_FEATURES].normal_(0., FEATURE_INIT_STD)
         self.coregionalisation = None
         if self.multivariate:
             # two components, (l11, l21, l22) per level: B1 = diag(1, 0), B2 = diag(0, 1) at the start
