@@ -6,13 +6,15 @@ window and the local OI-error scale) on ``forecast_scenes.ForecastScenes``:
   --leads 0 1 3 6   one model for every lead: each training step draws a lead and a target
                     month whose input month is in the window too; the lead reaches the model
                     as the time from its neighbours to the query (``forecast_scenes``)
-  --val-years       target years that choose the checkpoint, 2004 and 2005 by default: the
-                    mean over leads of the per-variable standardized RMSE on 8,000 cells a month
+  --val-years       target years that choose the checkpoint, 2004 by default: the mean over
+                    leads of the per-variable standardized RMSE on 8,000 cells a month
+  --test-years      target years held out of that choice and scored only at the end, 2005
   --lagged-surface  ``93_lagged_surface.py``: a query's surface features are its input month's
 
 The baseline at every lead is persisted OI: the frozen OI from month t read at month t + lead.
 At the end the checkpoint chosen on the validation years and the model of the last step are both
-scored on every cell of those years, by lead and by year, temperature and salinity separately.
+scored on every cell of the validation and test years, by lead and by year, temperature and
+salinity separately.
 The model, its recipes, the loss, the optimiser and the schedule are 60's.
 """
 from __future__ import annotations
@@ -55,8 +57,10 @@ def arguments():
                    help="table of 80_local_scale_tables.py the local branch's units are taken from")
     p.add_argument("--scale-tables", type=Path, default=ROOT / "outputs/long_record_20261017/scale_tables.npz")
     p.add_argument("--leads", nargs="+", type=int, default=list(LEADS), help="forecast leads in months")
-    p.add_argument("--val-years", nargs="+", type=int, default=[2004, 2005],
-                   help="target years that choose the checkpoint and are scored at the end")
+    p.add_argument("--val-years", nargs="+", type=int, default=[2004],
+                   help="target years that choose the checkpoint")
+    p.add_argument("--test-years", nargs="+", type=int, default=[2005],
+                   help="target years held out of the choice, scored once at the end")
     p.add_argument("--lagged-surface", type=Path, default=OUTPUT / "lagged_surface.npz")
     p.add_argument("--max-shift-m", type=float, default=100.)
     p.add_argument("--covariance-rank", type=int, default=8)
@@ -157,7 +161,9 @@ def main():
     if args.val_cells != 8000:
         raise ValueError("matched synthetic protocol requires the exact old 8000-cell validation cap")
     if args.development:
-        raise ValueError("--development is replaced by the forecast evaluation of --val-years")
+        raise ValueError("--development is replaced by the forecast evaluation of --test-years")
+    if set(args.val_years) & set(args.test_years):
+        raise ValueError("a test year cannot also choose the checkpoint")
     if args.load_checkpoint and (args.resume_training or args.evaluate_only):
         saved = torch.load(args.load_checkpoint, map_location="cpu", weights_only=True)
         args.seed = saved["seed"]
@@ -168,6 +174,7 @@ def main():
         args.cohort, args.train_years = saved["training"]["cohort"], saved["training"]["train_years"]
         args.scale = saved["training"]["scale"]
         args.leads, args.val_years = saved["training"]["leads"], saved["training"]["val_years"]
+        args.test_years = saved["training"].get("test_years", [])
         args.lagged_surface = Path(saved["training"]["lagged_surface"])
         if args.scale is not None:
             args.scale_tables = Path(saved["training"]["scale_tables"])
@@ -462,7 +469,7 @@ def main():
                 print("validation " + json.dumps(record) + (" *" if improved else ""), flush=True)
             if step % args.checkpoint_every == 0 or step % args.val_every == 0 or step == args.steps:
                 save_last(step)
-        full = data.forecast_months(args.val_years, 0)
+        full = data.forecast_months(sorted(set(args.val_years) | set(args.test_years)), 0)
         # the model of the last step, before the chosen checkpoint replaces it
         forecast_last = evaluate(full, full_cells=True)
         model.load_state_dict(best["state"]["model"], strict=True)
@@ -471,7 +478,7 @@ def main():
     elif checkpoint is None:
         raise ValueError("--evaluate-only requires --load-checkpoint")
     final_validation = evaluate(val)
-    full = data.forecast_months(args.val_years, 0)
+    full = data.forecast_months(sorted(set(args.val_years) | set(args.test_years)), 0)
     identity["development"] = data.identity_check("development", [ev for ev in full if ev.lead == 0 and ev.month // 12 == 5])
     forecast_best = evaluate(full, save_arrays=out/f"forecast_seed{args.seed}.npz", full_cells=True)
     summary = {"completed_steps": checkpoint["training"]["steps"] if args.evaluate_only else args.steps,

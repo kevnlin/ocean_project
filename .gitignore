@@ -77,6 +77,7 @@ venv/
 /outputs/radius_scale_20261008/
 /outputs/long_record_20261017/
 /outputs/forecast_20261019/
+/outputs/forecast_20261021/
 
 # Claude Code project settings, agents and notes (local to each checkout)
 /.claude/

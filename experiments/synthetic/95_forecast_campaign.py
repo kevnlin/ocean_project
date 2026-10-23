@@ -4,7 +4,9 @@ Every run is ``94_forecast_reconstruction.py`` with Zihao's shared T/S alignment
 ``profile_shared``, the settings of ``61_innovation_campaign.py``) at the medium size of the
 long-record grid (128 latent slots, width 256), Argo plus SST, SSS and steric SSH, the local
 OI-error scale by depth x cell, one model for leads 0, 1, 3 and 6 months, the checkpoint chosen
-on targets in 2004-2005. A run is named ``f_y<years>_s<seed>``; seeds are outermost. Interrupted
+on targets in 2004 and 2005 held out until the end. A run is named ``f_y<years>_s<seed>``; seeds are outermost. A run of
+another length (``--steps``) is ``k<thousands>_f_y<years>_s<seed>`` beside them, with its own
+manifest ``campaign_k<thousands>.json``. Interrupted
 runs continue from their last state, and a second invocation exits at once while one is
 running. ``outputs/forecast_20261019/chain3.sh`` starts this.
 
@@ -45,14 +47,14 @@ write_json, slots, training_command = _queue.write_json, _queue.slots, _queue.tr
 
 
 def job(years, seed, output=OUTPUT, steps=STEPS):
-    tag = f"f_y{years}_s{seed}"
+    tag = f"f_y{years}_s{seed}" if steps == STEPS else f"k{steps // 1000}_f_y{years}_s{seed}"
     folder = output / tag
     command = [sys.executable, "-u", str(RUNNER), *REFERENCE, "--steps", str(steps),
                "--train-years", str(years), "--cohort", "cesm2_long_uniform",
                "--scale", "res_cell", "--scale-tables", str(LONG / "scale_tables.npz"),
                "--surface", "--satellite-cache", str(LONG / "satellites.npz"),
                "--lagged-surface", str(output / "lagged_surface.npz"),
-               "--leads", *map(str, LEADS), "--val-years", "2004", "2005",
+               "--leads", *map(str, LEADS), "--val-years", "2004", "--test-years", "2005",
                "--seed", str(seed), "--tag", tag, "--output", str(folder)]
     return {"tag": tag, "years": years, "seed": seed, "steps": steps, "output": str(folder), "command": command}
 
@@ -67,7 +69,8 @@ def completed(item):
         return False
     summary = json.loads(path.read_text())
     if (summary.get("completed_steps") != item["steps"] or summary.get("seed") != item["seed"]
-            or summary.get("train_years") != item["years"] or "forecast" not in summary):
+            or summary.get("train_years") != item["years"] or "forecast" not in summary
+            or summary.get("training", {}).get("val_years") != [2004]):
         raise ValueError(f"incomplete or mismatched training summary: {item['tag']}")
     return True
 
@@ -153,17 +156,19 @@ def main():
     parser.add_argument("--attempts", type=int, default=12, help="launches of one run before the queue gives up")
     parser.add_argument("--stagger", type=float, default=180., help="seconds between two launches")
     parser.add_argument("--name", default="queue", help="names this invocation's status file")
+    parser.add_argument("--output", type=Path, default=OUTPUT, help="the campaign folder")
     args = parser.parse_args()
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    lock = (OUTPUT / "queue.lock").open("w")
+    output = args.output
+    output.mkdir(parents=True, exist_ok=True)
+    lock = (output / "queue.lock").open("w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         raise SystemExit("another queue is running")
-    for needed in (LONG / "scale_tables.npz", LONG / "satellites.npz", OUTPUT / "lagged_surface.npz"):
+    for needed in (LONG / "scale_tables.npz", LONG / "satellites.npz", output / "lagged_surface.npz"):
         if not needed.exists():
             raise SystemExit(f"prepare {needed} first")
-    requested = jobs(args.years, args.seeds, OUTPUT, args.steps)
+    requested = jobs(args.years, args.seeds, output, args.steps)
     gpus = [int(g) for g in args.gpus.split(",")]
     # runs alternate between the GPUs, so the last odd round does not land on one of them
     for i, item in enumerate(requested):
@@ -173,13 +178,14 @@ def main():
     started = time.time()
 
     def status(extra):
-        write_json(OUTPUT / f"status_{args.name}.json", {"requested": len(requested),
+        write_json(output / f"status_{args.name}.json", {"requested": len(requested),
             "completed": sum(completed(j) for j in requested), "started_unix": started,
             "updated_unix": time.time(), **extra})
 
-    write_json(OUTPUT / "campaign.json", {"steps": args.steps, "years": args.years, "seeds": args.seeds,
+    manifest = "campaign.json" if args.steps == STEPS else f"campaign_k{args.steps // 1000}.json"
+    write_json(output / manifest, {"steps": args.steps, "years": args.years, "seeds": args.seeds,
         "leads_months": list(LEADS), "size": {"latents": 128, "width": 256}, "reference": REFERENCE,
-        "runner": str(RUNNER.relative_to(ROOT)), "selection_years": [2004, 2005],
+        "runner": str(RUNNER.relative_to(ROOT)), "selection_years": [2004], "test_years": [2005],
         "jobs": [j["tag"] for j in requested]})
     print(json.dumps({"requested": len(requested), "to_run": len(pending),
                       "places": [f"{gpu}.{worker}" for gpu, worker in places]}), flush=True)
