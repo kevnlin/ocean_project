@@ -251,6 +251,19 @@ def score(device):
                 by_lead[str(lead)][str(y)] = SS.metrics(mean[keep], None, a["base"][keep], a["target"][keep],
                                                         a["level"][keep], norm, levels)
         results["damped_persistence"]["by_cohort"][cohort] = {"by_lead": by_lead}
+    if RESULTS.name == "results_extra.json":
+        # the extra pass scores the main pass's cells: its persisted OI and climatology must come back exactly
+        main = json.loads((SEALED / "results.json").read_text())
+        first = {e["cohort"]: e["by_lead"] for e in reversed(main["entries"])}
+        for e in results["entries"]:
+            for lead in map(str, LEADS):
+                for ch in ("TEMP", "SALT"):
+                    for row in ("persisted_oi", "climatology"):
+                        a, b = e["by_lead"][lead]["all"][ch][row]["rmse"], first[e["cohort"]][lead]["all"][ch][row]["rmse"]
+                        if abs(a - b) > 1e-9 * max(1., abs(b)):
+                            raise SystemExit(f"{e['tag']} {row} lead {lead} {ch}: {a} differs from the main pass {b}")
+        results["declared_extra_pass"] = {"main_results_sha256": SS.sha256(SEALED / "results.json"),
+                                          "identity": "persisted OI and climatology of every entry equal the main pass's"}
     temporary = RESULTS.with_suffix(".tmp")
     temporary.write_text(json.dumps(results, indent=1, default=float) + "\n")
     os.replace(temporary, RESULTS)
@@ -264,7 +277,15 @@ def main():
     p.add_argument("--score", action="store_true")
     p.add_argument("--check", metavar="FAMILY:CHECKPOINT")
     p.add_argument("--device", default="cuda")
+    p.add_argument("--extra", action="store_true",
+                   help="a declared extra pass on the opened test (its own registration_extra.json / results_extra.json; "
+                        "the persisted OI and climatology must equal the main pass)")
     args = p.parse_args()
+    if args.extra:
+        global REGISTRATION, RESULTS
+        if not (SEALED / "results.json").exists():
+            raise SystemExit("an extra pass needs the main pass to be scored first")
+        REGISTRATION, RESULTS = SEALED / "registration_extra.json", SEALED / "results_extra.json"
     if sum(map(bool, (args.fit_damped, args.register, args.score, args.check))) != 1:
         raise SystemExit("pass one of --fit-damped, --register, --score, --check")
     if args.fit_damped:
