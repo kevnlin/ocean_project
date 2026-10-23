@@ -49,6 +49,12 @@ Modes
                  the length scale, each with its own per-point amplitude:
                  s1_a s1_b PS(Sigma) + s2_a s2_b PS(9 Sigma). The second
                  amplitude starts at e^-1.5, so the start is nearly ka_stationary.
+  ka_scores      DKNN's covariance (Chen et al. 2024) in the same local solve:
+                 scaled dot products of learned query and key projections of
+                 every point's state vector, without a softmax, the
+                 neighbours' own scores removed from the system's diagonal;
+                 error ratios as in ka_flow. Neither symmetric nor positive
+                 definite, as in DKNN; no multivariate form.
 
 ``multivariate=True`` solves temperature and salinity together with a linear
 model of coregionalisation: Cov[(a,u),(b,v)] = B1_uv C^T_ab + B2_uv C^S_ab with
@@ -66,7 +72,9 @@ from typing import Mapping
 import torch
 from torch import Tensor, nn
 
-MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster", "ka_deep", "ka_product", "ka_multiscale")
+MODES = ("ka_oi", "ka_stationary", "ka_flow", "ka_cluster", "ka_deep", "ka_product", "ka_multiscale", "ka_scores")
+#: width of the query and key projections of ka_scores, per variable
+SCORE_DIM = 32
 #: bounds of the flow heads: length-scale factor e^1.4 ~ 4, shear 1, amplitude e^1, error ratio e^2
 SHAPE_BOUND, SHEAR_BOUND, AMPLITUDE_BOUND, NUGGET_BOUND = 1.4, 1.0, 1.0, 2.0
 #: learned coordinates of ka_deep / ka_product: how many and how far (tanh bound, in correlation units)
@@ -131,6 +139,15 @@ def coregionalisation(factors: Tensor) -> Tensor:
                         torch.stack((l11 * l21, l21.square() + l22.square()), -1)), -2)
 
 
+def score_covariance(queries: Tensor, keys: Tensor) -> Tensor:
+    """DKNN's covariance of points ``[..., A, D]``: scaled dot products ``q_a . k_b / sqrt(D)``,
+    with every point's own score removed except the first (the query's prior variance)."""
+    scores = queries @ keys.transpose(-1, -2) / math.sqrt(queries.shape[-1])
+    own = torch.eye(scores.shape[-1], dtype=torch.bool, device=scores.device)
+    own[0, 0] = False
+    return scores.masked_fill(own, 0.)
+
+
 def without_oi_anchor(scene: Mapping[str, Tensor]) -> dict[str, Tensor]:
     """The scene with the frozen OI anchor replaced by the background (climatology)."""
     return {**scene, "baseline": scene["query_background"]}
@@ -163,8 +180,9 @@ class KrigingAttention(nn.Module):
             self.log_gamma = nn.Parameter(log_gamma.float())
         # per variable: the query's kernel outputs, and the same for a neighbour plus its error ratio
         self.n_query = {"ka_oi": 0, "ka_stationary": 0, "ka_flow": 4, "ka_cluster": self.n_clusters + 1,
-                        "ka_deep": 1 + N_FEATURES, "ka_product": 4 + N_FEATURES, "ka_multiscale": 5}[mode]
-        self.query_head = self.local_head = None
+                        "ka_deep": 1 + N_FEATURES, "ka_product": 4 + N_FEATURES, "ka_multiscale": 5,
+                        "ka_scores": 0}[mode]
+        self.query_head = self.local_head = self.key_head = None
         if self.n_query:
             self.query_head = nn.Sequential(nn.Linear(width, width), nn.SiLU(), nn.Linear(width, 2 * self.n_query))
             self.local_head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(),
@@ -191,6 +209,15 @@ class KrigingAttention(nn.Module):
                     with torch.no_grad():
                         rows = head[-1].weight.view(2, -1, head[-1].in_features)
                         rows[:, start:start + N_FEATURES].normal_(0., FEATURE_INIT_STD)
+        if mode == "ka_scores":
+            if self.multivariate:
+                raise ValueError("ka_scores is not positive definite and has no multivariate form")
+            # per variable: query and key projections of every point; a neighbour's error ratio
+            self.query_head = nn.Linear(width, 2 * SCORE_DIM)
+            self.key_head = nn.Linear(width, 2 * SCORE_DIM)
+            self.local_head = nn.Sequential(nn.Linear(2 * width, width), nn.SiLU(), nn.Linear(width, 2))
+            nn.init.zeros_(self.local_head[-1].weight)
+            nn.init.zeros_(self.local_head[-1].bias)
         self.coregionalisation = None
         if self.multivariate:
             # two components, (l11, l21, l22) per level: B1 = diag(1, 0), B2 = diag(0, 1) at the start
@@ -208,8 +235,17 @@ class KrigingAttention(nn.Module):
         shape = torch.zeros(q, 2, k + 1, 3, dtype=f64, device=h.device)
         log_amplitude = torch.zeros(q, 2, k + 1, dtype=f64, device=h.device)
         nugget = gamma[..., None].expand(q, 2, k)
-        memberships = features = log_amplitude_2 = None
-        if self.query_head is not None:
+        memberships = features = log_amplitude_2 = scored = None
+        if self.mode == "ka_scores":
+            dtype = self.query_head.weight.dtype
+            points = torch.cat((h[:, None], local), 1).to(dtype)                             # [Q,1+K,W]
+            queries = self.query_head(points).to(f64).view(q, k + 1, 2, SCORE_DIM).transpose(1, 2)
+            keys = self.key_head(points).to(f64).view(q, k + 1, 2, SCORE_DIM).transpose(1, 2)
+            scored = score_covariance(queries, keys)                                       # [Q,2,1+K,1+K]
+            pair = torch.cat((local.to(dtype), h.to(dtype)[:, None].expand(-1, k, -1)), -1)
+            ratio = self.local_head(pair).to(f64).view(q, k, 2).transpose(1, 2)            # [Q,2,K]
+            nugget = gamma[..., None] * (NUGGET_BOUND * ratio.tanh()).exp()
+        elif self.query_head is not None:
             n = self.n_query
             dtype = self.query_head[0].weight.dtype
             hq = self.query_head(h.to(dtype)).to(f64).view(q, 2, n)
@@ -235,7 +271,9 @@ class KrigingAttention(nn.Module):
         # point 0 is the query at the origin, points 1..K the neighbours
         xy = torch.cat((offsets.new_zeros(q, 1, 2), offsets), 1).to(f64)[:, None]      # [Q,1,1+K,2]
         sigma = length_scale_matrices(ell[..., None], shape)                            # [Q,2,1+K,3]
-        if memberships is not None:
+        if scored is not None:
+            corr = scored
+        elif memberships is not None:
             corr = cluster_correlation(memberships)
         elif self.mode == "ka_deep":
             scaled = xy.expand(q, 2, k + 1, 2) / ell[..., None, None]
