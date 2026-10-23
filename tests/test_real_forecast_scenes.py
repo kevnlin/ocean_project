@@ -2,7 +2,7 @@
 import numpy as np
 
 from ocean_tokenizer.real_forecast_scenes import RealGridForecastScenes
-from ocean_tokenizer.real_global import real_eval_month
+from ocean_tokenizer.real_global import REAL_SPLITS, real_eval_month
 from test_real_global import fake_cohort
 
 
@@ -14,6 +14,7 @@ def scenes(leads=(0, 1, 3)):
     data.obs = {"TEMP": c.TEMP.copy(), "SALT": c.SALT.copy()}
     data.months_available = set(int(m) for m in np.unique(c.month_index))
     data._months_cache = {}
+    data.splits = dict(REAL_SPLITS)                  # what __init__ sets without a train_split
     return data
 
 
