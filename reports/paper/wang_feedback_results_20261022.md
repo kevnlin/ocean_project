@@ -47,6 +47,19 @@ Ten real years instead of five: -1.2 % score, -2.7 % at lead 0, -0.9 % at lead 6
 same 2021 cells; checks in `ka-dev7/outputs/real_y10_20261021/checks.json`). A declared extra pass of
 r_y10 on the opened 2024 test is being scored (`ka-dev7/outputs/real_y10_20261021/sealed_2024/`).
 
+### Declared extra pass of r_y10 on the opened 2024 test (ka-dev7 165; scored once; cells, persisted OI and climatology bit-identical to the main pass)
+
+| 2024, RMSE | T 0 | T 1 | T 3 | T 6 | S 0 | S 1 | S 3 | S 6 |
+|---|---|---|---|---|---|---|---|---|
+| KA-Ocean (paper, 2016-2020) | 0.849 | 1.009 | 1.095 | 1.131 | 0.1399 | 0.1633 | 0.1762 | 0.1830 |
+| KA-Ocean 10 years (2011-2020), mean of 3 | 0.841 | 1.002 | 1.094 | 1.139 | 0.1401 | 0.1637 | 0.1770 | 0.1839 |
+| sd over seeds | 0.003 | 0.010 | 0.010 | 0.012 | 0.0012 | 0.0020 | 0.0010 | 0.0018 |
+
+Ten real years help reconstruction (lead 0 T -1 %, about 3 sd) and not the forecasts (lead 6 slightly
+worse, within 1 sd; seed spread at leads 1-6 is 2-4x the paper model's). Real data stays
+data-limited in a different way than CESM2: more years of the same floats do not add forecast skill.
+Not a replacement for the paper's real model; usable as a data-efficiency remark.
+
 ## Controlled GP benchmark with non-Gaussian truths (151; RMSE, 3 seeds; oracle = exact GP with the true covariance)
 
 | truth | OI | softmax | KA stationary | KA flow | KA deep (fixed init) | KA product (fixed init) | KA multiscale | oracle |
@@ -81,9 +94,72 @@ Reference rows, not baselines. GLORYS12 (interim product after 2021, +0.18 degC 
 of KA-Ocean at lead 0; both products' persisted anomalies are worse than the persisted OI from lead 1
 and worse than climatology by lead 3. Full tables: `outputs/reference_products_20261021/reference_rows.md`.
 
-## Still running (2026-10-22 04:30)
+## Kevin's k100: the OI-anchored transformer at 100k steps (finished 05:28)
 
-* GLORYS12 OSSE: 264 training/selection months downloaded and reduced; cohort, caches, OI, queue
-  (GPUs 0/1/5/6) and the sealed 2019-2020 test cohort are being built.
-* Sealed CESM2 2008-2010 v2 test for c_flow100 vs c_y154: being built (check only; opened on request).
-* Kevin's k100 (OI-anchored transformer, 4 vs 40 years, 100k): at ~90k steps.
+| baseline | window | score | T 0 | T 6 | S 0 | S 6 | best steps |
+|---|---|---|---|---|---|---|---|
+| f_y40 at 70k (paper's baseline row) | 40 y | 0.8212 | 0.0757 | 0.5810 | | | 46-68k |
+| k100_f_y40 at 100k | 40 y | 0.8319 | 0.0745 | 0.5738 | 0.0191 | 0.0948 | 62-78k |
+| k100_f_y4 at 100k | 4 y | 0.9945 | 0.1031 | 0.7038 | 0.0215 | 0.1134 | 14-20k |
+
+The baseline does not gain from 100k steps (its chosen checkpoints are at 62-78k; the k100 runs
+validate on 2004 alone with 2005 held out, so the scores are not strictly the paper's protocol, but
+the ordering is clear). The 4-year window overfits by 14-20k steps, 19 % worse. So the shared budget
+question is settled: KA-Ocean gains 1.6 % from 100k, the baseline nothing; the paper's 70k baseline
+row stands, and the 100k KA model only enters through the sealed v2 test together with c_y154.
+
+## GLORYS12 OSSE (third simulator; selection years = GLORYS 2017-2018; 100k steps, 3 seeds; finished 10:15)
+
+| model | score | T 0 | T 1 | T 3 | T 6 | S 0 | S 6 |
+|---|---|---|---|---|---|---|---|
+| KA-Ocean (g_ka) | 0.7634 ± 0.0014 | 0.325 | 0.555 | 0.694 | 0.744 | 0.0722 | 0.1460 |
+| softmax read-out | 0.7686 ± 0.0013 | 0.331 | 0.558 | 0.696 | 0.749 | 0.0733 | 0.1466 |
+| ARMOR3D-style OI | 0.7754 ± 0.0031 | 0.337 | 0.566 | 0.700 | 0.747 | 0.0739 | 0.1472 |
+| Aardvark-style (none) | 0.7853 ± 0.0022 | 0.360 | 0.567 | 0.700 | 0.756 | 0.0786 | 0.1476 |
+| persisted OI | | 0.539 | | | 0.833 | | |
+
+Same ordering as CESM2 and iHESP: KA-Ocean best at every lead and variable; lead-0 temperature
+3.5 % below ARMOR3D-style OI, 40 % below the persisted OI. The sealed GLORYS 2019-2020 test
+(cohort glorys12_test) is built and its scorer checked; it is opened only on request.
+
+### Sealed GLORYS12 test, 2019-2020 (cohort 2006-2007), scored ONCE 2026-10-22 18:01 (Zihao approved; 12 checkpoints; never re-score)
+
+RMSE on every held-out cell (729,600 per lead), mean of 3 seeds:
+
+| model | T 0 | T 1 | T 3 | T 6 | S 0 | S 1 | S 3 | S 6 |
+|---|---|---|---|---|---|---|---|---|
+| KA-Ocean | **0.3392** | **0.5772** | **0.7250** | **0.7903** | **0.0787** | **0.1179** | **0.1467** | **0.1589** |
+| softmax read-out | 0.3460 | 0.5800 | 0.7269 | 0.7915 | 0.0799 | 0.1184 | 0.1477 | 0.1602 |
+| ARMOR3D-style OI | 0.3517 | 0.5879 | 0.7335 | 0.7940 | 0.0812 | 0.1199 | 0.1484 | 0.1609 |
+| Aardvark-style | 0.3802 | 0.5900 | 0.7401 | 0.8200 | 0.0855 | 0.1207 | 0.1489 | 0.1612 |
+| persisted OI | 0.5577 | 0.6796 | 0.8139 | 0.8772 | 0.1186 | 0.1375 | 0.1649 | 0.1780 |
+| climatology | 0.8094 | 0.8094 | 0.8094 | 0.8094 | 0.1808 | 0.1808 | 0.1808 | 0.1808 |
+
+Pre-registered comparison (KA vs best end-to-end baseline, lead 0): T -3.6 %, S -3.1 %. KA-Ocean is
+best in 8/8 RMSE and 8/8 calibrated-CRPS settings (CRPS T 0.160/0.272/0.344/0.375 vs ARMOR3D-style
+0.166/0.278/0.349/0.378). Seed sd at lead 0: 0.001-0.004. Same ordering as CESM2 and iHESP.
+
+### Sealed CESM2 2008-2010 v2 test, scored ONCE 2026-10-22 18:20 (Zihao approved; 9 checkpoints; never re-score)
+
+RMSE on every held-out cell (729,600 per lead), mean of 3 seeds (seed sd at lead 0 / lead 6 T: 0.0003-0.0006 / 0.008-0.009):
+
+| model | training | T 0 | T 1 | T 3 | T 6 | S 0 | S 1 | S 3 | S 6 |
+|---|---|---|---|---|---|---|---|---|---|
+| A, 70k (paper) | 40 y | 0.0581 | 0.2529 | 0.3918 | 0.4769 | 0.0139 | 0.0430 | 0.0674 | 0.0845 |
+| A, 100k (c_flow100) | 40 y | 0.0564 | 0.2519 | 0.3942 | 0.4834 | 0.0135 | 0.0424 | 0.0669 | 0.0846 |
+| **A, 100k, 154 years (c_y154)** | 154 y | **0.0556** | **0.2392** | **0.3594** | **0.4292** | **0.0135** | **0.0415** | **0.0637** | **0.0780** |
+| persisted OI | | 0.0842 | 0.2922 | 0.4785 | 0.5773 | 0.0220 | 0.0504 | 0.0835 | 0.1049 |
+| climatology | | 0.5366 | 0.5366 | 0.5366 | 0.5366 | 0.1179 | 0.1179 | 0.1179 | 0.1179 |
+
+c_y154 vs the paper's A: T -4.3 / -5.4 / -8.3 / -10.0 % at leads 0/1/3/6, S -2.9 / -3.5 / -5.5 / -7.7 %.
+c_flow100 vs A: -2.9 % at lead 0 but +1.4 % at lead 6 (100k steps alone buy reconstruction, not
+forecasts). The selection-year ordering is confirmed on a period no run had read: the 154-year
+window is the one change that improves forecasts. Only these three models are on this period; every
+baseline of the paper's main table remains on 2006-2007 at 40 years.
+
+## Still running (2026-10-22 18:25)
+
+* nothing; every planned run and both sealed tests are done.
+
+
+* Sealed CESM2 2008-2010 v2 test for c_flow100 vs c_y154: built and checked; opened on request.

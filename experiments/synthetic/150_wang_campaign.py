@@ -68,6 +68,9 @@ ARMS = {
     "c_draws": (AUG3 + ["--thin-inputs", "6080", "6080"], AUG3_NEEDS),
     "c_both": (AUG3 + ["--thin-inputs", "1520", "6080"], AUG3_NEEDS),
     "c_y154": (VLONG, VLONG_NEEDS),
+    # 2026-10-23 (Zihao: run the 154-year baselines too): are the extra years KA's gain or everyone's?
+    "c_armor154": (VLONG + ["--background", "prior", "--kriging", "ka_oi"], VLONG_NEEDS),
+    "c_none154": (VLONG + ["--kriging", "none"], VLONG_NEEDS),
 }
 
 
