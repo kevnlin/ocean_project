@@ -79,3 +79,47 @@ def test_the_figure_is_drawn_from_unfinished_runs_too(tmp_path):
     path = tmp_path / "curves.png"
     curves.plot(curves.runs(tmp_path), path)
     assert path.stat().st_size > 10000
+
+
+import json
+import pytest
+
+report = script("170_size_report")
+
+
+def fake_summary(macro_by_year, seed=1234):
+    year = lambda m: {"scores": {"macro_z": m, "TEMP": {"rmse_physical": m}, "SALT": {"rmse_physical": m / 10}},
+                      "baseline_scores": {"TEMP": {"rmse_physical": 1.}, "SALT": {"rmse_physical": .1}}}
+    by_lead = {lead: {"by_year": {y: year(m) for y, m in macro_by_year.items()}} for lead in ("0", "1", "3", "6")}
+    return {"seed": seed, "completed_steps": 200000, "forecast": {"best": {"by_lead": by_lead}}}
+
+
+def test_the_score_is_the_mean_over_leads_of_a_year():
+    assert report.score(fake_summary({"2004": .8, "2005": .7}), "2005") == pytest.approx(.7)
+
+
+def test_bigger_helps_only_beyond_the_seed_spread():
+    scores = {"y100_x1": {"2004": [.80, .81, .79], "2005": [.80, .81, .79]},
+              "y100_x1375": {"2004": [.78, .78, .78], "2005": [.78, .78, .78]},
+              "y100_x175": {"2004": [.77, .78, .76], "2005": [.77, .78, .76]}}
+    assert report.decide(scores)["bigger_helps"]                       # 0.03 lower, spread 0.01
+    scores["y100_x175"]["2005"] = [.795, .80, .79]
+    assert not report.decide(scores)["bigger_helps"]                   # 0.005 lower, within the spread
+
+
+def test_the_best_size_is_chosen_on_2004_not_on_the_held_out_year():
+    scores = {"y100_x1": {"2004": [.80], "2005": [.70]}, "y100_x1375": {"2004": [.75], "2005": [.79]},
+              "y100_x175": {"2004": [.78], "2005": [.71]}}
+    assert report.decide(scores)["best"] == "y100_x1375"
+
+
+def test_report_reads_only_finished_runs(tmp_path):
+    for name, steps in (("y100_x1_s1234", 200000), ("y100_x175_s1234", 150000)):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "summary_seed1234.json").write_text(json.dumps({**fake_summary({"2004": .8}), "completed_steps": steps}))
+    assert list(report.runs(tmp_path)) == ["y100_x1"]
+
+
+def test_the_report_can_run_before_anything_finished():
+    text = report.markdown({}, {}, None, {})
+    assert "Waits until every size has all three seeds" in text and "by lead" not in text
