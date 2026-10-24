@@ -91,8 +91,9 @@ the queue is going, to watch the curves form; unfinished runs are drawn as far a
 2. `169_size_campaign.py`: the queue, from `150_wang_campaign.py`'s machinery (lock, attempts, GPU
    slots, status file); runs under `outputs/size_20261023/`, ignored by git.
 3. The cohort's caches (`outputs/cohort_cesm2_vlong_uniform/` and
-   `outputs/audit/synthetic/fixed_baselines_cesm2_vlong_uniform/`) are copied from the `ka-dev6`
-   worktree into this checkout, so the runs do not depend on that worktree.
+   `outputs/audit/synthetic/fixed_baselines_cesm2_vlong_uniform/`, 5.5 GB) are hard-linked from the
+   `ka-dev6` worktree into this checkout (`cp -al`, the same filesystem): no extra disk on a `/DATA2`
+   with 65 GB free, and the runs do not depend on that worktree staying.
 4. `170_size_report.py`: by size and lead, 2005 and 2004, RMSE mean ± sd over seeds, persisted OI and
    climatology, parameters, hours, best step; the decision above computed, not hand-written; it links
    the convergence figure.
