@@ -48,18 +48,39 @@ the last step. KA's sealed tests (CESM2 2006-2007, 2008-2010) are not read.
 
 ## Convergence
 
-Every run's `train.log` has a record every 2,000 steps: the training MSE averaged over the steps since
-the previous record, and the 2004 validation score (mean standardised RMSE over leads). The report
-draws `reports/synthetic/size_20261023_curves.png`, one column per size, one line per seed:
+The curves are the convergence check, drawn as a figure. Every run's `train.log` has a record every
+2,000 steps: the training MSE averaged over the steps since the previous record, and the 2004
+validation score (mean standardised RMSE over leads). `171_size_curves.py` reads the logs and draws
+`reports/synthetic/size_20261023_curves.png` (matplotlib, light surface, 150 dpi):
 
-* top: the training MSE (log scale);
-* bottom: the 2004 validation score, each run's best step marked.
+```
+              x1 · 9.4M            x1.375 · 17.7M        x1.75 · 28.6M
+training   ╭───────────────╮   ╭───────────────╮   ╭───────────────╮
+MSE (log)  │╲__             │   │╲__             │   │╲__             │   one line per seed
+           │    ‾‾──────┊───│   │    ‾‾──────┊───│   │    ‾‾──────┊───│   ┊ = 180k (last tenth)
+           ╰───────────────╯   ╰───────────────╯   ╰───────────────╯
+2004 val.  ╭───────────────╮   ╭───────────────╮   ╭───────────────╮
+score      │╲               │   │╲               │   │╲               │   ● = each seed's best step
+           │ ‾──────────●┊─ │   │ ‾─────────●─┊─ │   │ ‾───────────┊●│
+           ╰───────────────╯   ╰───────────────╯   ╰───────────────╯
+                 steps (thousands, 0-200)
+```
 
-Beside the curves, for every run: the change of the training MSE over the last tenth of training
-(180-200k) against the tenth before (`97_forecast_curves.tail_change`), and the step of the best
-validation score. A best step in the last tenth means the run was still improving at 200k; the
-report says so per size rather than calling it converged. The curves are drawn from the logs, so the
-report can run while the queue is still going.
+* Two rows, never a second y-axis: training MSE on a log scale (top), the 2004 validation score
+  (bottom). Rows share their y-axis across sizes, so the panels compare directly.
+* One column per size, its title the factor and parameter count; within a panel one 2 px line per
+  seed, all in the size's colour.
+* Colour encodes the size as an ordered tier: one blue ramp, light to dark, `#6da7ec` (x1),
+  `#2a78d6` (x1.375), `#184f95` (x1.75); `dataviz/scripts/validate_palette.js --ordinal` passes on
+  the light surface `#fcfcfb`. Text, axes and the recessive grid stay in neutral inks.
+* Each seed's best validation step is a dot with a surface-coloured ring; a dotted vertical line marks
+  180k, the start of the last tenth. A legend names the three sizes, the dot and the line.
+
+Below the figure, a table per run: the change of the training MSE over the last tenth (180-200k)
+against the tenth before (`97_forecast_curves.tail_change`), the best validation step and score. A
+best step inside the last tenth means the run was still improving at 200k, and the table says so
+rather than calling it converged. The script reads only logs, so it runs at any time, also while
+the queue is going, to watch the curves form; unfinished runs are drawn as far as they have got.
 
 ## Code
 
@@ -73,10 +94,11 @@ report can run while the queue is still going.
    `outputs/audit/synthetic/fixed_baselines_cesm2_vlong_uniform/`) are copied from the `ka-dev6`
    worktree into this checkout, so the runs do not depend on that worktree.
 4. `170_size_report.py`: by size and lead, 2005 and 2004, RMSE mean ± sd over seeds, persisted OI and
-   climatology, parameters, hours, best step; the decision above computed, not hand-written; the
-   convergence figure and table above, reading the logs with `97_forecast_curves.parse` (101 writes the
-   same records as 94).
-5. Tests: `--test-years` (choice on validation years only, overlap refused) and the campaign's job list
+   climatology, parameters, hours, best step; the decision above computed, not hand-written; it links
+   the convergence figure.
+5. `171_size_curves.py`: the convergence figure and table above, reading the logs with
+   `97_forecast_curves.parse` (101 writes the same records as 94).
+6. Tests: `--test-years` (choice on validation years only, overlap refused) and the campaign's job list
    (names, options, seed order).
 
 ## Not in this study
