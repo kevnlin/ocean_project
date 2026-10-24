@@ -12,6 +12,9 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       ka_oi, or none (the gridded background alone); the kriging starts from the
                       cohort's OI length scales and error ratios, expanded from bands to levels
   --state-channels, --encoder-channels, --evolution-channels, --hidden   model size
+  --val-years Y..     target years that choose the checkpoint and are scored at the end
+  --test-years Y..    target years held out of that choice, scored only at the end (none by default)
+  --keep-every N      also keep the model of every N-th step (default 0: only the best and the last)
 
   --dataset real_global   the real 2016-2023 Argo cohort with OISST, OISSS and DUACS SLA
                       (``real_forecast_scenes``; caches of ``105``, OI of ``106``); pass
@@ -96,6 +99,8 @@ def arguments():
     p.add_argument("--leads", nargs="+", type=int, default=list(LEADS), help="forecast leads in months")
     p.add_argument("--val-years", nargs="+", type=int, default=[2004, 2005],
                    help="target years that choose the checkpoint and are scored at the end")
+    p.add_argument("--test-years", nargs="+", type=int, default=[],
+                   help="target years held out of the choice, scored once at the end")
     p.add_argument("--lagged-surface", type=Path, default=FORECAST / "lagged_surface.npz")
     p.add_argument("--surface-grids", type=Path, default=OUTPUT / "surface_grids.npz")
     p.add_argument("--dataset", choices=["cesm2", "real_global"], default="cesm2")
@@ -164,6 +169,8 @@ def arguments():
     p.add_argument("--warm-start", action="store_true", help="load model weights and restart the optimizer/schedule")
     p.add_argument("--resume-training", action="store_true", help="restore optimizer, scheduler, sampling and torch RNG state")
     p.add_argument("--checkpoint-every", type=int, default=500)
+    p.add_argument("--keep-every", type=int, default=0,
+                   help="also keep the model of every N-th step (step<NNNNNN>_seed<seed>.pt); 0: none")
     p.add_argument("--analysis-only", action="store_true", help="evaluate frozen exact OI without neural correction")
     p.add_argument("--latent-off", action="store_true", help="local and query-MLP control without shared observation latent")
     p.add_argument("--local-off", action="store_true", help="retain original OI, disable added learned local evidence path")
@@ -214,6 +221,13 @@ def selection_score(scores):
     return float(scores["macro_z"])
 
 
+def scored_years(val_years, test_years):
+    """The target years the final scoring covers: the validation years and the held-out test years."""
+    if set(val_years) & set(test_years):
+        raise ValueError("a test year cannot also choose the checkpoint")
+    return sorted(set(val_years) | set(test_years))
+
+
 def diagnostic_summary(value):
     value = value.detach().float().cpu()
     if value.numel() <= 64:
@@ -232,6 +246,7 @@ def restore_training_inputs(args, training):
     args.cohort, args.train_years = training["cohort"], training["train_years"]
     args.scale = training["scale"]
     args.leads, args.val_years = training["leads"], training["val_years"]
+    args.test_years = training.get("test_years", [])
     args.lagged_surface = path(training["lagged_surface"])
     args.surface_grids = path(training["surface_grids"])
     if args.scale is not None:
@@ -260,6 +275,7 @@ def main():
         raise ValueError("matched synthetic protocol requires the exact old 8000-cell validation cap")
     if args.development:
         raise ValueError("--development is replaced by the forecast evaluation of --val-years")
+    scored_years(args.val_years, args.test_years)   # refuse an overlap before any data is read
     if args.load_checkpoint and (args.resume_training or args.evaluate_only):
         saved = torch.load(args.load_checkpoint, map_location="cpu", weights_only=True)
         args.seed = saved["seed"]
@@ -624,7 +640,10 @@ def main():
                 print("validation " + json.dumps(record) + (" *" if improved else ""), flush=True)
             if step % args.checkpoint_every == 0 or step % args.val_every == 0 or step == args.steps:
                 save_last(step)
-        full = data.forecast_months(args.val_years, 0)
+            if args.keep_every and step % args.keep_every == 0:
+                # kept, unlike last_seed: the model only, evaluable with --evaluate-only
+                atomic_save(model_state(step, history[-1] if history else None), out/f"step{step:06d}_seed{args.seed}.pt")
+        full = data.forecast_months(scored_years(args.val_years, args.test_years), 0)
         # the model of the last step, before the chosen checkpoint replaces it
         forecast_last = evaluate(full, full_cells=True)
         model.load_state_dict(best["state"]["model"], strict=True)
@@ -633,7 +652,7 @@ def main():
     elif checkpoint is None:
         raise ValueError("--evaluate-only requires --load-checkpoint")
     final_validation = evaluate(val)
-    full = data.forecast_months(args.val_years, 0)
+    full = data.forecast_months(scored_years(args.val_years, args.test_years), 0)
     development = [ev for ev in full if ev.lead == 0 and split_of_year(2000 + ev.month // 12) == "development"]
     if development:
         identity["development"] = data.identity_check("development", development)

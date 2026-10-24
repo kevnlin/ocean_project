@@ -66,3 +66,24 @@ def test_init_from_must_name_the_source_of_the_run_it_resumes():
 def test_init_from_still_excludes_evaluating_or_warm_starting_a_checkpoint():
     with pytest.raises(ValueError):
         runner.resumed_provenance(argparse.Namespace(resume_training=False, init_from=Path("/p.pt")), checkpoint())
+
+
+def test_a_run_from_before_test_years_restores_none():
+    args = argparse.Namespace(satellite_cache=None)
+    runner.restore_training_inputs(args, training())
+    assert args.test_years == []
+    runner.restore_training_inputs(args, training(val_years=[2004], test_years=[2005]))
+    assert args.val_years == [2004] and args.test_years == [2005]
+
+
+def test_the_final_scoring_covers_validation_and_test_years_and_refuses_an_overlap():
+    assert runner.scored_years([2004], [2005]) == [2004, 2005]
+    assert runner.scored_years([2004, 2005], []) == [2004, 2005]
+    with pytest.raises(ValueError):
+        runner.scored_years([2004, 2005], [2005])
+
+
+def test_test_years_default_to_none_and_snapshots_off(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["101", "--tag", "t"])
+    args = runner.arguments()
+    assert args.test_years == [] and args.val_years == [2004, 2005] and args.keep_every == 0
