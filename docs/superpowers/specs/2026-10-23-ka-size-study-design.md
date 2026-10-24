@@ -46,6 +46,21 @@ the last step. KA's sealed tests (CESM2 2006-2007, 2008-2010) are not read.
   physical units, mean ± sd over seeds, beside persisted OI and climatology) is the forecast result.
   Choosing on 2005 would end its being held out.
 
+## Convergence
+
+Every run's `train.log` has a record every 2,000 steps: the training MSE averaged over the steps since
+the previous record, and the 2004 validation score (mean standardised RMSE over leads). The report
+draws `reports/synthetic/size_20261023_curves.png`, one column per size, one line per seed:
+
+* top: the training MSE (log scale);
+* bottom: the 2004 validation score, each run's best step marked.
+
+Beside the curves, for every run: the change of the training MSE over the last tenth of training
+(180-200k) against the tenth before (`97_forecast_curves.tail_change`), and the step of the best
+validation score. A best step in the last tenth means the run was still improving at 200k; the
+report says so per size rather than calling it converged. The curves are drawn from the logs, so the
+report can run while the queue is still going.
+
 ## Code
 
 1. `101_grid_ka_forecast.py` gains `--test-years`, as `94_forecast_reconstruction.py` did: the
@@ -58,7 +73,9 @@ the last step. KA's sealed tests (CESM2 2006-2007, 2008-2010) are not read.
    `outputs/audit/synthetic/fixed_baselines_cesm2_vlong_uniform/`) are copied from the `ka-dev6`
    worktree into this checkout, so the runs do not depend on that worktree.
 4. `170_size_report.py`: by size and lead, 2005 and 2004, RMSE mean ± sd over seeds, persisted OI and
-   climatology, parameters, hours, best step; the decision above computed, not hand-written.
+   climatology, parameters, hours, best step; the decision above computed, not hand-written; the
+   convergence figure and table above, reading the logs with `97_forecast_curves.parse` (101 writes the
+   same records as 94).
 5. Tests: `--test-years` (choice on validation years only, overlap refused) and the campaign's job list
    (names, options, seed order).
 
