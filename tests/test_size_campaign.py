@@ -47,3 +47,35 @@ def test_a_smoke_run_is_short_and_kept_apart():
     item = campaign.job("y100_x175", 1234, smoke=True)
     assert item["steps"] == 600 and Path(item["output"]).parent.name == "smoke"
     assert after(item["command"], "--val-every") == ["300"]
+
+
+curves = script("171_size_curves")
+
+
+def log(folder, records):
+    folder.mkdir(parents=True)
+    (folder / "train.log").write_text("".join(
+        'validation {"step": %d, "training_mse": %r, "validation_mean_standardized_rmse": %r}\n' % r for r in records))
+
+
+def test_curve_runs_are_the_size_studys_by_name(tmp_path):
+    for name in ("y100_x1_s1234", "y100_x175_s1235", "smoke", "c_y154_s1234"):
+        log(tmp_path / name, [(2000, 1.0, .9)])
+    assert [(r["arm"], r["seed"]) for r in curves.runs(tmp_path)] == [("y100_x1", 1234), ("y100_x175", 1235)]
+
+
+def test_a_best_step_in_the_last_tenth_is_still_improving(tmp_path):
+    steps = range(2000, 200001, 2000)
+    log(tmp_path / "y100_x1_s1234", [(s, 1.0, 1 - s / 1e6) for s in steps])                 # best at 200k
+    log(tmp_path / "y100_x1375_s1234", [(s, 1.0, abs(s - 100000) / 1e6) for s in steps])   # best at 100k
+    rows = {r["tag"]: r for r in curves.rows(curves.runs(tmp_path))}
+    assert rows["y100_x1_s1234"]["best_step"] == 200000 and rows["y100_x1_s1234"]["still_improving"]
+    assert rows["y100_x1375_s1234"]["best_step"] == 100000 and not rows["y100_x1375_s1234"]["still_improving"]
+    assert rows["y100_x1_s1234"]["tail_change_pct"] == 0.0
+
+
+def test_the_figure_is_drawn_from_unfinished_runs_too(tmp_path):
+    log(tmp_path / "y100_x175_s1234", [(s, 2.0 / s ** .1, .8 + 1 / s ** .5) for s in range(2000, 40001, 2000)])
+    path = tmp_path / "curves.png"
+    curves.plot(curves.runs(tmp_path), path)
+    assert path.stat().st_size > 10000
