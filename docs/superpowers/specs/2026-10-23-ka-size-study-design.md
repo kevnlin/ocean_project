@@ -25,6 +25,13 @@ at leads 0, 1, 3 and 6 months is the result to report.
   `--surface`, `--amp`), cohort `cesm2_vlong_uniform` with `--train-years 100` (1904-2003), 200,000 steps,
   1,024 queries a step, lr 3e-4, `--context-profiles 6080`, leads 0 1 3 6 in one model,
   `--val-every 2000`, `--checkpoint-every 500`.
+* Kept snapshots: `--keep-every 5000` saves the model at 5k, 10k, ..., 200k as
+  `step<NNNNNN>_seed<seed>.pt` (the format of `best_seed*.pt`, without optimiser state, so
+  `--evaluate-only` scores any of them later); about 27 GB for the nine runs. The resume point
+  (`last_seed*.pt`, with optimiser and random state) stays every 500 steps, so a crash loses at most
+  500 steps.
+* The queue runs detached (`nohup setsid`), so it outlives the session that started it; a run that
+  dies is restarted from its resume point.
 * The cohort's normalisation, climatology and OI fits are used exactly as `c_y154` used them; only the
   training window (100 instead of 154 years), the steps and the size differ from `c_y154`.
 * A 500-step smoke of each size before the queue: peak memory and seconds a step, which set how many
@@ -87,7 +94,8 @@ the queue is going, to watch the curves form; unfinished runs are drawn as far a
 1. `101_grid_ka_forecast.py` gains `--test-years`, as `94_forecast_reconstruction.py` did: the
    checkpoint is chosen on `--val-years` only; the final scoring covers `--val-years` and
    `--test-years`; a year in both is refused; `test_years` is recorded in the summary. Default empty, so
-   every existing campaign's command means what it meant.
+   every existing campaign's command means what it meant. It also gains `--keep-every N` (0, off, by
+   default): the model snapshot every N steps, kept.
 2. `169_size_campaign.py`: the queue, from `150_wang_campaign.py`'s machinery (lock, attempts, GPU
    slots, status file); runs under `outputs/size_20261023/`, ignored by git.
 3. The cohort's caches (`outputs/cohort_cesm2_vlong_uniform/` and
@@ -108,6 +116,9 @@ The OI-anchored transformer, other learning rates per size, sizes above 30M para
 and the sealed tests.
 
 ## Known consequences
+
+`/DATA2` had 65 GB free on 2026-10-23 and is shared; the snapshots and runs need about 31 GB. A full
+disk fails a save (saves are atomic, so no earlier file is lost) and the queue retries the run.
 
 Runner 101's source hash changes, so a checkpoint from before this change cannot be resumed with
 `--resume-training`; it still evaluates. Larger models share lr 3e-4: if `y100_x175` underperforms,

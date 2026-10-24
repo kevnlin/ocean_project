@@ -64,10 +64,10 @@ def test_the_final_scoring_covers_validation_and_test_years_and_refuses_an_overl
         runner.scored_years([2004, 2005], [2005])
 
 
-def test_test_years_default_to_none(monkeypatch):
+def test_test_years_default_to_none_and_snapshots_off(monkeypatch):
     monkeypatch.setattr("sys.argv", ["101", "--tag", "t"])
     args = runner.arguments()
-    assert args.test_years == [] and args.val_years == [2004, 2005]
+    assert args.test_years == [] and args.val_years == [2004, 2005] and args.keep_every == 0
 ```
 
 - [ ] **Step 2:** `python -m pytest -q -p no:cacheprovider tests/test_grid_runner_resume.py` — expected: the 3 new tests FAIL (`AttributeError` on `test_years` / `scored_years`).
@@ -103,14 +103,30 @@ def scored_years(val_years, test_years):
 (f) Both `full = data.forecast_months(args.val_years, 0)` become
 `full = data.forecast_months(scored_years(args.val_years, args.test_years), 0)`.
 
-`vars(args)` already goes into the summary's `training`, so `test_years` is recorded there.
+(g) `arguments()`, after `--checkpoint-every`:
+```python
+    p.add_argument("--keep-every", type=int, default=0,
+                   help="also keep the model of every N-th step (step<NNNNNN>_seed<seed>.pt); 0: none")
+```
+and in the training loop, right after the `save_last(step)` block:
+```python
+            if args.keep_every and step % args.keep_every == 0:
+                # kept, unlike last_seed: the model only, evaluable with --evaluate-only
+                atomic_save(model_state(step, history[-1] if history else None), out/f"step{step:06d}_seed{args.seed}.pt")
+```
+and in the docstring option list:
+```
+  --keep-every N      also keep the model of every N-th step (default 0: only the best and the last)
+```
+
+`vars(args)` already goes into the summary's `training`, so `test_years` and `keep_every` are recorded there.
 
 - [ ] **Step 4:** `python -m pytest -q -p no:cacheprovider tests/test_grid_runner_resume.py tests/test_grid_kriging_ocean.py tests/test_grid_softmax_readout.py` — expected: all pass. Then `SUITE`.
 - [ ] **Step 5: Commit**
 
 ```bash
 git add experiments/synthetic/101_grid_ka_forecast.py tests/test_grid_runner_resume.py
-git commit -q -m "101_grid_ka_forecast: --test-years, held out of the checkpoint choice and scored at the end (as 94)" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -q -m "101_grid_ka_forecast: --test-years (held out of the checkpoint choice, scored at the end, as 94); --keep-every snapshots" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ### Task 3: The queue `169_size_campaign.py`
@@ -165,6 +181,7 @@ def test_runs_train_100_years_for_200k_steps_chosen_on_2004_with_2005_held_out()
     assert after(command, "--steps") == ["200000"] and after(command, "--leads", 4) == ["0", "1", "3", "6"]
     assert after(command, "--val-years", 2) == ["2004", "--test-years"] and after(command, "--test-years") == ["2005"]
     assert after(command, "--kriging") == ["ka_flow"] and "--surface" in command
+    assert after(command, "--keep-every") == ["5000"] and after(command, "--checkpoint-every") == ["500"]
 
 
 def test_a_smoke_run_is_short_and_kept_apart():
@@ -187,8 +204,9 @@ width factor on every channel count of A:
   y100_x1375  17.7M
   y100_x175   28.6M
 
-Seeds are outermost, so every size has seed 1234 before a second seed starts. The queue (a GPU memory
-check before each launch, retries from the last checkpoint, finished runs skipped) is ``150``'s.
+Seeds are outermost, so every size has seed 1234 before a second seed starts. Every run keeps a model
+snapshot every 5,000 steps; its resume point is every 500. The queue (a GPU memory check before each
+launch, retries from the last resume point, finished runs skipped) is ``150``'s.
 
   .venv/bin/python experiments/synthetic/169_size_campaign.py --smoke --seeds 1234 --gpus 0,2,3
   .venv/bin/python experiments/synthetic/169_size_campaign.py --gpus 0,2,3,4,6 --per-gpu 1
@@ -236,6 +254,7 @@ def job(arm, seed, smoke=False):
     folder = (OUTPUT / "smoke" if smoke else OUTPUT) / f"{arm}_s{seed}"
     command = [sys.executable, "-u", str(RUNNER), *COMMON, *VLONG, *size_options(FACTORS[arm]),
                "--steps", str(steps), "--val-every", str(every), "--checkpoint-every", str(min(every, 500)),
+               "--keep-every", str(300 if smoke else 5000),
                "--seed", str(seed), "--tag", f"{arm}_s{seed}", "--output", str(folder)]
     return {"tag": f"{arm}_s{seed}", "arm": arm, "seed": seed, "steps": steps, "output": str(folder),
             "needs": [str(p) for p in VLONG_NEEDS], "command": command}
@@ -307,7 +326,7 @@ git commit -q -m "169_size_campaign: KA-Ocean at 9.4M/17.7M/28.6M on 100 CESM2 y
 
 - [ ] **Step 1:** Check the GPUs: `nvidia-smi --query-gpu=index,memory.used,utilization.gpu --format=csv,noheader`. Pick three idle GPUs (used < 1 GB, 0 %).
 - [ ] **Step 2:** `.venv/bin/python experiments/synthetic/169_size_campaign.py --smoke --seeds 1234 --gpus <three idle> --stagger 10 2>&1 | tail -5` (foreground; timeout 2 h).
-Expected: three `"completed"` lines; `outputs/size_20261023/smoke/y100_x*_s1234/summary_seed1234.json` exist.
+Expected: three `"completed"` lines; `outputs/size_20261023/smoke/y100_x*_s1234/summary_seed1234.json` exist, and each smoke folder has `step000300_seed1234.pt` and `step000600_seed1234.pt` (the snapshots).
 - [ ] **Step 3: Read the numbers**
 
 ```bash
@@ -337,7 +356,7 @@ nohup setsid .venv/bin/python experiments/synthetic/169_size_campaign.py --gpus 
   --per-gpu <P> --min-free-mb <M> > outputs/size_20261023/queue.log 2>&1 < /dev/null &
 ```
 - [ ] **Step 3:** After about 10 minutes: `tail -3 outputs/size_20261023/queue.log; cat outputs/size_20261023/status_queue.json | head -20; grep -h '^validation\|Traceback\|Error' outputs/size_20261023/y100_x*_s1234/train.log | tail -5`
-Expected: `"started"` lines for the first jobs, `running` in the status, no `Traceback`. A first `validation` record appears after 2,000 steps.
+Expected: `"started"` lines for the first jobs, `running` in the status, no `Traceback`. A first `validation` record appears after 2,000 steps. `df -h /DATA2 | tail -1`: note the free space; the snapshots need about 27 GB over the campaign.
 - [ ] **Step 4:** Commit nothing (outputs are ignored); report to Kevin: which GPUs, the per-run estimate, when seed 1234 of every size should finish.
 
 ### Task 6: The convergence figure `171_size_curves.py`
