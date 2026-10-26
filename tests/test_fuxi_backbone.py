@@ -27,6 +27,7 @@ def test_the_lead_and_season_enter_through_a_time_context_that_starts_at_zero():
     torch.nn.init.normal_(model.time[-1].weight, std=.1)
     assert not torch.allclose(model(x, 0, 5.), model(x, 6, 5.))
     assert not torch.allclose(model(x, 0, 5.), model(x, 0, 11.))
+    assert torch.equal(model(x, 0, 13.), model(x, 0, 1.))                  # the calendar month wraps
 
 
 def test_a_shifted_window_wraps_in_longitude_and_not_across_the_poles():
@@ -44,8 +45,10 @@ def test_a_shifted_window_wraps_in_longitude_and_not_across_the_poles():
 
 def test_every_parameter_learns():
     model = _encoder()
+    torch.nn.init.normal_(model.time[-1].weight, std=.1)   # zero at initialisation: a first step's time context
     model(_x(), 3, 5.).square().mean().backward()
-    assert all(p.grad is not None and torch.isfinite(p.grad).all() for p in model.parameters())
+    assert all(p.grad is not None and torch.isfinite(p.grad).all() and p.grad.abs().sum() > 0
+               for p in model.parameters())
 
 
 def test_a_grid_the_windows_do_not_tile_is_refused():
