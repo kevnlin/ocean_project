@@ -90,3 +90,6 @@ venv/
 /external/poseidon_deps/
 /outputs/size_20261023
 /outputs/fuxi_20261026
+/outputs/glorys_20261021/
+/outputs/audit/synthetic/fixed_baselines_glorys12_test/
+/outputs/transfer_20261026/
