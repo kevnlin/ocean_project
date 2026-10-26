@@ -146,3 +146,25 @@ def test_scoring_refuses_before_writing_and_records_every_entry(tmp_path, monkey
     transfer.score("cpu")
     results = json.loads((tmp_path / "results.json").read_text())
     assert [e["params"] for e in results["entries"]] == [17_508_596] * 2 and "declared_extra_pass" in results
+
+
+report = script("174_fuxi_transfer_report")
+
+
+def test_a_verdict_needs_a_difference_beyond_the_larger_seed_sd():
+    assert report.verdict([.70, .71, .69], [.75, .76, .74])["verdict"] == "KA better"
+    assert report.verdict([.75, .76, .74], [.70, .71, .69])["verdict"] == "FuXi-style better"
+    assert report.verdict([.70, .72, .68], [.71, .73, .69])["verdict"] == "no difference beyond the seed spread"
+
+
+def test_the_tables_name_each_model_with_its_size(monkeypatch):
+    monkeypatch.setattr(report, "g_ka_params", lambda entries: 9_422_894)
+    results = {"entries": [entry("y100_x1375_s1234", params=17_730_974), entry("y100_fuxi_s1234", params=17_508_596)]}
+    glorys = report.transfer(results, {"entries": [entry("g_ka_s1234")]})
+    text = report.markdown({}, glorys)
+    assert "KA-Ocean (17.7M)" in text and "FuXi-Ocean-style (17.5M)" in text and "GLORYS-trained) (9.4M)" in text
+
+
+def test_the_report_can_run_before_anything_finished():
+    text = report.markdown({}, None)
+    assert "Waits until both models have all three seeds" in text and "Waits for `173_glorys_transfer.py --score`" in text
