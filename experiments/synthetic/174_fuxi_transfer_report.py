@@ -159,6 +159,8 @@ def markdown(found, glorys):
             "* Left out of FuXi-Ocean: Mixture-of-Time (one input month), autoregression (one pass per lead), the "
             "Charbonnier loss and its two training stages. Its own size is unpublished; it is matched to KA's.",
             "* KA-Ocean x1.375 won a three-size selection on 2004 (gain 0.0015, 0.2 %); FuXi-Ocean-style has one size.",
+            "* One optimiser rule for both: AdamW's weight decay 0.01 also reaches FuXi-Ocean-style's position "
+            "embedding, attention temperatures and position-bias MLP, which Swin-v2 usually exempts.",
             "* GLORYS: a declared extra pass on the sealed 2019-2020 cells; GLORYS's own statistics; g_ka's rows are "
             "the 2026-10-22 main pass's, not re-scored. g_ka is smaller and trained half as long: a reference, not a competitor."]
     return "\n".join(out) + "\n"

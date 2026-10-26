@@ -140,7 +140,7 @@ def register(paths):
     for name, path in GLORYS.items():
         if SS.sha256(path) != sealed[name]["sha256"]:
             raise SystemExit(f"{path}: not the file 159 registered as {name}")
-    record = SS.register(REGISTRATION, [("grid", Path(p)) for p in paths], {**GLORYS, "main_results": MAIN},
+    record = SS.register(REGISTRATION, [("grid", Path(p).resolve()) for p in paths], {**GLORYS, "main_results": MAIN},
                          {"cohort": COHORT, "test_years": list(TEST_YEARS), "test_years_glorys": [2019, 2020],
                           "leads": list(LEADS), "cells": "every held-out cell", "spec": SPEC,
                           "declared_extra_pass": "the test 159 scored on 2026-10-22; nothing is selected on it",
