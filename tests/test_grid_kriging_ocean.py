@@ -269,3 +269,8 @@ def test_at_the_study_size_the_fuxi_model_is_within_two_percent_of_ka_x1375():
     config = GridKrigingConfig(state_channels=176, hidden=352, backbone="fuxi", evolution=False, kriging="none")
     params = sum(p.numel() for p in GridKrigingModel(config).parameters())
     assert abs(params / 17_730_974 - 1) < .02                          # KA x1.375's runs
+
+
+def test_a_config_saved_before_the_fuxi_backbone_still_builds():
+    saved = {k: v for k, v in _config().to_dict().items() if not k.startswith("fuxi_")}
+    assert GridKrigingConfig(**saved) == _config()

@@ -366,9 +366,9 @@ class GridKrigingModel(nn.Module):
         elif self.config.backbone in ("poseidon", "fuxi"):
             # one direct operator per lead; the neighbours' background is the lead-0 state
             x = torch.cat((profiles[None], context), 1)
-            month = {"month": float(scene["input_month"])} if self.config.backbone == "fuxi" else {}
-            grid_lead = self.encoder(x, lead, **month)
-            grid0 = grid_lead if not lead else (self.encoder(x, 0, **month) if self.kriging is not None else grid_lead)
+            extra = {"month": float(scene["input_month"])} if self.config.backbone == "fuxi" else {}
+            grid_lead = self.encoder(x, lead, **extra)
+            grid0 = grid_lead if not lead else (self.encoder(x, 0, **extra) if self.kriging is not None else grid_lead)
             diagnostics = {"state_rms": grid_lead.detach().float().square().mean().sqrt()}
             return {"query_grid": grid_lead[0], "neighbour_grid": grid0[0], "lead": lead,
                     "aux_loss": grid_lead.new_zeros(()), "diagnostics": diagnostics}
