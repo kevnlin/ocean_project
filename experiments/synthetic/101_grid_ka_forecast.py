@@ -29,6 +29,9 @@ schedule, the checkpoint criterion and every score are 94's) with the model repl
                       selection unchanged; the caches of ``162`` and the OI cohort fingerprint of ``106``
   --backbone poseidon  the public Poseidon-T processor (PDE-pretrained, ``--poseidon-init``) as the state
                       encoder instead of our U-Net; it is lead-conditioned, so the separate evolution is off
+  --backbone fuxi     a FuXi-Ocean-style encoder (``fuxi_backbone``, re-implemented from the paper; sizes are
+                      the config's defaults) as the state; lead-conditioned, so the evolution is off; with
+                      ``--kriging none`` it is the FuXi comparison's arm (``172``)
   --no-evolution, --no-lead-decay   ablations: no lead evolution of the state; no damping of the
                       kriging read-out with the lead
   --profile-noise S, --surface-noise S   training only: each step draws a noise level uniformly up
@@ -118,7 +121,7 @@ def arguments():
                    help="real data: fingerprint of the 2016-2023 cohort the frozen OI selection was made on, "
                         "when the loaded cohort is another span of years (as 133 does for 2024)")
     p.add_argument("--no-evolution", action="store_true")
-    p.add_argument("--backbone", choices=["unet", "poseidon"], default="unet")
+    p.add_argument("--backbone", choices=["unet", "poseidon", "fuxi"], default="unet")
     p.add_argument("--poseidon-init", choices=["pretrained", "random"], default="pretrained")
     p.add_argument("--no-lead-decay", action="store_true")
     p.add_argument("--profile-noise", type=float, default=0.)
@@ -329,7 +332,7 @@ def main():
             **{name: table_metadata[name] for name in ("fit", "definition", "cell_deg", "month_window", "pseudo", "floor")}}
         data.configure(None, scale, "query")
     source_hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py", ROOT/"src/ocean_tokenizer/real_forecast_scenes.py", ROOT/"src/ocean_tokenizer/real_global.py", ROOT/"src/ocean_tokenizer/poseidon_backbone.py")}
+        for p in (Path(__file__), ROOT/"src/ocean_tokenizer/latent_ocean.py", ROOT/"src/ocean_tokenizer/latent_experiment.py", ROOT/"src/ocean_tokenizer/synthetic_latent_experiment.py", ROOT/"src/ocean_tokenizer/reconstruction_metrics.py", ROOT/"src/ocean_tokenizer/innovation_ocean.py", ROOT/"src/ocean_tokenizer/innovation_scenes.py", ROOT/"src/ocean_tokenizer/profile_alignment.py", ROOT/"src/ocean_tokenizer/correlated_ocean_update.py", ROOT/"src/ocean_tokenizer/ocean_observation_operator.py", ROOT/"src/ocean_tokenizer/radius_scale_scenes.py", ROOT/"src/ocean_tokenizer/local_scale.py", ROOT/"src/ocean_tokenizer/long_record_scenes.py", ROOT/"src/ocean_tokenizer/query_scaled_innovation.py", ROOT/"src/ocean_tokenizer/forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_forecast_scenes.py", ROOT/"src/ocean_tokenizer/grid_kriging_ocean.py", ROOT/"src/ocean_tokenizer/kriging_attention.py", ROOT/"src/ocean_tokenizer/real_forecast_scenes.py", ROOT/"src/ocean_tokenizer/real_global.py", ROOT/"src/ocean_tokenizer/poseidon_backbone.py", ROOT/"src/ocean_tokenizer/fuxi_backbone.py")}
     analysis, anchor_analysis = data.analysis(), data.analysis()
     bands = band_of_levels(data.levels)
     cfg = GridKrigingConfig(grid=grid.as_tuple(), n_levels=len(data.levels), n_query_features=58,

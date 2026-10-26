@@ -87,3 +87,10 @@ def test_test_years_default_to_none_and_snapshots_off(monkeypatch):
     monkeypatch.setattr("sys.argv", ["101", "--tag", "t"])
     args = runner.arguments()
     assert args.test_years == [] and args.val_years == [2004, 2005] and args.keep_every == 0
+
+
+def test_the_runner_takes_the_fuxi_backbone_and_hashes_its_source(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["101", "--tag", "t", "--backbone", "fuxi", "--kriging", "none"])
+    args = runner.arguments()
+    assert args.backbone == "fuxi" and args.kriging == "none"
+    assert 'ROOT/"src/ocean_tokenizer/fuxi_backbone.py"' in Path(runner.__file__).read_text()
