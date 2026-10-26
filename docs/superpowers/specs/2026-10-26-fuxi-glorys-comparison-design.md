@@ -77,8 +77,8 @@ masks; sin and cos of latitude and longitude; the season). The lead `l` in month
 * **Leads**: direct. One pass per input month and lead; the lead enters through `tau` (the encoder's
   modulation and every AdaLN), as KA's lead evolution and the Poseidon arm take theirs.
 * **Sizes**: C', D and the heads are fixed in the plan by counting parameters (target: the KA runs'
-  count, within 2 %). Starting point: C' = 384 (192 at 90 x 180), D = 6, 12 heads, which counts to about
-  17.4M with the read-out. FuXi-Ocean's own size is unpublished: the paper, its README and its code give no
+  count, within 2 %). C' = 384 (192 at 90 x 180), D = 6, 12 heads: 17,508,596 with the read-out (a
+  prototype's count, 1.25 % below KA's). FuXi-Ocean's own size is unpublished: the paper, its README and its code give no
   parameter count, width, depth, heads or patch size, and the weights are unreleased. The nearest published
   configuration, the FuXi weather model's (Chen et al. 2023, arXiv:2306.12873: width 1536, 48 Swin-v2
   blocks, 4 x 4 patches; about 1.8B with this AdaLN), would be FuXi's family scale, not FuXi-Ocean's. Kevin
