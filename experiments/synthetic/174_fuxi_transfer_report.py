@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 REPORT = ROOT / "reports/synthetic/fuxi_transfer_20261026"
 TRANSFER = ROOT / "outputs/transfer_20261026/results.json"
 MAIN = ROOT / "outputs/glorys_20261021/glorys12_test/sealed/results.json"
+#: where 159's main pass ran: its results' checkpoint paths are relative to it
+MAIN_ROOT = Path("/DATA2/linke/ocean_project_ka_dev6")
 STEPS, SEEDS, HELD_OUT = 200000, 3, "2005"
 CH, LEADS = ("TEMP", "SALT"), ("0", "1", "3", "6")
 UNITS = {"TEMP": "°C", "SALT": "PSU"}
@@ -64,7 +66,7 @@ def verdict(ka, fuxi):
 def g_ka_params(entries):
     """g_ka's parameter count, from its run's summary beside the registered checkpoint."""
     e = entries[0]
-    return json.loads((Path(e["checkpoint"]).parent / f"summary_seed{e['seed']}.json").read_text())["params"]
+    return json.loads(((MAIN_ROOT / e["checkpoint"]).parent / f"summary_seed{e['seed']}.json").read_text())["params"]
 
 
 def transfer(results, main):
@@ -85,11 +87,12 @@ def transfer(results, main):
 
 
 def verdicts(found, glorys):
-    if not (len(found) == len(ARMS) and all(len(s) == SEEDS for s in found.values())):
-        return None
-    out = {"cesm2_2005": verdict(*([size_report.score(s, HELD_OUT) for s in found[arm]] for arm in ARMS))}
-    if glorys is not None:
-        out["glorys_2019_2020"] = verdict(glorys["scores"]["y100_x1375"], glorys["scores"]["y100_fuxi"])
+    """Each verdict once both arms have all three seeds on its test set."""
+    out = {}
+    if all(len(found.get(arm, [])) == SEEDS for arm in ARMS):
+        out["cesm2_2005"] = verdict(*([size_report.score(s, HELD_OUT) for s in found[arm]] for arm in ARMS))
+    if glorys is not None and all(len(glorys["scores"].get(arm, [])) == SEEDS for arm in ARMS):
+        out["glorys_2019_2020"] = verdict(*(glorys["scores"][arm] for arm in ARMS))
     return out
 
 
@@ -111,14 +114,15 @@ def markdown(found, glorys):
         out.append(f"| {NAMES['g_ka']} | {params['g_ka']:,} | 20 GLORYS years, 100k steps | 3 | | |")
     out += ["", "## Verdicts", ""]
     v = verdicts(found, glorys)
-    if v is None:
-        out.append("Waits until both models have all three seeds: "
+    for key, title in (("cesm2_2005", "CESM2 2005 (held out)"), ("glorys_2019_2020", "GLORYS12 2019-2020 (transfer)")):
+        if key in v:
+            out.append(f"* {title}: **{v[key]['verdict']}**; score {head('y100_x1375')} {v[key]['ka']:.4f}, "
+                       f"{head('y100_fuxi')} {v[key]['fuxi']:.4f}, larger seed sd {v[key]['seed_spread']:.4f}.")
+    if "cesm2_2005" not in v:
+        out.append("* CESM2 2005: waits until both models have all three seeds: "
                    + ", ".join(f"{NAMES[a]} {len(found.get(a, []))}" for a in ARMS) + ".")
-    else:
-        for key, title in (("cesm2_2005", "CESM2 2005 (held out)"), ("glorys_2019_2020", "GLORYS12 2019-2020 (transfer)")):
-            if key in v:
-                out.append(f"* {title}: **{v[key]['verdict']}**; score KA-Ocean {v[key]['ka']:.4f}, FuXi-Ocean-style "
-                           f"{v[key]['fuxi']:.4f}, larger seed sd {v[key]['seed_spread']:.4f}.")
+    if "glorys_2019_2020" not in v:
+        out.append("* GLORYS12 2019-2020: waits for `173_glorys_transfer.py --score` with all three seeds of both models.")
     out += ["", "Score: mean over leads of the per-variable standardised RMSE (per-depth z units of the scored cohort), "
             "mean over seeds; a difference counts only beyond the larger seed sd."]
     leads = {arm: size_report.by_lead(s) for arm, s in found.items()}

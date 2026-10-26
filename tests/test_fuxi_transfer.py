@@ -167,4 +167,21 @@ def test_the_tables_name_each_model_with_its_size(monkeypatch):
 
 def test_the_report_can_run_before_anything_finished():
     text = report.markdown({}, None)
-    assert "Waits until both models have all three seeds" in text and "Waits for `173_glorys_transfer.py --score`" in text
+    assert "waits until both models have all three seeds" in text and "Waits for `173_glorys_transfer.py --score`" in text
+
+
+def test_each_verdict_waits_for_its_own_three_seeds(monkeypatch):
+    monkeypatch.setattr(report, "g_ka_params", lambda entries: 9_422_894)
+    ka_only = {"entries": [entry(f"y100_x1375_s{s}", params=17_730_974) for s in (1234, 1235, 1236)]}
+    glorys = report.transfer(ka_only, {"entries": [entry("g_ka_s1234")]})
+    assert report.verdicts({}, glorys) == {}
+    both = {"entries": ka_only["entries"] + [entry(f"y100_fuxi_s{s}", params=17_508_596) for s in (1234, 1235, 1236)]}
+    assert report.verdicts({}, report.transfer(both, {"entries": [entry("g_ka_s1234")]}))["glorys_2019_2020"]["verdict"] \
+        == "no difference beyond the seed spread"
+
+
+@pytest.mark.skipif(not (report.MAIN_ROOT / "outputs/glorys_20261021/runs/g_ka_s1234/summary_seed1234.json").exists(),
+                    reason="g_ka's run folder is on the shared disk only")
+def test_g_ka_size_is_read_beside_its_registered_checkpoint():
+    entries = [{"checkpoint": "outputs/glorys_20261021/runs/g_ka_s1234/best_seed1234.pt", "seed": 1234}]
+    assert report.g_ka_params(entries) == 9_422_894
