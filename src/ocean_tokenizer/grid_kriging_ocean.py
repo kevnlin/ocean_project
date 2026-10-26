@@ -241,9 +241,15 @@ class GridKrigingConfig:
     #: ablation switches; the trained model has both
     evolution: bool = True
     lead_decay: bool = True
-    #: the state encoder: our U-Net, or the public Poseidon-T processor (a baseline backbone, lead-conditioned)
+    #: the state encoder: our U-Net, the public Poseidon-T processor or a FuXi-Ocean-style encoder
+    #: (``fuxi_backbone``); the last two are baseline backbones, lead-conditioned themselves
     backbone: str = "unet"
     poseidon_init: str = "pretrained"
+    #: the FuXi-Ocean-style encoder's sizes: 17.5M parameters with the x1.375 read-out (state 176, hidden 352)
+    fuxi_width: int = 384
+    fuxi_depth: int = 6
+    fuxi_heads: int = 12
+    fuxi_window: int = 9
     std_min: float = .03
     std_max: float = 3.
     initial_std: float = .6
@@ -259,10 +265,10 @@ class GridKrigingConfig:
             raise ValueError("a kriging read-out needs kriging_ell_km and kriging_gamma as [2][n_levels]")
         if not 0 < self.std_min < self.initial_std < self.std_max:
             raise ValueError("require 0 < std_min < initial_std < std_max")
-        if self.backbone not in ("unet", "poseidon") or self.poseidon_init not in ("pretrained", "random"):
-            raise ValueError("backbone must be unet or poseidon; poseidon_init pretrained or random")
-        if self.backbone == "poseidon" and (self.evolution or self.background != "joint"):
-            raise ValueError("the Poseidon backbone is lead-conditioned itself: evolution off, background joint")
+        if self.backbone not in ("unet", "poseidon", "fuxi") or self.poseidon_init not in ("pretrained", "random"):
+            raise ValueError("backbone must be unet, poseidon or fuxi; poseidon_init pretrained or random")
+        if self.backbone in ("poseidon", "fuxi") and (self.evolution or self.background != "joint"):
+            raise ValueError(f"the {self.backbone} backbone is lead-conditioned itself: evolution off, background joint")
         if self.multivariate and self.kriging in ("none", "softmax"):
             raise ValueError("the multivariate solve needs a kriging read-out")
 
@@ -304,6 +310,10 @@ class GridKrigingModel(nn.Module):
         elif c.backbone == "poseidon":
             from .poseidon_backbone import PoseidonEncoder
             self.encoder = PoseidonEncoder(c.input_channels, c.state_channels, c.poseidon_init)
+        elif c.backbone == "fuxi":
+            from .fuxi_backbone import FuXiEncoder
+            self.encoder = FuXiEncoder(c.input_channels, c.state_channels, (grid.n_lat, grid.n_lon), c.fuxi_width,
+                                       c.fuxi_depth, c.fuxi_heads, c.fuxi_window, c.max_lead)
         else:
             self.encoder = UNet(c.input_channels, c.state_channels, c.encoder_channels)
         self.lead_embedding = nn.Sequential(nn.Linear(3, c.lead_dim), nn.SiLU(), nn.Linear(c.lead_dim, c.lead_dim))
@@ -353,11 +363,12 @@ class GridKrigingModel(nn.Module):
         if self.prior_encoder is not None:
             prior = self.prior_encoder(context)
             grid0 = self.encoder(torch.cat((prior, profiles[None].to(prior.dtype)), 1)) if lead else None
-        elif self.config.backbone == "poseidon":
+        elif self.config.backbone in ("poseidon", "fuxi"):
             # one direct operator per lead; the neighbours' background is the lead-0 state
             x = torch.cat((profiles[None], context), 1)
-            grid_lead = self.encoder(x, lead)
-            grid0 = grid_lead if not lead else (self.encoder(x, 0) if self.kriging is not None else grid_lead)
+            month = {"month": float(scene["input_month"])} if self.config.backbone == "fuxi" else {}
+            grid_lead = self.encoder(x, lead, **month)
+            grid0 = grid_lead if not lead else (self.encoder(x, 0, **month) if self.kriging is not None else grid_lead)
             diagnostics = {"state_rms": grid_lead.detach().float().square().mean().sqrt()}
             return {"query_grid": grid_lead[0], "neighbour_grid": grid0[0], "lead": lead,
                     "aux_loss": grid_lead.new_zeros(()), "diagnostics": diagnostics}

@@ -232,3 +232,40 @@ def test_the_new_switches_default_to_the_trained_model():
     assert config.evolution and config.lead_decay
     old = {k: v for k, v in config.to_dict().items() if k not in ("evolution", "lead_decay")}
     assert GridKrigingConfig(**old) == config
+
+
+FUXI = dict(backbone="fuxi", evolution=False, kriging="none", fuxi_width=16, fuxi_depth=2, fuxi_heads=2, fuxi_window=3)
+
+
+@pytest.mark.parametrize("lead", [0, 3])
+def test_a_fuxi_model_decodes_finite_values_and_its_encoder_learns(lead):
+    model = _model(**FUXI).train()
+    with torch.no_grad():
+        model.mean_head[-1].weight.normal_(0., .1)          # zero at initialisation: a first step's head
+    out = model(_scene(lead))
+    assert out["mean"].shape == (7, 2) and torch.isfinite(out["mean"]).all() and torch.isfinite(out["std"]).all()
+    ((out["mean"] - .3).square().mean() + .01 * out["std"].mean()).backward()
+    grads = [p.grad for p in model.encoder.parameters()]
+    assert all(g is not None and torch.isfinite(g).all() for g in grads)
+    assert model.encoder.head.weight.grad.abs().sum() > 0
+
+
+def test_the_fuxi_backbone_takes_the_lead_itself():
+    with pytest.raises(ValueError, match="lead-conditioned"):
+        _config(backbone="fuxi", kriging="none")                     # the evolution defaults to on
+    with pytest.raises(ValueError, match="lead-conditioned"):
+        _config(**{**FUXI, "background": "prior"})
+
+
+def test_a_fuxi_config_replays_the_model():
+    model = _model(**FUXI)
+    again = GridKrigingModel(GridKrigingConfig(**model.config.to_dict())).double().eval()
+    again.load_state_dict(model.state_dict(), strict=True)
+    scene = _scene(1)
+    assert torch.equal(model(scene)["mean"], again(scene)["mean"])
+
+
+def test_at_the_study_size_the_fuxi_model_is_within_two_percent_of_ka_x1375():
+    config = GridKrigingConfig(state_channels=176, hidden=352, backbone="fuxi", evolution=False, kriging="none")
+    params = sum(p.numel() for p in GridKrigingModel(config).parameters())
+    assert abs(params / 17_730_974 - 1) < .02                          # KA x1.375's runs
