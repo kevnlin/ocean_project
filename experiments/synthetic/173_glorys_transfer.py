@@ -10,7 +10,8 @@ to run twice:
 
   --check PATH          scores a checkpoint on its own CESM2 2004-2005 (the caches its run recorded); the
                         run's scores must come back (``109``'s check): this code still makes the model it trained
-  --register PATH ...   the checkpoints, the GLORYS data files and the main pass's results, by sha256
+  --register PATH ...   the checkpoints (CESM2-trained, each its run's chosen one, on the GLORYS grid), the GLORYS
+                        data files (as 159 registered them) and the main pass's results, by sha256
   --score               verifies every file, scores every checkpoint, writes results.json once
 
   .venv/bin/python experiments/synthetic/173_glorys_transfer.py --check PATH
@@ -53,6 +54,11 @@ OUTPUT = ROOT / "outputs/transfer_20261026"
 REGISTRATION, RESULTS = OUTPUT / "registration.json", OUTPUT / "results.json"
 
 
+def load(path):
+    import torch
+    return torch.load(path, map_location="cpu", weights_only=True)
+
+
 def own_data(training):
     """``109``'s DATA for the cohort a checkpoint trained on: the caches its run recorded."""
     return {"cohort": ROOT / f"data/synthetic_argo/{training['cohort']}.nc",
@@ -62,8 +68,7 @@ def own_data(training):
 
 def check(path, device):
     """``109``'s check on the checkpoint's own cohort: its run's 2004-2005 scores must come back."""
-    import torch
-    training = torch.load(path, map_location="cpu", weights_only=True)["training"]
+    training = load(path)["training"]
     T.DATA, T.COHORT = own_data(training), training["cohort"]
     T.check("grid", path, device)
 
@@ -77,13 +82,15 @@ def glorys_scenes(device, cache):
 
 
 def compatible(checkpoint, data):
-    """The checkpoint's grid and query feature count must be the scenes'."""
+    """The checkpoint's grid, depth levels and query feature count must be the scenes'."""
     grid = (float(data.grid_lat[0]), float(data.grid_lat[1] - data.grid_lat[0]), float(data.grid_lon[0]),
             float(data.grid_lon[1] - data.grid_lon[0]), len(data.grid_lat), len(data.grid_lon))
     config, features = checkpoint["config"], data.x.shape[1] + 2        # + the two first-guess columns
-    if not np.allclose(grid, config["grid"]) or config["n_query_features"] != features:
-        raise SystemExit(f"{checkpoint['training']['tag']}: grid {config['grid']} and {config['n_query_features']} "
-                         f"query features; the GLORYS scenes have {grid} and {features} query features")
+    if (not np.allclose(grid, config["grid"]) or config["n_query_features"] != features
+            or not np.allclose(checkpoint["data"]["levels_m"], data.levels)):
+        raise SystemExit(f"{checkpoint['training']['tag']}: grid {config['grid']}, {config['n_query_features']} query "
+                         f"features, levels {checkpoint['data']['levels_m']}; the GLORYS scenes have {grid}, {features} "
+                         f"query features, levels {list(data.levels)}")
 
 
 def macro_z(collected, data):
@@ -99,25 +106,40 @@ def macro_z(collected, data):
 
 def evaluate(path, device, cache):
     """One CESM2-trained checkpoint on every cell of the GLORYS test years, with GLORYS's own statistics."""
-    import torch
-    checkpoint = torch.load(path, map_location="cpu", weights_only=True)
+    checkpoint = load(path)
     training = checkpoint["training"]
     data = glorys_scenes(device, cache)
     compatible(checkpoint, data)
     model = T.model_of("grid", checkpoint, data.device)
     collected = SS.collect(model, data, data.analysis(), data.forecast_months(list(TEST_YEARS), 0),
                            training.get("eval_context_profiles") or training["context_profiles"], training["amp"])
-    return checkpoint, SS.summarize(collected, data.norm, data.levels, TEST_YEARS), macro_z(collected, data)
+    return (checkpoint, SS.summarize(collected, data.norm, data.levels, TEST_YEARS), macro_z(collected, data),
+            sum(p.numel() for p in model.parameters()))
 
 
 def register(paths):
-    import torch
+    """Once: every check that could refuse a checkpoint runs here, before anything is recorded or scored."""
     if not MAIN.exists():
         raise SystemExit(f"{MAIN} missing: the extra pass needs 159's main pass")
+    if not paths:
+        raise SystemExit("nothing to register")
+    with np.load(GLORYS["surface_grids"]) as grids:
+        lat, lon = grids["grid_lat"], grids["grid_lon"]
+    grid = (float(lat[0]), float(lat[1] - lat[0]), float(lon[0]), float(lon[1] - lon[0]), len(lat), len(lon))
     for path in paths:
-        cohort = torch.load(path, map_location="cpu", weights_only=True)["training"]["cohort"]
-        if cohort.startswith("glorys"):
-            raise SystemExit(f"{path}: trained on {cohort}; the transfer test scores CESM2-trained models only")
+        checkpoint = load(path)
+        training = checkpoint["training"]
+        if training.get("dataset", "cesm2") != "cesm2" or not training["cohort"].startswith("cesm2"):
+            raise SystemExit(f"{path}: trained on {training['cohort']}; the transfer test scores CESM2-trained models only")
+        summary = json.loads((Path(path).parent / f"summary_seed{checkpoint['seed']}.json").read_text())
+        if summary["best_step"] != checkpoint["step"]:
+            raise SystemExit(f"{path}: not its run's chosen checkpoint (step {checkpoint['step']}, chosen {summary['best_step']})")
+        if not np.allclose(grid, checkpoint["config"]["grid"]):
+            raise SystemExit(f"{path}: grid {checkpoint['config']['grid']}; the GLORYS grids are {grid}")
+    sealed = json.loads(T.REGISTRATION.read_text())["data"]
+    for name, path in GLORYS.items():
+        if SS.sha256(path) != sealed[name]["sha256"]:
+            raise SystemExit(f"{path}: not the file 159 registered as {name}")
     record = SS.register(REGISTRATION, [("grid", Path(p)) for p in paths], {**GLORYS, "main_results": MAIN},
                          {"cohort": COHORT, "test_years": list(TEST_YEARS), "test_years_glorys": [2019, 2020],
                           "leads": list(LEADS), "cells": "every held-out cell", "spec": SPEC,
@@ -131,6 +153,9 @@ def same_baselines(entries, main):
     first = main["entries"][0]["by_lead"]
     for e in entries:
         for lead in map(str, LEADS):
+            if e["by_lead"][lead]["cells"] != first[lead]["cells"]:
+                raise SystemExit(f"{e['tag']} lead {lead}: {e['by_lead'][lead]['cells']} cells, the main pass's "
+                                 f"{first[lead]['cells']}")
             for ch in CH:
                 for row in ("persisted_oi", "climatology"):
                     a, b = e["by_lead"][lead]["all"][ch][row]["rmse"], first[lead]["all"][ch][row]["rmse"]
@@ -143,27 +168,34 @@ def score(device):
         raise SystemExit(f"{RESULTS} exists: the transfer test is scored once")
     record = json.loads(REGISTRATION.read_text())
     SS.verify(record)
-    results, cache = {"registration_sha256": SS.sha256(REGISTRATION), "started_unix": time.time(), "entries": []}, {}
+    main, cache = json.loads(MAIN.read_text()), {}
+    data = glorys_scenes(device, cache)
+    for entry in record["entries"]:                  # every refusal before the first sealed cell is scored
+        compatible(load(entry["checkpoint"]), data)
+    results = {"registration_sha256": SS.sha256(REGISTRATION), "started_unix": time.time(), "entries": []}
     for entry in record["entries"]:
         started = time.time()
-        checkpoint, outcome, macro = evaluate(entry["checkpoint"], device, cache)
+        checkpoint, outcome, macro, params = evaluate(entry["checkpoint"], device, cache)
         training = checkpoint["training"]
         results["entries"].append({**entry, "tag": training["tag"], "seed": checkpoint["seed"], "step": checkpoint["step"],
             "trained_on": training["cohort"], "backbone": checkpoint["config"]["backbone"],
-            "kriging": checkpoint["config"]["kriging"], "params": int(sum(v.numel() for v in checkpoint["model"].values())),
+            "kriging": checkpoint["config"]["kriging"], "params": int(params),
             "normalization_trained": {k: {ch: checkpoint["normalization"][k][ch].tolist() for ch in CH} for k in ("mean", "std")},
             "seconds": time.time() - started, "by_lead": outcome, "macro_z": macro})
-        print(json.dumps({"scored": training["tag"], "macro_z": {k: round(v, 4) for k, v in macro.items()}, "rmse": {
-            lead: [round(outcome[lead]["all"][ch]["model"]["rmse"], 4) for ch in CH] for lead in map(str, LEADS)}}), flush=True)
+        same_baselines(results["entries"][-1:], main)
+        # scores are printed only once they are recorded: a refusal leaves no unrecorded look at the test
+        print(json.dumps({"scored": training["tag"], "seconds": round(time.time() - started)}), flush=True)
     norm = cache["glorys"].norm
     results["normalization_used"] = {k: {ch: np.asarray(getattr(norm, k)[ch]).tolist() for ch in CH} for k in ("mean", "std")}
-    same_baselines(results["entries"], json.loads(MAIN.read_text()))
     results["declared_extra_pass"] = {"main_results": str(MAIN), "main_results_sha256": SS.sha256(MAIN),
-                                      "identity": "persisted OI and climatology of every entry equal the main pass's"}
+                                      "identity": "persisted OI, climatology and cells of every entry equal the main pass's"}
     results["test_years_glorys"] = [2019, 2020]
     temporary = RESULTS.with_suffix(".tmp")
     temporary.write_text(json.dumps(results, indent=1, default=float) + "\n")
     os.replace(temporary, RESULTS)
+    for e in results["entries"]:
+        print(json.dumps({"tag": e["tag"], "macro_z": {k: round(v, 4) for k, v in e["macro_z"].items()}, "rmse": {
+            lead: [round(e["by_lead"][lead]["all"][ch]["model"]["rmse"], 4) for ch in CH] for lead in map(str, LEADS)}}), flush=True)
     print(f"wrote {RESULTS}", flush=True)
 
 

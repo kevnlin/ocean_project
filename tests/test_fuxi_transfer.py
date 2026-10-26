@@ -1,5 +1,6 @@
 """The FuXi comparison: the queue's runs, the transfer scorer's refusals, the report's verdicts and labels."""
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,13 +60,17 @@ def test_the_transfer_scenes_are_159s():
 
 
 def test_a_checkpoint_on_another_grid_or_feature_set_is_refused():
-    data = SimpleNamespace(grid_lat=np.arange(-89.5, 90.), grid_lon=np.arange(.5, 360.), x=torch.zeros(1, 56))
-    checkpoint = {"config": {"grid": [-89.5, 1., .5, 1., 180, 360], "n_query_features": 58}, "training": {"tag": "t"}}
+    data = SimpleNamespace(grid_lat=np.arange(-89.5, 90.), grid_lon=np.arange(.5, 360.), x=torch.zeros(1, 56),
+                         levels=np.asarray(LEVELS))
+    checkpoint = {"config": {"grid": [-89.5, 1., .5, 1., 180, 360], "n_query_features": 58}, "training": {"tag": "t"},
+                  "data": {"levels_m": LEVELS}}
     transfer.compatible(checkpoint, data)
     with pytest.raises(SystemExit, match="query features"):
         transfer.compatible({**checkpoint, "config": {**checkpoint["config"], "grid": [-89., 2., 1., 2., 90, 180]}}, data)
     with pytest.raises(SystemExit, match="query features"):
         transfer.compatible({**checkpoint, "config": {**checkpoint["config"], "n_query_features": 60}}, data)
+    with pytest.raises(SystemExit, match="levels"):
+        transfer.compatible({**checkpoint, "data": {"levels_m": LEVELS[:19] + [1000.]}}, data)
 
 
 def test_the_score_is_101s_mean_over_variables_of_the_z_rmse():
@@ -78,6 +83,7 @@ def test_the_score_is_101s_mean_over_variables_of_the_z_rmse():
 def entry(tag, oi=.5, params=0):
     by_lead = {lead: {"all": {ch: {"model": {"rmse": .3}, "persisted_oi": {"rmse": oi}, "climatology": {"rmse": .8}}
                               for ch in ("TEMP", "SALT")}} for lead in ("0", "1", "3", "6")}
+    by_lead = {lead: {**v, "cells": 729600} for lead, v in by_lead.items()}
     return {"tag": tag, "params": params, "by_lead": by_lead, "macro_z": {lead: .5 for lead in ("0", "1", "3", "6")}}
 
 
@@ -96,6 +102,8 @@ def test_registration_needs_the_main_pass_and_cesm2_trained_checkpoints(tmp_path
     main = tmp_path / "results.json"
     main.write_text("{}")
     monkeypatch.setattr(transfer, "MAIN", main)
+    with pytest.raises(SystemExit, match="nothing to register"):
+        transfer.register([])
     checkpoint = tmp_path / "best_seed1234.pt"
     torch.save({"training": {"cohort": "glorys12_uniform"}}, checkpoint)
     with pytest.raises(SystemExit, match="CESM2-trained"):
@@ -109,3 +117,32 @@ def test_the_transfer_is_scored_once(tmp_path, monkeypatch):
     monkeypatch.setattr(transfer, "RESULTS", done)
     with pytest.raises(SystemExit, match="scored once"):
         transfer.score("cpu")
+
+
+def test_scoring_refuses_before_writing_and_records_every_entry(tmp_path, monkeypatch):
+    registration, main = tmp_path / "registration.json", tmp_path / "main.json"
+    registration.write_text(json.dumps({"entries": [{"family": "grid", "checkpoint": t} for t in ("a", "b")]}))
+    main.write_text(json.dumps({"entries": [entry("g_ka_s1234")]}))
+    for name, value in (("REGISTRATION", registration), ("RESULTS", tmp_path / "results.json"), ("MAIN", main)):
+        monkeypatch.setattr(transfer, name, value)
+    norm = SimpleNamespace(mean={"TEMP": np.zeros(20), "SALT": np.zeros(20)}, std={"TEMP": np.ones(20), "SALT": np.ones(20)})
+    monkeypatch.setattr(transfer.SS, "verify", lambda record: None)
+    monkeypatch.setattr(transfer, "glorys_scenes", lambda device, cache: cache.setdefault("glorys", SimpleNamespace(norm=norm)))
+    monkeypatch.setattr(transfer, "load", lambda path: {})
+    monkeypatch.setattr(transfer, "compatible", lambda checkpoint, data: None)
+    ones = {k: {ch: torch.zeros(20) for ch in ("TEMP", "SALT")} for k in ("mean", "std")}
+
+    def evaluate(path, oi):
+        checkpoint = {"training": {"tag": f"y100_fuxi_{path}", "cohort": "cesm2_vlong_uniform"}, "seed": 1234, "step": 9,
+                      "config": {"backbone": "fuxi", "kriging": "none"}, "normalization": ones}
+        e = entry(checkpoint["training"]["tag"], oi=oi)
+        return checkpoint, e["by_lead"], e["macro_z"], 17_508_596
+
+    monkeypatch.setattr(transfer, "evaluate", lambda path, device, cache: evaluate(path, .5 if path == "a" else .6))
+    with pytest.raises(SystemExit, match="differs from the main pass"):
+        transfer.score("cpu")
+    assert not (tmp_path / "results.json").exists() and not (tmp_path / "results.tmp").exists()
+    monkeypatch.setattr(transfer, "evaluate", lambda path, device, cache: evaluate(path, .5))
+    transfer.score("cpu")
+    results = json.loads((tmp_path / "results.json").read_text())
+    assert [e["params"] for e in results["entries"]] == [17_508_596] * 2 and "declared_extra_pass" in results
