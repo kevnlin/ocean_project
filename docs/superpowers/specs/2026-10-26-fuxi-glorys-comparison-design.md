@@ -165,8 +165,9 @@ It is computed on CESM2 2005 and, separately, on GLORYS 2019-2020.
 4. `173_glorys_transfer.py`: `--check`, `--register`, `--score` as above; writes
    `outputs/transfer_20261026/registration.json` and `results.json`. The main pass's files are only read.
 5. `174_fuxi_transfer_report.py`: `reports/synthetic/fuxi_transfer_20261026.md` and `.json`: both tables,
-   both verdicts computed (not hand-written), the transfer cost, parameters and hours per arm, the
-   asymmetries above.
+   both verdicts computed (not hand-written), the transfer cost, hours per arm, the asymmetries above.
+   Every table names each model with its parameter count, read from the checkpoints (KA-Ocean 17.7M,
+   FuXi-Ocean-style its own count, `g_ka` 9.4M), e.g. a column header "KA-Ocean (17.7M)".
 6. Tests: the backbone (output shape at leads 0 and 6, the lead changing the output once `MLP(tau)` is
    non-zero, the window mask wrapping in longitude and not in latitude, the parameter count within 2 %),
    the config's refusals, `172`'s job list (names, options, seed order), `173`'s refusals (a second
@@ -182,8 +183,10 @@ It is computed on CESM2 2005 and, separately, on GLORYS 2019-2020.
   `outputs/fuxi_20261026` in this checkout links to its outputs.
 * `173` runs from this checkout. The GLORYS caches, the `glorys12_test` OI file and `159`'s sealed folder
   are hard-linked into it from `ka-dev6` (no extra disk).
-* GPUs: the queue's memory gate. All eight GPUs were busy on 2026-10-26 (95-99 % utilisation), so launches
-  wait for free memory. Hours a run are set by the smoke.
+* GPUs: the queue starts detached (`nohup setsid`) right after the smoke and launches each run only when a
+  GPU has the free memory the smoke measured (the queue's memory gate, retried every 10 minutes). All eight
+  GPUs were busy on 2026-10-26 (95-99 % utilisation), so runs start as GPUs open. Hours a run are set by
+  the smoke.
 * Disk: `/DATA2` had 544 GB free on 2026-10-26; three runs without snapshots need a few GB.
 
 ## Not in this study
